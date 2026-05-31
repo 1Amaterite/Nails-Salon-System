@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, Scissors, Calendar, Shield, Settings, 
-  MapPin, ShoppingBag, PlusCircle, Layers, CheckCircle2, UserCheck, HelpCircle 
+  ShoppingBag, PlusCircle, Layers, UserCheck 
 } from 'lucide-react';
+
 
 interface Branch {
   id: string;
@@ -12,6 +13,9 @@ interface Branch {
   employees?: any[];
   services?: any[];
 }
+
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/$/, '');
+
 
 function App() {
   // Navigation State
@@ -31,7 +35,7 @@ function App() {
 
   // Fetch branches and baseline info
   const fetchMetadata = () => {
-    fetch('http://localhost:5001/api/branches')
+    fetch(`${API_URL}/api/branches`)
       .then((res) => res.json())
       .then((data: Branch[]) => {
         setBranches(data);
@@ -39,7 +43,7 @@ function App() {
           setSelectedBranch(data[0].id);
         }
       })
-      .catch((err) => console.log("CORS/Connection warning: Run backend & seed database."));
+      .catch(() => console.log("CORS/Connection warning: Run backend & seed database."));
   };
 
   useEffect(() => {
@@ -49,7 +53,7 @@ function App() {
   // Fetch Stats when Branch changes
   useEffect(() => {
     if (selectedBranch) {
-      fetch(`http://localhost:5001/api/dashboard/${selectedBranch}`)
+      fetch(`${API_URL}/api/dashboard/${selectedBranch}`)
         .then(res => res.json())
         .then(data => setStats(data))
         .catch(() => {});
@@ -59,7 +63,7 @@ function App() {
   const handleSeedData = async () => {
     setIsSeeding(true);
     try {
-      const res = await fetch('http://localhost:5001/api/seed-initial-data', { method: 'POST' });
+      const res = await fetch(`${API_URL}/api/seed-initial-data`, { method: 'POST' });
       const data = await res.json();
       alert(data.message);
       fetchMetadata();

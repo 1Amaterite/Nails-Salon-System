@@ -87,7 +87,7 @@ app.post('/api/seed-initial-data', async (req, res) => {
 });
 
 // GET: All Branches
-app.get('/branches', async (req, res) => {
+app.get('/api/branches', async (req, res) => {
     try {
         const branches = await prisma.branch.findMany({ include: { employees: true, services: true } });
         res.json(branches);
