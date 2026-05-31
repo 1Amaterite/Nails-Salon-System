@@ -1,24 +1,24 @@
 import React from 'react';
 import {
-  LayoutDashboard, Users, Scissors, Calendar, Settings,
+  LayoutDashboard, Users, Scissors, Calendar, Shield, Settings,
   ShoppingBag, PlusCircle, UserCheck, LogOut, Globe
 } from 'lucide-react';
 import type { Branch, WaitlistItem, DashboardStats } from '../types';
 
-import { DashboardTab }     from './tabs/DashboardTab';
-import { AppointmentsTab }  from './tabs/AppointmentsTab';
-import { WaitlistTab }      from './tabs/WaitlistTab';
-import { AdminWalkinTab }   from './tabs/AdminWalkinTab';
-import { EmployeesTab }     from './tabs/EmployeesTab';
-import { InventoryTab }     from './tabs/InventoryTab';
-import { ClientsTab }       from './tabs/ClientsTab';
-import { ServicesTab }      from './tabs/ServicesTab';
-import { SettingsTab }      from './tabs/SettingsTab';
+import { DashboardTab }    from './tabs/DashboardTab';
+import { AppointmentsTab } from './tabs/AppointmentsTab';
+import { WaitlistTab }     from './tabs/WaitlistTab';
+import { AdminWalkinTab }  from './tabs/AdminWalkinTab';
+import { EmployeesTab }    from './tabs/EmployeesTab';
+import { InventoryTab }    from './tabs/InventoryTab';
+import { ClientsTab }      from './tabs/ClientsTab';
+import { ServicesTab }     from './tabs/ServicesTab';
+import { FinancialsTab }   from './tabs/FinancialsTab';
+import { SettingsTab }     from './tabs/SettingsTab';
 
-interface AdminDashboardProps {
+interface OwnerDashboardProps {
   activeTab: string;
   setActiveTab: (t: string) => void;
-  roleMode: 'admin' | 'owner' | 'public';
   employeeRole: string;
   branches: Branch[];
   selectedBranch: string;
@@ -60,8 +60,8 @@ interface AdminDashboardProps {
   handleAddEmployeeSubmit: (e: React.FormEvent) => void;
 }
 
-export function AdminDashboard({
-  activeTab, setActiveTab, roleMode, employeeRole,
+export function OwnerDashboard({
+  activeTab, setActiveTab, employeeRole,
   branches, selectedBranch, stats, waitlist,
   handleUpdateWaitlistStatus, handleLogout, navigateTo,
   walkinName, setWalkinName, walkinPhone, setWalkinPhone,
@@ -73,7 +73,7 @@ export function AdminDashboard({
   newEmpPhoneNumber, setNewEmpPhoneNumber,
   newEmpSpecialty, setNewEmpSpecialty,
   newEmpError, handleAddEmployeeSubmit
-}: AdminDashboardProps) {
+}: OwnerDashboardProps) {
   return (
     <div className="app-container">
       {/* Navigation Sidebar */}
@@ -86,7 +86,7 @@ export function AdminDashboard({
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
             <span className="micro-badge" style={{ backgroundColor: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid var(--border-color)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
-              Admin Space
+              Owner Space
             </span>
           </div>
 
@@ -101,6 +101,7 @@ export function AdminDashboard({
               { key: 'inventory',    label: 'Inventory Items',   Icon: ShoppingBag },
               { key: 'clients',      label: 'Clients Directory', Icon: Users },
               { key: 'services',     label: 'Services Catalog',  Icon: Scissors },
+              { key: 'analytics',    label: 'Owner Financials',  Icon: Shield, style: { borderLeft: '3px solid var(--accent)' } },
               { key: 'settings',     label: 'Settings Panel',    Icon: Settings },
             ].map(({ key, label, Icon, style }) => (
               <div
@@ -164,10 +165,11 @@ export function AdminDashboard({
             newEmpError={newEmpError} handleAddEmployeeSubmit={handleAddEmployeeSubmit}
           />
         )}
-        {activeTab === 'inventory' && <InventoryTab />}
-        {activeTab === 'clients'   && <ClientsTab />}
-        {activeTab === 'services'  && <ServicesTab branches={branches} />}
-        {activeTab === 'settings'  && <SettingsTab />}
+        {activeTab === 'inventory'  && <InventoryTab />}
+        {activeTab === 'clients'    && <ClientsTab />}
+        {activeTab === 'services'   && <ServicesTab branches={branches} />}
+        {activeTab === 'analytics'  && <FinancialsTab />}
+        {activeTab === 'settings'   && <SettingsTab />}
       </main>
     </div>
   );

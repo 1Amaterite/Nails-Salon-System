@@ -3,6 +3,7 @@ import type { Branch, WaitlistItem, DashboardStats } from './types';
 import { LoginPortal } from './pages/LoginPortal';
 import { PublicPortal } from './pages/PublicPortal';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { OwnerDashboard } from './pages/OwnerDashboard';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/$/, '');
 
@@ -188,7 +189,7 @@ function App() {
         },
         body: JSON.stringify({
           name: newEmpName,
-          username: (newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') ? newEmpUsername : undefined,
+          username: (newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') ? newEmpUsername.replace(/@/g, '') : undefined,
           password: (newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') ? newEmpPassword : undefined,
           role: newEmpRole,
           phoneNumber: newEmpPhoneNumber,
@@ -356,50 +357,27 @@ function App() {
     );
   }
 
-  return (
-    <AdminDashboard 
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      roleMode={roleMode}
-      employeeRole={employeeRole}
-      branches={branches}
-      selectedBranch={selectedBranch}
-      stats={stats}
-      waitlist={waitlist}
-      handleUpdateWaitlistStatus={handleUpdateWaitlistStatus}
-      handleLogout={handleLogout}
-      navigateTo={navigateTo}
-      isSeeding={isSeeding}
-      handleSeedData={handleSeedData}
-      
-      walkinName={walkinName}
-      setWalkinName={setWalkinName}
-      walkinPhone={walkinPhone}
-      setWalkinPhone={setWalkinPhone}
-      walkinService={walkinService}
-      setWalkinService={setWalkinService}
-      walkinStylist={walkinStylist}
-      setWalkinStylist={setWalkinStylist}
-      handleAdminWalkinSubmit={handleAdminWalkinSubmit}
+  const sharedProps = {
+    activeTab, setActiveTab, employeeRole,
+    branches, selectedBranch, stats, waitlist,
+    handleUpdateWaitlistStatus, handleLogout, navigateTo,
+    isSeeding, handleSeedData,
+    walkinName, setWalkinName, walkinPhone, setWalkinPhone,
+    walkinService, setWalkinService, walkinStylist, setWalkinStylist,
+    handleAdminWalkinSubmit,
+    isAddEmployeeModalOpen, setIsAddEmployeeModalOpen,
+    newEmpName, setNewEmpName, newEmpUsername, setNewEmpUsername,
+    newEmpPassword, setNewEmpPassword, newEmpRole, setNewEmpRole,
+    newEmpPhoneNumber, setNewEmpPhoneNumber,
+    newEmpSpecialty, setNewEmpSpecialty,
+    newEmpError, handleAddEmployeeSubmit
+  };
 
-      isAddEmployeeModalOpen={isAddEmployeeModalOpen}
-      setIsAddEmployeeModalOpen={setIsAddEmployeeModalOpen}
-      newEmpName={newEmpName}
-      setNewEmpName={setNewEmpName}
-      newEmpUsername={newEmpUsername}
-      setNewEmpUsername={setNewEmpUsername}
-      newEmpPassword={newEmpPassword}
-      setNewEmpPassword={setNewEmpPassword}
-      newEmpRole={newEmpRole}
-      setNewEmpRole={setNewEmpRole}
-      newEmpPhoneNumber={newEmpPhoneNumber}
-      setNewEmpPhoneNumber={setNewEmpPhoneNumber}
-      newEmpSpecialty={newEmpSpecialty}
-      setNewEmpSpecialty={setNewEmpSpecialty}
-      newEmpError={newEmpError}
-      handleAddEmployeeSubmit={handleAddEmployeeSubmit}
-    />
-  );
+  if (roleMode === 'owner') {
+    return <OwnerDashboard {...sharedProps} />;
+  }
+
+  return <AdminDashboard {...sharedProps} roleMode={roleMode} />;
 }
 
 export default App;
