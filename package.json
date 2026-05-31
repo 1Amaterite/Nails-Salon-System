@@ -1,0 +1,32 @@
+{
+  "name": "nails-salon-system",
+  "version": "1.0.0",
+  "description": "Nails Salon Management & Booking System",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "db:up": "docker-compose up -d",
+    "db:down": "docker-compose down",
+    "backend:dev": "npm run dev -w backend",
+    "frontend:dev": "npm run dev -w frontend",
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1Amaterite/Nails-Salon-System.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/1Amaterite/Nails-Salon-System/issues"
+  },
+  "homepage": "https://github.com/1Amaterite/Nails-Salon-System#readme",
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "concurrently": "^8.2.2"
+  }
+}
