@@ -300,9 +300,7 @@ export function PublicPortal({
             Contacts: nailsandlasheslane.2014@gmail.com | Hotline: (555) 0199 | Open Monday - Sunday: 9:00 AM - 8:00 PM
           </div>
           <div className="portal-links-row">
-            <span className="portal-link" onClick={() => navigateTo('/admin')}>Admin Login</span>
-            <span style={{ color: 'var(--border-color)' }}>•</span>
-            <span className="portal-link" onClick={() => navigateTo('/owner')}>Owner Login</span>
+            <span className="portal-link" onClick={() => navigateTo('/login')}>Management Portal</span>
           </div>
         </footer>
       </main>

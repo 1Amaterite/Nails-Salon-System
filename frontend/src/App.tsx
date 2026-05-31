@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Branch, WaitlistItem, DashboardStats } from './types';
 import { LoginPortal } from './pages/LoginPortal';
 import { PublicPortal } from './pages/PublicPortal';
@@ -41,15 +41,15 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const navigateTo = (path: string) => {
+  const navigateTo = useCallback((path: string) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
     setErrorMsg('');
     setPasscode('');
     setUsername('');
-  };
+  }, []);
 
-  const handleLogin = async (role: 'admin' | 'owner') => {
+  const handleLogin = async () => {
     try {
       const response = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
@@ -64,7 +64,20 @@ function App() {
       }
       
       const empRole = data.employee.role;
-      if (role === 'admin' && (empRole === 'ADMIN' || empRole === 'OWNER')) {
+      if (empRole === 'OWNER') {
+        setIsOwnerAuth(true);
+        setIsAdminAuth(true);
+        sessionStorage.setItem('isOwnerAuth', 'true');
+        sessionStorage.setItem('isAdminAuth', 'true');
+        sessionStorage.setItem('ownerToken', data.token);
+        sessionStorage.setItem('adminToken', data.token);
+        sessionStorage.setItem('employeeRole', empRole);
+        setEmployeeRole(empRole);
+        setErrorMsg('');
+        setPasscode('');
+        setUsername('');
+        navigateTo('/owner');
+      } else if (empRole === 'ADMIN') {
         setIsAdminAuth(true);
         sessionStorage.setItem('isAdminAuth', 'true');
         sessionStorage.setItem('adminToken', data.token);
@@ -73,39 +86,44 @@ function App() {
         setErrorMsg('');
         setPasscode('');
         setUsername('');
-      } else if (role === 'owner' && empRole === 'OWNER') {
-        setIsOwnerAuth(true);
-        sessionStorage.setItem('isOwnerAuth', 'true');
-        sessionStorage.setItem('ownerToken', data.token);
-        sessionStorage.setItem('employeeRole', empRole);
-        setEmployeeRole(empRole);
-        setErrorMsg('');
-        setPasscode('');
-        setUsername('');
+        navigateTo('/admin');
       } else {
-        setErrorMsg(`Unauthorized. You do not have the required ${role} role.`);
+        setErrorMsg('Unauthorized. You do not have permission to access the management portals.');
       }
     } catch (error) {
       setErrorMsg('Connection error. Is the backend server running?');
     }
   };
 
-  const handleLogout = () => {
-    if (currentPath === '/admin') {
-      setIsAdminAuth(false);
-      sessionStorage.removeItem('isAdminAuth');
-      sessionStorage.removeItem('adminToken');
-    } else if (currentPath === '/owner') {
-      setIsOwnerAuth(false);
-      sessionStorage.removeItem('isOwnerAuth');
-      sessionStorage.removeItem('ownerToken');
-    }
+  const handleLogout = useCallback(() => {
+    setIsAdminAuth(false);
+    setIsOwnerAuth(false);
+    sessionStorage.removeItem('isAdminAuth');
+    sessionStorage.removeItem('isOwnerAuth');
+    sessionStorage.removeItem('adminToken');
+    sessionStorage.removeItem('ownerToken');
     sessionStorage.removeItem('employeeRole');
     setEmployeeRole('');
     setErrorMsg('');
     setPasscode('');
     setUsername('');
-  };
+    navigateTo('/login');
+  }, [navigateTo]);
+
+  // Redirect and route guards
+  useEffect(() => {
+    if (currentPath === '/admin' && !isAdminAuth) {
+      navigateTo('/login');
+    } else if (currentPath === '/owner' && !isOwnerAuth) {
+      navigateTo('/login');
+    } else if (currentPath === '/login') {
+      if (isOwnerAuth) {
+        navigateTo('/owner');
+      } else if (isAdminAuth) {
+        navigateTo('/admin');
+      }
+    }
+  }, [currentPath, isAdminAuth, isOwnerAuth, navigateTo]);
 
   // App Data State
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -184,7 +202,7 @@ function App() {
 
   // Fetch Stats when Branch changes
   useEffect(() => {
-    if (selectedBranch) {
+    if (selectedBranch && (isAdminAuth || isOwnerAuth)) {
       const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
       const headers: HeadersInit = {};
       if (token) {
@@ -220,7 +238,7 @@ function App() {
   };
 
   // Rendering Routing Decision
-  if (currentPath === '/admin' && !isAdminAuth) {
+  if (currentPath === '/login') {
     return (
       <LoginPortal 
         currentPath={currentPath}
@@ -235,19 +253,12 @@ function App() {
     );
   }
 
+  if (currentPath === '/admin' && !isAdminAuth) {
+    return null;
+  }
+
   if (currentPath === '/owner' && !isOwnerAuth) {
-    return (
-      <LoginPortal 
-        currentPath={currentPath}
-        username={username}
-        setUsername={setUsername}
-        passcode={passcode}
-        setPasscode={setPasscode}
-        errorMsg={errorMsg}
-        handleLogin={handleLogin}
-        navigateTo={navigateTo}
-      />
-    );
+    return null;
   }
 
   if (roleMode === 'public') {

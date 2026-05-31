@@ -1,18 +1,17 @@
 import { User, Lock } from 'lucide-react';
 
 interface LoginPortalProps {
-  currentPath: string;
+  currentPath?: string;
   username: string;
   setUsername: (u: string) => void;
   passcode: string;
   setPasscode: (p: string) => void;
   errorMsg: string;
-  handleLogin: (role: 'admin' | 'owner') => void;
+  handleLogin: () => void;
   navigateTo: (path: string) => void;
 }
 
 export function LoginPortal({
-  currentPath,
   username,
   setUsername,
   passcode,
@@ -21,9 +20,6 @@ export function LoginPortal({
   handleLogin,
   navigateTo
 }: LoginPortalProps) {
-  const isOwner = currentPath === '/owner';
-  const role: 'admin' | 'owner' = isOwner ? 'owner' : 'admin';
-
   return (
     <div className="login-container">
       <div style={{
@@ -39,24 +35,24 @@ export function LoginPortal({
             </div>
 
             <h2 style={{ fontFamily: 'var(--font-serif)', color: 'var(--accent)', textAlign: 'center', fontSize: '28px', fontWeight: 700, margin: '0 0 8px 0', letterSpacing: '-0.3px' }}>
-              {isOwner ? 'Owner Headquarters' : 'Admin Workspace'}
+              Management Portal
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', textAlign: 'center', margin: '0 0 28px 0', lineHeight: 1.5 }}>
-              {isOwner
-                ? 'Access requires verified business owner credentials.'
-                : 'Verify administrative credentials to open the salon panel.'}
+              Verify administrative or owner credentials to open the salon dashboard.
             </p>
 
-            <form onSubmit={(e) => { e.preventDefault(); handleLogin(role); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <label style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                <label htmlFor="username-input" style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                   Username
                 </label>
                 <div className="input-with-icon-wrapper">
                   <User size={16} className="input-icon" />
                   <input
+                    id="username-input"
+                    name="username"
                     type="text"
-                    placeholder={isOwner ? 'e.g. owner' : 'e.g. admin'}
+                    placeholder="e.g. admin or owner"
                     value={username}
                     onChange={e => setUsername(e.target.value.replace(/@/g, ''))}
                     autoComplete="username"
@@ -67,12 +63,14 @@ export function LoginPortal({
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                <label htmlFor="current-password" style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                   Passcode
                 </label>
                 <div className="input-with-icon-wrapper">
                   <Lock size={16} className="input-icon" />
                   <input
+                    id="current-password"
+                    name="password"
                     type="password"
                     placeholder="••••"
                     value={passcode}
