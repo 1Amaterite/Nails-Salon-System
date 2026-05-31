@@ -289,6 +289,123 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
     }
 });
 
+// PUT: Update an employee (protected by verifyJWT)
+app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
+    const { id } = req.params;
+    const { name, username, password, role, phoneNumber, specialty, isActive } = req.body;
+    const creatorRole = req.user.role;
+
+    try {
+        const employee = await prisma.employee.findUnique({ where: { id } });
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found." });
+        }
+
+        // Role-based restrictions
+        if (creatorRole === 'ADMIN') {
+            // Admins can only edit STAFF
+            if (employee.role !== 'STAFF') {
+                return res.status(403).json({ error: "Admins can only edit employees with STAFF role." });
+            }
+            // Admins cannot elevate a STAFF to ADMIN/OWNER
+            if (role && role !== 'STAFF') {
+                return res.status(403).json({ error: "Admins can only keep employees in STAFF role." });
+            }
+        } else if (creatorRole !== 'OWNER') {
+            return res.status(403).json({ error: "Access denied. Unauthorized to edit employees." });
+        }
+
+        const updateData: any = {};
+        if (name !== undefined) updateData.name = name;
+        if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+        if (specialty !== undefined) updateData.specialty = specialty;
+        if (isActive !== undefined) updateData.isActive = isActive;
+        if (role !== undefined) updateData.role = role;
+
+        // Manage credentials if they are updating to or keeping admin/owner
+        const targetRole = role || employee.role;
+        if (targetRole === 'ADMIN' || targetRole === 'OWNER') {
+            if (username !== undefined) {
+                const finalUsername = username.toLowerCase().trim();
+                if (finalUsername !== employee.username) {
+                    const existing = await prisma.employee.findUnique({ where: { username: finalUsername } });
+                    if (existing) {
+                        return res.status(400).json({ error: "Username already taken." });
+                    }
+                    updateData.username = finalUsername;
+                }
+            }
+            if (password) {
+                updateData.passwordHash = await bcrypt.hash(password, 10);
+            }
+        } else {
+            // If they are demoted to STAFF, clear their login details
+            updateData.username = null;
+            updateData.passwordHash = null;
+        }
+
+        const updatedEmployee = await prisma.employee.update({
+            where: { id },
+            data: updateData
+        });
+
+        res.json({
+            message: "Employee updated successfully.",
+            employee: {
+                id: updatedEmployee.id,
+                name: updatedEmployee.name,
+                username: updatedEmployee.username,
+                role: updatedEmployee.role,
+                phoneNumber: updatedEmployee.phoneNumber,
+                specialty: updatedEmployee.specialty,
+                isActive: updatedEmployee.isActive
+            }
+        });
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            return res.status(400).json({ error: "Username is already in use by another account." });
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// DELETE: Delete an employee (protected by verifyJWT)
+app.delete('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
+    const { id } = req.params;
+    const creatorRole = req.user.role;
+
+    try {
+        const employee = await prisma.employee.findUnique({ where: { id } });
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found." });
+        }
+
+        // Role-based restrictions
+        if (creatorRole === 'ADMIN') {
+            // Admins can only delete STAFF
+            if (employee.role !== 'STAFF') {
+                return res.status(403).json({ error: "Admins can only delete employees with STAFF role." });
+            }
+        } else if (creatorRole !== 'OWNER') {
+            return res.status(403).json({ error: "Access denied. Unauthorized to delete employees." });
+        }
+
+        // Don't let an owner delete themselves
+        if (employee.id === req.user.userId) {
+            return res.status(400).json({ error: "You cannot delete your own account." });
+        }
+
+        await prisma.employee.delete({ where: { id } });
+
+        res.json({ message: "Employee deleted successfully." });
+    } catch (error: any) {
+        if (error.code === 'P2003' || error.message.includes('Foreign key constraint')) {
+            return res.status(400).json({ error: "Cannot delete this employee because they have transaction or appointment records. Please set them to inactive instead." });
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`[server]: Server is running at http://localhost:${PORT}`);
     console.log('Press [Cmd+C] or [Ctrl+C] to stop the server');
