@@ -90,10 +90,10 @@ model Client {
 model Employee {
     id              String      @id @default(uuid())
     name            String
-    email           String      @unique
+    username        String?     @unique
     passwordHash    String?     // Nullable, only for admins/owners
     role            EmployeeRole // ADMIN, OWNER, STAFF
-    phoneNumber     String? 
+    phoneNumber     String
     specialty       String? 
     isActive        Boolean     @default(true)
     branchId        String
