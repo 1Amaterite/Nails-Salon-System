@@ -144,114 +144,25 @@ function App() {
     setWaitlist(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
   };
 
-  // Form states for Receptionist Walk-In
-  const [walkinName, setWalkinName] = useState('');
-  const [walkinPhone, setWalkinPhone] = useState('');
-  const [walkinService, setWalkinService] = useState('Gellack/Shellac/Gel polish');
-  const [walkinStylist, setWalkinStylist] = useState('First Available Stylist');
-
-  // Form states for Public Walk-In
-  const [publicWalkinName, setPublicWalkinName] = useState('');
-  const [publicWalkinPhone, setPublicWalkinPhone] = useState('');
-  const [publicWalkinService, setPublicWalkinService] = useState('Gellack/Shellac/Gel polish');
-
-  // Form states for Add Employee Modal
-  const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
-  const [newEmpName, setNewEmpName] = useState('');
-  const [newEmpUsername, setNewEmpUsername] = useState('');
-  const [newEmpPassword, setNewEmpPassword] = useState('');
-  const [newEmpRole, setNewEmpRole] = useState('STAFF');
-  const [newEmpPhoneNumber, setNewEmpPhoneNumber] = useState('');
-  const [newEmpSpecialty, setNewEmpSpecialty] = useState('');
-  const [newEmpError, setNewEmpError] = useState('');
-
-  const handleAddEmployeeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setNewEmpError('');
-
-    const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
-    if (!token) {
-      setNewEmpError('Authentication token missing. Please re-authenticate.');
-      return;
-    }
-
-    if ((newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') && (!newEmpUsername || !newEmpPassword)) {
-      setNewEmpError('Username and password are required for admin/owner accounts.');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/api/employees`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: newEmpName,
-          username: (newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') ? newEmpUsername.replace(/@/g, '') : undefined,
-          password: (newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') ? newEmpPassword : undefined,
-          role: newEmpRole,
-          phoneNumber: newEmpPhoneNumber,
-          specialty: newEmpSpecialty || undefined,
-          branchId: selectedBranch
-        })
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        setNewEmpError(data.error || 'Failed to create employee.');
-        return;
-      }
-
-      alert('Employee created successfully.');
-      setIsAddEmployeeModalOpen(false);
-      setNewEmpName('');
-      setNewEmpUsername('');
-      setNewEmpPassword('');
-      setNewEmpRole('STAFF');
-      setNewEmpPhoneNumber('');
-      setNewEmpSpecialty('');
-      fetchMetadata();
-    } catch (err) {
-      setNewEmpError('Network error. Failed to connect to server.');
-    }
-  };
-
-  const handleAdminWalkinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Handle walk-in checks from either Public or Receptionist portals
+  const handleWalkinSubmit = (entry: { firstName: string; phone: string; service: string; stylist?: string }) => {
     const newEntry: WaitlistItem = {
       id: Date.now().toString(),
-      firstName: walkinName,
-      phone: walkinPhone,
-      service: walkinService,
-      stylist: walkinStylist,
+      firstName: entry.firstName,
+      phone: entry.phone,
+      service: entry.service,
+      stylist: entry.stylist || 'First Available Stylist',
       checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'WAITING'
     };
     setWaitlist(prev => [...prev, newEntry]);
-    alert(`${walkinName} has been added to the live waiting queue.`);
-    setWalkinName('');
-    setWalkinPhone('');
-    setActiveTab('waitlist');
-  };
-
-  const handlePublicWalkinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newEntry: WaitlistItem = {
-      id: Date.now().toString(),
-      firstName: publicWalkinName,
-      phone: publicWalkinPhone,
-      service: publicWalkinService,
-      stylist: 'First Available Stylist',
-      checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'WAITING'
-    };
-    setWaitlist(prev => [...prev, newEntry]);
-    alert(`Thank you, ${publicWalkinName}! You have been added to our live waiting queue.`);
-    setPublicWalkinName('');
-    setPublicWalkinPhone('');
-    setActiveTab('public-home');
+    if (currentPath === '/admin' || currentPath === '/owner') {
+      alert(`${entry.firstName} has been added to the live waiting queue.`);
+      setActiveTab('waitlist');
+    } else {
+      alert(`Thank you, ${entry.firstName}! You have been added to our live waiting queue.`);
+      setActiveTab('public-home');
+    }
   };
 
   // Fetch branches and baseline info
@@ -346,13 +257,7 @@ function App() {
         setActiveTab={setActiveTab}
         branches={branches}
         navigateTo={navigateTo}
-        publicWalkinName={publicWalkinName}
-        setPublicWalkinName={setPublicWalkinName}
-        publicWalkinPhone={publicWalkinPhone}
-        setPublicWalkinPhone={setPublicWalkinPhone}
-        publicWalkinService={publicWalkinService}
-        setPublicWalkinService={setPublicWalkinService}
-        handlePublicWalkinSubmit={handlePublicWalkinSubmit}
+        onPublicWalkinSubmit={handleWalkinSubmit}
       />
     );
   }
@@ -362,15 +267,8 @@ function App() {
     branches, selectedBranch, stats, waitlist,
     handleUpdateWaitlistStatus, handleLogout, navigateTo,
     isSeeding, handleSeedData,
-    walkinName, setWalkinName, walkinPhone, setWalkinPhone,
-    walkinService, setWalkinService, walkinStylist, setWalkinStylist,
-    handleAdminWalkinSubmit,
-    isAddEmployeeModalOpen, setIsAddEmployeeModalOpen,
-    newEmpName, setNewEmpName, newEmpUsername, setNewEmpUsername,
-    newEmpPassword, setNewEmpPassword, newEmpRole, setNewEmpRole,
-    newEmpPhoneNumber, setNewEmpPhoneNumber,
-    newEmpSpecialty, setNewEmpSpecialty,
-    newEmpError, handleAddEmployeeSubmit
+    onWalkinSubmit: handleWalkinSubmit,
+    onEmployeeAdded: fetchMetadata
   };
 
   if (roleMode === 'owner') {

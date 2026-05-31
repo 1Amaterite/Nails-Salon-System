@@ -1,28 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Branch } from '../../types';
 
 interface AdminWalkinTabProps {
-  walkinName: string;
-  setWalkinName: (n: string) => void;
-  walkinPhone: string;
-  setWalkinPhone: (p: string) => void;
-  walkinService: string;
-  setWalkinService: (s: string) => void;
-  walkinStylist: string;
-  setWalkinStylist: (s: string) => void;
-  handleAdminWalkinSubmit: (e: React.FormEvent) => void;
   branches: Branch[];
   selectedBranch: string;
+  onWalkinSubmit: (entry: { firstName: string; phone: string; service: string; stylist: string }) => void;
 }
 
 export function AdminWalkinTab({
-  walkinName, setWalkinName,
-  walkinPhone, setWalkinPhone,
-  walkinService, setWalkinService,
-  walkinStylist, setWalkinStylist,
-  handleAdminWalkinSubmit,
-  branches, selectedBranch
+  branches,
+  selectedBranch,
+  onWalkinSubmit
 }: AdminWalkinTabProps) {
+  const [walkinName, setWalkinName] = useState('');
+  const [walkinPhone, setWalkinPhone] = useState('');
+  const [walkinService, setWalkinService] = useState('Gel Manicure');
+  const [walkinStylist, setWalkinStylist] = useState('First Available Stylist');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onWalkinSubmit({
+      firstName: walkinName,
+      phone: walkinPhone,
+      service: walkinService,
+      stylist: walkinStylist
+    });
+    // Reset form states
+    setWalkinName('');
+    setWalkinPhone('');
+    setWalkinService('Gel Manicure');
+    setWalkinStylist('First Available Stylist');
+  };
+
   return (
     <div className="glass-panel" style={{ borderLeft: '4px solid var(--accent-teal)' }}>
       <div style={{ marginBottom: '24px' }}>
@@ -30,7 +39,7 @@ export function AdminWalkinTab({
         <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Add a walk-in guest to the live queue on their behalf if they are not tech-savvy.</p>
       </div>
 
-      <form onSubmit={handleAdminWalkinSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}>
         <div className="form-group">
           <label className="form-label">Client's First Name</label>
           <input

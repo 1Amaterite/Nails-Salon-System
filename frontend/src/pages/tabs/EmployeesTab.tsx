@@ -1,40 +1,82 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Branch } from '../../types';
 
 interface EmployeesTabProps {
   branches: Branch[];
   selectedBranch: string;
   employeeRole: string;
-  // Add Employee Modal
-  isAddEmployeeModalOpen: boolean;
-  setIsAddEmployeeModalOpen: (b: boolean) => void;
-  newEmpName: string;
-  setNewEmpName: (n: string) => void;
-  newEmpUsername: string;
-  setNewEmpUsername: (u: string) => void;
-  newEmpPassword: string;
-  setNewEmpPassword: (p: string) => void;
-  newEmpRole: string;
-  setNewEmpRole: (r: string) => void;
-  newEmpPhoneNumber: string;
-  setNewEmpPhoneNumber: (p: string) => void;
-  newEmpSpecialty: string;
-  setNewEmpSpecialty: (s: string) => void;
-  newEmpError: string;
-  handleAddEmployeeSubmit: (e: React.FormEvent) => void;
+  onEmployeeAdded: () => void;
 }
 
 export function EmployeesTab({
-  branches, selectedBranch, employeeRole,
-  isAddEmployeeModalOpen, setIsAddEmployeeModalOpen,
-  newEmpName, setNewEmpName,
-  newEmpUsername, setNewEmpUsername,
-  newEmpPassword, setNewEmpPassword,
-  newEmpRole, setNewEmpRole,
-  newEmpPhoneNumber, setNewEmpPhoneNumber,
-  newEmpSpecialty, setNewEmpSpecialty,
-  newEmpError, handleAddEmployeeSubmit
+  branches,
+  selectedBranch,
+  employeeRole,
+  onEmployeeAdded
 }: EmployeesTabProps) {
+  const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
+  const [newEmpName, setNewEmpName] = useState('');
+  const [newEmpUsername, setNewEmpUsername] = useState('');
+  const [newEmpPassword, setNewEmpPassword] = useState('');
+  const [newEmpRole, setNewEmpRole] = useState('STAFF');
+  const [newEmpPhoneNumber, setNewEmpPhoneNumber] = useState('');
+  const [newEmpSpecialty, setNewEmpSpecialty] = useState('');
+  const [newEmpError, setNewEmpError] = useState('');
+
+  const handleAddEmployeeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewEmpError('');
+
+    const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+    if (!token) {
+      setNewEmpError('Authentication token missing. Please re-authenticate.');
+      return;
+    }
+
+    if ((newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') && (!newEmpUsername || !newEmpPassword)) {
+      setNewEmpError('Username and password are required for admin/owner accounts.');
+      return;
+    }
+
+    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/$/, '');
+
+    try {
+      const response = await fetch(`${API_URL}/api/employees`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newEmpName,
+          username: (newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') ? newEmpUsername.replace(/@/g, '') : undefined,
+          password: (newEmpRole === 'ADMIN' || newEmpRole === 'OWNER') ? newEmpPassword : undefined,
+          role: newEmpRole,
+          phoneNumber: newEmpPhoneNumber,
+          specialty: newEmpSpecialty || undefined,
+          branchId: selectedBranch
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setNewEmpError(data.error || 'Failed to create employee.');
+        return;
+      }
+
+      alert('Employee created successfully.');
+      setIsAddEmployeeModalOpen(false);
+      setNewEmpName('');
+      setNewEmpUsername('');
+      setNewEmpPassword('');
+      setNewEmpRole('STAFF');
+      setNewEmpPhoneNumber('');
+      setNewEmpSpecialty('');
+      onEmployeeAdded();
+    } catch (err) {
+      setNewEmpError('Network error. Failed to connect to server.');
+    }
+  };
   const employees = branches.find(b => b.id === selectedBranch)?.employees || [];
 
   return (

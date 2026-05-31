@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Scissors, MapPin, Clock, Globe } from 'lucide-react';
 import gelExtensionsImg from '../assets/gel_extensions.png';
 import gelPolishImg from '../assets/gel_polish.png';
@@ -10,13 +10,7 @@ interface PublicPortalProps {
   setActiveTab: (tab: string) => void;
   branches: Branch[];
   navigateTo: (path: string) => void;
-  publicWalkinName: string;
-  setPublicWalkinName: (n: string) => void;
-  publicWalkinPhone: string;
-  setPublicWalkinPhone: (p: string) => void;
-  publicWalkinService: string;
-  setPublicWalkinService: (s: string) => void;
-  handlePublicWalkinSubmit: (e: React.FormEvent) => void;
+  onPublicWalkinSubmit: (entry: { firstName: string; phone: string; service: string }) => void;
 }
 
 export function PublicPortal({
@@ -24,14 +18,23 @@ export function PublicPortal({
   setActiveTab,
   branches,
   navigateTo,
-  publicWalkinName,
-  setPublicWalkinName,
-  publicWalkinPhone,
-  setPublicWalkinPhone,
-  publicWalkinService,
-  setPublicWalkinService,
-  handlePublicWalkinSubmit
+  onPublicWalkinSubmit
 }: PublicPortalProps) {
+  const [publicWalkinName, setPublicWalkinName] = useState('');
+  const [publicWalkinPhone, setPublicWalkinPhone] = useState('');
+  const [publicWalkinService, setPublicWalkinService] = useState('Gel Manicure');
+
+  const handleWalkinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onPublicWalkinSubmit({
+      firstName: publicWalkinName,
+      phone: publicWalkinPhone,
+      service: publicWalkinService
+    });
+    setPublicWalkinName('');
+    setPublicWalkinPhone('');
+    setPublicWalkinService('Gel Manicure');
+  };
   return (
     <div className="app-container" style={{ display: 'block' }}>
       {/* Top Header Navbar */}
@@ -248,7 +251,7 @@ export function PublicPortal({
               <h3 style={{ color: 'var(--accent)', marginTop: 0, fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600 }}>Live Walk-In Queue Registration</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>No booking? No worries. Add yourself directly to our live daily waitlist at this branch.</p>
             </div>
-            <form onSubmit={handlePublicWalkinSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}>
+            <form onSubmit={handleWalkinSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}>
               <div className="form-group">
                 <label className="form-label">First Name</label>
                 <input 

@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   LayoutDashboard, Users, Scissors, Calendar, Shield, Settings,
   ShoppingBag, PlusCircle, UserCheck, LogOut, Globe
@@ -29,50 +28,15 @@ interface OwnerDashboardProps {
   navigateTo: (path: string) => void;
   isSeeding: boolean;
   handleSeedData: () => void;
-
-  // Receptionist Walk-in
-  walkinName: string;
-  setWalkinName: (n: string) => void;
-  walkinPhone: string;
-  setWalkinPhone: (p: string) => void;
-  walkinService: string;
-  setWalkinService: (s: string) => void;
-  walkinStylist: string;
-  setWalkinStylist: (s: string) => void;
-  handleAdminWalkinSubmit: (e: React.FormEvent) => void;
-
-  // Add Employee Modal
-  isAddEmployeeModalOpen: boolean;
-  setIsAddEmployeeModalOpen: (b: boolean) => void;
-  newEmpName: string;
-  setNewEmpName: (n: string) => void;
-  newEmpUsername: string;
-  setNewEmpUsername: (u: string) => void;
-  newEmpPassword: string;
-  setNewEmpPassword: (p: string) => void;
-  newEmpRole: string;
-  setNewEmpRole: (r: string) => void;
-  newEmpPhoneNumber: string;
-  setNewEmpPhoneNumber: (p: string) => void;
-  newEmpSpecialty: string;
-  setNewEmpSpecialty: (s: string) => void;
-  newEmpError: string;
-  handleAddEmployeeSubmit: (e: React.FormEvent) => void;
+  onWalkinSubmit: (entry: { firstName: string; phone: string; service: string; stylist: string }) => void;
+  onEmployeeAdded: () => void;
 }
 
 export function OwnerDashboard({
   activeTab, setActiveTab, employeeRole,
   branches, selectedBranch, stats, waitlist,
   handleUpdateWaitlistStatus, handleLogout, navigateTo,
-  walkinName, setWalkinName, walkinPhone, setWalkinPhone,
-  walkinService, setWalkinService, walkinStylist, setWalkinStylist,
-  handleAdminWalkinSubmit,
-  isAddEmployeeModalOpen, setIsAddEmployeeModalOpen,
-  newEmpName, setNewEmpName, newEmpUsername, setNewEmpUsername,
-  newEmpPassword, setNewEmpPassword, newEmpRole, setNewEmpRole,
-  newEmpPhoneNumber, setNewEmpPhoneNumber,
-  newEmpSpecialty, setNewEmpSpecialty,
-  newEmpError, handleAddEmployeeSubmit
+  onWalkinSubmit, onEmployeeAdded
 }: OwnerDashboardProps) {
   return (
     <div className="app-container">
@@ -144,25 +108,17 @@ export function OwnerDashboard({
         {activeTab === 'waitlist'     && <WaitlistTab waitlist={waitlist} handleUpdateWaitlistStatus={handleUpdateWaitlistStatus} setActiveTab={setActiveTab} />}
         {activeTab === 'admin-walkin' && (
           <AdminWalkinTab
-            walkinName={walkinName} setWalkinName={setWalkinName}
-            walkinPhone={walkinPhone} setWalkinPhone={setWalkinPhone}
-            walkinService={walkinService} setWalkinService={setWalkinService}
-            walkinStylist={walkinStylist} setWalkinStylist={setWalkinStylist}
-            handleAdminWalkinSubmit={handleAdminWalkinSubmit}
-            branches={branches} selectedBranch={selectedBranch}
+            branches={branches}
+            selectedBranch={selectedBranch}
+            onWalkinSubmit={onWalkinSubmit}
           />
         )}
         {activeTab === 'employees' && (
           <EmployeesTab
-            branches={branches} selectedBranch={selectedBranch} employeeRole={employeeRole}
-            isAddEmployeeModalOpen={isAddEmployeeModalOpen} setIsAddEmployeeModalOpen={setIsAddEmployeeModalOpen}
-            newEmpName={newEmpName} setNewEmpName={setNewEmpName}
-            newEmpUsername={newEmpUsername} setNewEmpUsername={setNewEmpUsername}
-            newEmpPassword={newEmpPassword} setNewEmpPassword={setNewEmpPassword}
-            newEmpRole={newEmpRole} setNewEmpRole={setNewEmpRole}
-            newEmpPhoneNumber={newEmpPhoneNumber} setNewEmpPhoneNumber={setNewEmpPhoneNumber}
-            newEmpSpecialty={newEmpSpecialty} setNewEmpSpecialty={setNewEmpSpecialty}
-            newEmpError={newEmpError} handleAddEmployeeSubmit={handleAddEmployeeSubmit}
+            branches={branches}
+            selectedBranch={selectedBranch}
+            employeeRole={employeeRole}
+            onEmployeeAdded={onEmployeeAdded}
           />
         )}
         {activeTab === 'inventory'  && <InventoryTab />}
