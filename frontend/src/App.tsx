@@ -5,14 +5,29 @@ import { PublicPortal } from './pages/PublicPortal';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { OwnerDashboard } from './pages/OwnerDashboard';
 
-const API_URL = (import.meta.env.VITE_API_URL || 'https://nails-salon-backend.onrender.com').replace(/\/$/, '');
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/$/, '');
+  }
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5001'
+    : 'https://nails-salon-backend.onrender.com';
+};
+const API_URL = getApiUrl();
 
 function App() {
   // Navigation State
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
-  const [activeTab, setActiveTab] = useState<string>(
-    window.location.pathname === '/admin' || window.location.pathname === '/owner' ? 'dashboard' : 'public-home'
-  );
+  const [activeTab, setActiveTabState] = useState<string>(() => {
+    const saved = sessionStorage.getItem('activeTab_' + window.location.pathname);
+    if (saved) return saved;
+    return window.location.pathname === '/admin' || window.location.pathname === '/owner' ? 'dashboard' : 'public-home';
+  });
+
+  const setActiveTab = useCallback((tab: string) => {
+    setActiveTabState(tab);
+    sessionStorage.setItem('activeTab_' + window.location.pathname, tab);
+  }, []);
 
   const roleMode = currentPath === '/owner' ? 'owner' : (currentPath === '/admin' ? 'admin' : 'public');
 
@@ -26,10 +41,15 @@ function App() {
 
   // Set default active tabs on route load/change
   useEffect(() => {
-    if (currentPath === '/admin' || currentPath === '/owner') {
-      setActiveTab('dashboard');
+    const saved = sessionStorage.getItem('activeTab_' + currentPath);
+    if (saved) {
+      setActiveTabState(saved);
     } else {
-      setActiveTab('public-home');
+      if (currentPath === '/admin' || currentPath === '/owner') {
+        setActiveTabState('dashboard');
+      } else {
+        setActiveTabState('public-home');
+      }
     }
   }, [currentPath]);
 
@@ -103,6 +123,8 @@ function App() {
     sessionStorage.removeItem('adminToken');
     sessionStorage.removeItem('ownerToken');
     sessionStorage.removeItem('employeeRole');
+    sessionStorage.removeItem('activeTab_/admin');
+    sessionStorage.removeItem('activeTab_/owner');
     setEmployeeRole('');
     setErrorMsg('');
     setPasscode('');

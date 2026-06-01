@@ -1,17 +1,266 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Copy, Power } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Clock, X } from 'lucide-react';
 import type { Branch } from '../../types';
 
 interface SchedulesTabProps {
   branches: Branch[];
   selectedBranch: string;
   onScheduleUpdated: () => void;
+  setIsDirty?: (dirty: boolean) => void;
+}
+
+export function UnsavedChangesModal({ isOpen, onConfirm, onCancel }: { isOpen: boolean; onConfirm: () => void; onCancel: () => void }) {
+  if (!isOpen) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(255, 244, 246, 0.4)',
+      backdropFilter: 'blur(12px) saturate(160%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2000,
+      padding: '20px'
+    }}>
+      <div className="outer-bezel" style={{
+        maxWidth: '400px',
+        width: '100%',
+        animation: 'modalFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+      }}>
+        <div className="inner-core" style={{ padding: '28px', textAlign: 'center' }}>
+          <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--accent)', fontSize: '20px', fontWeight: 600, margin: '0 0 12px 0' }}>
+            Unsaved Changes
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', lineHeight: '1.5', margin: '0 0 24px 0' }}>
+            You have unsaved changes. If you leave this page, your edits to the schedule will be lost. Are you sure you want to discard them?
+          </p>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={onCancel}
+              style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', boxShadow: 'none', padding: '8px 16px', fontSize: '13px' }}
+            >
+              Keep Editing
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={onConfirm}
+              style={{ backgroundColor: 'var(--accent)', color: 'white', padding: '8px 16px', fontSize: '13px' }}
+            >
+              Discard Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function time12to24(time12: string): string {
+  if (!time12) return '09:00';
+  const [time, period] = time12.split(' ');
+  let [hourStr, minStr] = time.split(':');
+  let hour = parseInt(hourStr, 10);
+  if (period === 'PM' && hour < 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+  const hStr = hour < 10 ? `0${hour}` : `${hour}`;
+  return `${hStr}:${minStr}`;
+}
+
+export function time24to12(time24: string): string {
+  if (!time24) return '09:00 AM';
+  const [hourStr, minStr] = time24.split(':');
+  const hour = parseInt(hourStr, 10);
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  const hStr = hour12 < 10 ? `0${hour12}` : `${hour12}`;
+  return `${hStr}:${minStr} ${period}`;
+}
+
+export function generateTimeOptions(): string[] {
+  const options = [];
+  const periods = ['AM', 'PM'];
+  for (let p = 0; p < 2; p++) {
+    const period = periods[p];
+    for (let h = 0; h < 12; h++) {
+      const hour = h === 0 ? 12 : h;
+      const hourStr = hour < 10 ? `0${hour}` : `${hour}`;
+      for (let m = 0; m < 60; m += 15) {
+        const minStr = m < 10 ? `0${m}` : `${m}`;
+        options.push(`${hourStr}:${minStr} ${period}`);
+      }
+    }
+  }
+  return options;
+}
+
+interface TimeSelect12HourProps {
+  label: string;
+  value24: string;
+  onChange: (newValue24: string) => void;
+  relativeTo24?: string;
+}
+
+export function TimeSelect12Hour({ label, value24, onChange, relativeTo24 }: TimeSelect12HourProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  
+  const timeOptions = generateTimeOptions();
+  const currentValue12 = time24to12(value24);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Scroll to active option when opening
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      const activeItem = listRef.current.querySelector('[data-active="true"]');
+      if (activeItem) {
+        activeItem.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [isOpen]);
+
+  const handleSelect = (opt: string) => {
+    onChange(time12to24(opt));
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
+      <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+        {label}
+      </span>
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          height: '32px',
+          fontSize: '11.5px',
+          padding: '0 8px',
+          borderRadius: '6px',
+          border: '1px solid rgba(190, 24, 93, 0.15)',
+          backgroundColor: 'white',
+          color: 'var(--text-primary)',
+          cursor: 'pointer',
+          width: '100%',
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+          userSelect: 'none',
+          position: 'relative'
+        }}
+      >
+        <span>{currentValue12}</span>
+        <span style={{ fontSize: '9px', color: 'var(--text-secondary)', transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+      </div>
+
+      {isOpen && (
+        <div
+          ref={listRef}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '155px',
+            maxHeight: '180px',
+            overflowY: 'auto',
+            backgroundColor: 'white',
+            border: '1px solid rgba(190, 24, 93, 0.15)',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px rgba(190, 24, 93, 0.12)',
+            zIndex: 1000,
+            padding: '4px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px'
+          }}
+        >
+          {timeOptions.map(opt => {
+            const opt24 = time12to24(opt);
+            const isSelected = opt24 === value24;
+            
+            // Calculate relative duration if applicable
+            let durationLabel = '';
+            if (relativeTo24) {
+              const startParts = relativeTo24.split(':').map(Number);
+              const endParts = opt24.split(':').map(Number);
+              const startTotal = startParts[0] * 60 + startParts[1];
+              const endTotal = endParts[0] * 60 + endParts[1];
+              const diff = endTotal - startTotal;
+              if (diff > 0) {
+                const h = Math.floor(diff / 60);
+                const m = diff % 60;
+                if (h > 0 && m > 0) {
+                  durationLabel = `(${h}h ${m}m)`;
+                } else if (h > 0) {
+                  durationLabel = `(${h}h)`;
+                } else {
+                  durationLabel = `(${m}m)`;
+                }
+              }
+            }
+
+            return (
+              <div
+                key={opt}
+                data-active={isSelected}
+                onClick={() => handleSelect(opt)}
+                style={{
+                  padding: '6px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: isSelected ? 'rgba(190, 24, 93, 0.08)' : 'transparent',
+                  color: isSelected ? 'var(--accent)' : 'var(--text-primary)',
+                  fontSize: '11px',
+                  fontWeight: isSelected ? 600 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'background-color 0.1s'
+                }}
+                onMouseEnter={e => {
+                  if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(190, 24, 93, 0.03)';
+                }}
+                onMouseLeave={e => {
+                  if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span>{opt}</span>
+                {durationLabel && (
+                  <span style={{ fontSize: '9px', color: 'var(--text-secondary)', marginLeft: '4px', fontWeight: 400 }}>
+                    {durationLabel}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function SchedulesTab({
   branches,
   selectedBranch,
-  onScheduleUpdated
+  onScheduleUpdated,
+  setIsDirty
 }: SchedulesTabProps) {
   const employees = branches.find(b => b.id === selectedBranch)?.employees || [];
   
@@ -20,8 +269,14 @@ export function SchedulesTab({
   
   // Schedule state array (7 days)
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [originalSchedules, setOriginalSchedules] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [pendingEmpId, setPendingEmpId] = useState<string | null>(null);
+  
+  // Custom dropdown state
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Sync selected employee schedules
   useEffect(() => {
@@ -32,6 +287,7 @@ export function SchedulesTab({
     } else {
       setSelectedEmpId('');
       setSchedules([]);
+      setOriginalSchedules([]);
     }
   }, [employees, selectedEmpId]);
 
@@ -54,6 +310,7 @@ export function SchedulesTab({
           };
         });
         setSchedules(initialSchedules);
+        setOriginalSchedules(JSON.parse(JSON.stringify(initialSchedules)));
       }
     }
     setError('');
@@ -62,29 +319,45 @@ export function SchedulesTab({
 
   const selectedEmp = employees.find(e => e.id === selectedEmpId);
 
-  const getSelectedPreset = (daySched: any) => {
-    if (daySched.isOff) return 'off';
-    if (daySched.startTime === '09:00' && daySched.endTime === '13:00') return 'morning';
-    if (daySched.startTime === '13:00' && daySched.endTime === '17:00') return 'afternoon';
-    if (daySched.startTime === '09:00' && daySched.endTime === '17:00') return 'full';
-    return 'custom';
+  // Dirty State Logic
+  const isDirty = selectedEmpId ? JSON.stringify(schedules) !== JSON.stringify(originalSchedules) : false;
+
+  useEffect(() => {
+    if (setIsDirty) {
+      setIsDirty(isDirty);
+    }
+    return () => {
+      if (setIsDirty) {
+        setIsDirty(false);
+      }
+    };
+  }, [isDirty, setIsDirty]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. If you leave this page, your edits to the schedule will be lost. Are you sure you want to discard them?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleSelectEmployee = (empId: string) => {
+    if (isDirty) {
+      setPendingEmpId(empId);
+    } else {
+      setSelectedEmpId(empId);
+    }
   };
 
-  const setPreset = (dayIdx: number, preset: 'off' | 'morning' | 'afternoon' | 'full' | 'custom') => {
-    const updated = [...schedules];
-    const current = updated[dayIdx];
-    if (preset === 'off') {
-      updated[dayIdx] = { ...current, isOff: true };
-    } else if (preset === 'morning') {
-      updated[dayIdx] = { ...current, isOff: false, startTime: '09:00', endTime: '13:00' };
-    } else if (preset === 'afternoon') {
-      updated[dayIdx] = { ...current, isOff: false, startTime: '13:00', endTime: '17:00' };
-    } else if (preset === 'full') {
-      updated[dayIdx] = { ...current, isOff: false, startTime: '09:00', endTime: '17:00' };
-    } else if (preset === 'custom') {
-      updated[dayIdx] = { ...current, isOff: false };
+  const handleConfirmDiscard = () => {
+    if (pendingEmpId) {
+      setSelectedEmpId(pendingEmpId);
     }
-    setSchedules(updated);
+    setPendingEmpId(null);
   };
 
   // Automation: Standard Week (Mon-Fri 9-5, Sat/Sun off)
@@ -97,25 +370,6 @@ export function SchedulesTab({
     }));
     setSchedules(updated);
     setSuccess('Standard week template loaded. Remember to click Save.');
-  };
-
-  // Automation: Copy Monday to Weekdays (Tue-Fri)
-  const applyCopyMonday = () => {
-    const mondaySched = schedules[1] || { startTime: '09:00', endTime: '17:00', isOff: false };
-    const updated = schedules.map((s, idx) => {
-      // Apply to Tue(2), Wed(3), Thu(4), Fri(5)
-      if (idx >= 2 && idx <= 5) {
-        return {
-          ...s,
-          startTime: mondaySched.startTime,
-          endTime: mondaySched.endTime,
-          isOff: mondaySched.isOff
-        };
-      }
-      return s;
-    });
-    setSchedules(updated);
-    setSuccess('Monday schedule copied to all weekdays! Remember to click Save.');
   };
 
   // Automation: Set all to off-duty
@@ -141,7 +395,7 @@ export function SchedulesTab({
       return;
     }
 
-    const API_URL = (import.meta.env.VITE_API_URL || 'https://nails-salon-backend.onrender.com').replace(/\/$/, '');
+    const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
 
     try {
       const response = await fetch(`${API_URL}/api/employees/${selectedEmpId}`, {
@@ -162,6 +416,7 @@ export function SchedulesTab({
       }
 
       setSuccess('Schedules saved successfully!');
+      setOriginalSchedules(JSON.parse(JSON.stringify(schedules)));
       onScheduleUpdated();
     } catch (err) {
       setError('Network error. Failed to connect to server.');
@@ -172,6 +427,11 @@ export function SchedulesTab({
 
   return (
     <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+      <UnsavedChangesModal
+        isOpen={pendingEmpId !== null}
+        onConfirm={handleConfirmDiscard}
+        onCancel={() => setPendingEmpId(null)}
+      />
       {/* Left sidebar: Employee list */}
       <div className="glass-panel" style={{ flex: '1 1 250px', padding: '24px', minWidth: '220px', maxHeight: '70vh', overflowY: 'auto' }}>
         <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--accent)', fontSize: '18px', fontWeight: 600, marginTop: 0, marginBottom: '16px' }}>
@@ -187,19 +447,20 @@ export function SchedulesTab({
               return (
                 <div
                   key={emp.id}
-                  onClick={() => setSelectedEmpId(emp.id)}
+                  onClick={() => handleSelectEmployee(emp.id)}
                   style={{
                     padding: '12px 16px',
                     borderRadius: '8px',
-                    backgroundColor: isSelected ? 'var(--accent)' : 'var(--bg-secondary)',
-                    color: isSelected ? '#fff' : 'var(--text-primary)',
+                    backgroundColor: isSelected ? 'rgba(190, 24, 93, 0.06)' : 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border-color)'}`
+                    border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border-color)'}`,
+                    borderLeft: isSelected ? '4px solid var(--accent)' : `1px solid var(--border-color)`
                   }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: '14.5px' }}>{emp.name}</div>
-                  <div style={{ fontSize: '12px', color: isSelected ? 'rgba(255, 255, 255, 0.8)' : 'var(--text-secondary)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <div style={{ fontWeight: 600, fontSize: '14.5px', color: isSelected ? 'var(--accent)' : 'var(--text-primary)' }}>{emp.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {emp.role} • {emp.specialty || 'Generalist'}
                   </div>
                 </div>
@@ -213,80 +474,114 @@ export function SchedulesTab({
       <div className="glass-panel" style={{ flex: '3 3 500px', padding: '24px', minWidth: '320px' }}>
         {selectedEmp ? (
           <form onSubmit={handleSave}>
-            {/* Header / Info bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '20px' }}>
-              <div>
+            {/* Header / Info bar - Pinned sticky */}
+            <div style={{
+              position: 'sticky',
+              top: '-24px',
+              backgroundColor: 'var(--bg-glass-panel, var(--bg-primary))',
+              backdropFilter: 'blur(12px)',
+              zIndex: 10,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px',
+              borderBottom: '1px solid var(--border-color)',
+              paddingBottom: '16px',
+              marginBottom: '20px',
+              paddingTop: '4px'
+            }}>
+              <div style={{ flex: '1 1 300px', minWidth: '200px' }}>
                 <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--accent)', fontSize: '20px', fontWeight: 600, margin: 0 }}>
                   Weekly Shift Schedule
                 </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '4px' }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '4px', marginBottom: 0 }}>
                   Define which days and times <strong>{selectedEmp.name}</strong> is available for clients.
                 </p>
               </div>
               
-              <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}>
-                <Clock size={16} /> Save Weekly Schedule
-              </button>
-            </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+                {/* Styled Custom Dropdown for Templates */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'white',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      height: '38px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                    }}
+                  >
+                    <span>Schedule Templates</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>▼</span>
+                  </button>
+                  {showTemplateDropdown && (
+                    <>
+                      <div 
+                        onClick={() => setShowTemplateDropdown(false)}
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} 
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        top: '44px',
+                        right: 0,
+                        backgroundColor: 'white',
+                        border: '1px solid rgba(190, 24, 93, 0.1)',
+                        borderRadius: '8px',
+                        boxShadow: '0 10px 25px -5px rgba(190, 24, 93, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                        width: '240px',
+                        zIndex: 999,
+                        padding: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}>
+                        {[
+                          { label: 'Standard Week (Mon-Fri 9-5)', action: applyStandardWeek },
+                          { label: 'Set All Off-Duty', action: applyAllOff }
+                        ].map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onMouseEnter={() => setHoveredIndex(idx)}
+                            onMouseLeave={() => setHoveredIndex(null)}
+                            onClick={() => {
+                              item.action();
+                              setShowTemplateDropdown(false);
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              border: 'none',
+                              backgroundColor: hoveredIndex === idx ? 'rgba(190, 24, 93, 0.06)' : 'transparent',
+                              color: hoveredIndex === idx ? 'var(--accent)' : 'var(--text-primary)',
+                              fontSize: '13px',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              borderRadius: '6px',
+                              transition: 'all 0.15s',
+                              fontWeight: 500
+                            }}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
 
-            {/* Semi-Automation Templates panel */}
-            <div style={{ backgroundColor: 'rgba(190, 24, 93, 0.04)', border: '1px dashed var(--accent)', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
-              <div style={{ fontWeight: 600, color: 'var(--accent)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                ⚡ One-Click Easy Presets (No typing needed!)
-              </div>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={applyStandardWeek}
-                  className="btn-primary"
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: '1px solid var(--accent)',
-                    color: 'var(--accent)',
-                    boxShadow: 'none',
-                    fontSize: '12.5px',
-                    padding: '6px 12px'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(190, 24, 93, 0.08)'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  📅 Standard Week (Mon-Fri 9-5)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={applyCopyMonday}
-                  className="btn-primary"
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: '1px solid var(--accent)',
-                    color: 'var(--accent)',
-                    boxShadow: 'none',
-                    fontSize: '12.5px',
-                    padding: '6px 12px'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(190, 24, 93, 0.08)'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <Copy size={13} style={{ marginRight: '4px' }} /> Copy Mon to Weekdays (Tue-Fri)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={applyAllOff}
-                  className="btn-primary"
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: '1px solid #71717a',
-                    color: '#71717a',
-                    boxShadow: 'none',
-                    fontSize: '12.5px',
-                    padding: '6px 12px'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(113, 113, 122, 0.08)'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <Power size={13} style={{ marginRight: '4px' }} /> Set All Off-Duty
+                <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', height: '38px' }}>
+                  <Clock size={16} /> Save Weekly Schedule
                 </button>
               </div>
             </div>
@@ -303,143 +598,249 @@ export function SchedulesTab({
               </div>
             )}
 
-            {/* 7 Day Grid layout */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '20px' }}>
-              {dayNames.map((dayName, idx) => {
-                const daySched = schedules[idx] || { dayOfWeek: idx, startTime: '09:00', endTime: '17:00', isOff: true };
-                const activePreset = getSelectedPreset(daySched);
-                
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '18px',
-                      borderRadius: '10px',
-                      backgroundColor: 'var(--bg-secondary)',
-                      border: `1px solid ${daySched.isOff ? 'var(--border-color)' : 'rgba(190, 24, 93, 0.15)'}`,
-                      boxShadow: daySched.isOff ? 'none' : '0 4px 12px rgba(190, 24, 93, 0.03)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '12px'
-                    }}
-                  >
-                    {/* Header of day card */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>{dayName}</span>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        color: daySched.isOff ? 'var(--text-secondary)' : 'var(--accent)',
-                        backgroundColor: daySched.isOff ? 'rgba(113,113,122,0.1)' : 'rgba(190,24,93,0.1)',
-                        padding: '2px 8px',
-                        borderRadius: '4px'
+            {/* 7-Column Horizontal Calendar layout - breathable & scrollable on small screens */}
+            <div style={{ overflowX: 'auto', paddingBottom: '160px', width: '100%', borderRadius: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '12px', minWidth: '800px' }}>
+                {dayNames.map((dayName, idx) => {
+                  const daySched = schedules[idx] || { dayOfWeek: idx, startTime: '09:00', endTime: '17:00', isOff: true };
+                  
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '14px 10px',
+                        borderRadius: '10px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: `1px solid ${daySched.isOff ? 'var(--border-color)' : 'rgba(190, 24, 93, 0.15)'}`,
+                        boxShadow: daySched.isOff ? 'none' : '0 4px 12px rgba(190, 24, 93, 0.03)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '14px',
+                        alignItems: 'stretch',
+                        minWidth: '100px'
+                      }}
+                    >
+                      {/* Vertical Header: Title and Sleek Remove Action */}
+                      <div style={{
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderBottom: '1px solid var(--border-color)',
+                        paddingBottom: '8px'
                       }}>
-                        {daySched.isOff ? 'Off-Duty' : `${daySched.startTime} - ${daySched.endTime}`}
-                      </span>
-                    </div>
-
-                    {/* Big Touch-Friendly Buttons */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
-                      {[
-                        { key: 'off', label: 'Day Off 💤', bg: 'transparent', border: 'var(--border-color)', activeBg: '#f4f4f5', activeColor: '#27272a', activeBorder: '#71717a' },
-                        { key: 'morning', label: 'Morning (9-1) 🌅', bg: 'transparent', border: 'rgba(234, 179, 8, 0.15)', activeBg: 'rgba(234, 179, 8, 0.15)', activeColor: '#854d0e', activeBorder: 'rgba(234, 179, 8, 0.5)' },
-                        { key: 'afternoon', label: 'Afternoon (1-5) 🌇', bg: 'transparent', border: 'rgba(249, 115, 22, 0.15)', activeBg: 'rgba(249, 115, 22, 0.15)', activeColor: '#c2410c', activeBorder: 'rgba(249, 115, 22, 0.5)' },
-                        { key: 'full', label: 'Full Day (9-5) ☀️', bg: 'transparent', border: 'rgba(190, 24, 93, 0.15)', activeBg: 'rgba(190, 24, 93, 0.12)', activeColor: 'var(--accent)', activeBorder: 'rgba(190, 24, 93, 0.4)' }
-                      ].map(tile => {
-                        const isTileActive = activePreset === tile.key;
-                        return (
+                        <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-primary)' }}>{dayName}</span>
+                        
+                        {!daySched.isOff && (
                           <button
-                            key={tile.key}
                             type="button"
-                            onClick={() => setPreset(idx, tile.key as any)}
+                            onClick={() => {
+                              const updated = [...schedules];
+                              updated[idx] = { ...daySched, isOff: true };
+                              setSchedules(updated);
+                            }}
+                            title="Remove hours"
                             style={{
-                              padding: '12px 6px',
-                              borderRadius: '8px',
-                              border: `2px solid ${isTileActive ? tile.activeBorder : tile.border}`,
-                              backgroundColor: isTileActive ? tile.activeBg : tile.bg,
-                              color: isTileActive ? tile.activeColor : 'var(--text-primary)',
-                              fontSize: '12px',
-                              fontWeight: isTileActive ? 'bold' : 500,
+                              position: 'absolute',
+                              right: '-2px',
+                              top: '-2px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--text-secondary)',
                               cursor: 'pointer',
-                              textAlign: 'center',
-                              transition: 'all 0.15s ease-in-out',
+                              padding: '2px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '4px',
+                              transition: 'all 0.15s'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.color = '#b91c1c';
+                              e.currentTarget.style.backgroundColor = 'rgba(185, 28, 28, 0.08)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.color = 'var(--text-secondary)';
+                              e.currentTarget.style.backgroundColor = 'transparent';
                             }}
                           >
-                            {tile.label}
+                            <X size={14} />
                           </button>
-                        );
-                      })}
-                    </div>
+                        )}
+                      </div>
 
-                    {/* Custom hours section */}
-                    <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '8px', marginTop: '4px' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (activePreset === 'custom') {
-                            setPreset(idx, 'off');
-                          } else {
-                            setPreset(idx, 'custom');
-                          }
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-secondary)',
-                          fontSize: '11px',
-                          textDecoration: 'underline',
-                          cursor: 'pointer',
-                          padding: 0
-                        }}
-                      >
-                        {activePreset === 'custom' ? '✕ Close Custom Hours' : '⚙️ Custom Hours...'}
-                      </button>
+                      {/* Content depends on availability status */}
+                      {daySched.isOff ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexGrow: 1 }}>
+                          {/* Dashed Placeholder Card */}
+                          <div
+                            onClick={() => {
+                              const updated = [...schedules];
+                              updated[idx] = {
+                                ...daySched,
+                                isOff: false,
+                                startTime: '09:00',
+                                endTime: '17:00'
+                              };
+                              setSchedules(updated);
+                            }}
+                            style={{
+                              border: '1.5px dashed rgba(190, 24, 93, 0.25)',
+                              borderRadius: '8px',
+                              padding: '24px 8px',
+                              textAlign: 'center',
+                              cursor: 'pointer',
+                              backgroundColor: 'transparent',
+                              transition: 'all 0.2s ease-in-out',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexGrow: 1,
+                              minHeight: '100px'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.backgroundColor = 'rgba(190, 24, 93, 0.04)';
+                              e.currentTarget.style.borderColor = 'rgba(190, 24, 93, 0.45)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.borderColor = 'rgba(190, 24, 93, 0.25)';
+                            }}
+                          >
+                            <span style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: 'var(--accent)',
+                              textDecoration: 'none'
+                            }}>
+                              + Add Hours
+                            </span>
+                          </div>
 
-                      {activePreset === 'custom' && (
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Start</span>
-                            <input
-                              type="time"
-                              value={daySched.startTime || '09:00'}
-                              onChange={(e) => {
+                          {/* Quick preset buttons when inactive */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: 'auto' }}>
+                            {[
+                              { key: 'morning', label: 'Morning (9-1)', start: '09:00', end: '13:00' },
+                              { key: 'afternoon', label: 'Afternoon (1-5)', start: '13:00', end: '17:00' },
+                              { key: 'full', label: 'Full Day (9-5)', start: '09:00', end: '17:00' }
+                            ].map(p => (
+                              <button
+                                key={p.key}
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...schedules];
+                                  updated[idx] = {
+                                    ...daySched,
+                                    isOff: false,
+                                    startTime: p.start,
+                                    endTime: p.end
+                                  };
+                                  setSchedules(updated);
+                                }}
+                                style={{
+                                  padding: '5px 2px',
+                                  width: '100%',
+                                  borderRadius: '4px',
+                                  border: '1px solid var(--border-color)',
+                                  backgroundColor: 'transparent',
+                                  color: 'var(--text-secondary)',
+                                  fontSize: '9px',
+                                  fontWeight: 500,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s',
+                                  textAlign: 'center',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.backgroundColor = 'rgba(190, 24, 93, 0.03)';
+                                  e.currentTarget.style.borderColor = 'rgba(190, 24, 93, 0.2)';
+                                  e.currentTarget.style.color = 'var(--accent)';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                                  e.currentTarget.style.color = 'var(--text-secondary)';
+                                }}
+                              >
+                                {p.label.split(' ')[0]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexGrow: 1, justifyContent: 'space-between' }}>
+                          {/* Time inputs - Custom 12-Hour AM/PM Dropdowns */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <TimeSelect12Hour
+                              label="Start"
+                              value24={daySched.startTime || '09:00'}
+                              onChange={(val) => {
                                 const updated = [...schedules];
-                                updated[idx] = { ...daySched, startTime: e.target.value };
+                                updated[idx] = { ...daySched, startTime: val };
                                 setSchedules(updated);
                               }}
-                              style={{ height: '30px', fontSize: '12px', padding: '0 6px', width: '100%', borderRadius: '4px', border: '1px solid var(--border-color)' }}
-                              required
+                            />
+                            <TimeSelect12Hour
+                              label="End"
+                              value24={daySched.endTime || '17:00'}
+                              relativeTo24={daySched.startTime}
+                              onChange={(val) => {
+                                const updated = [...schedules];
+                                updated[idx] = { ...daySched, endTime: val };
+                                setSchedules(updated);
+                              }}
                             />
                           </div>
-                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingTop: '14px' }}>to</span>
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>End</span>
-                            <input
-                              type="time"
-                              value={daySched.endTime || '17:00'}
-                              onChange={(e) => {
-                                const updated = [...schedules];
-                                updated[idx] = { ...daySched, endTime: e.target.value };
-                                setSchedules(updated);
-                              }}
-                              style={{ height: '30px', fontSize: '12px', padding: '0 6px', width: '100%', borderRadius: '4px', border: '1px solid var(--border-color)' }}
-                              required
-                            />
+
+                          {/* Preset Pills - Styled and spanning evenly */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                            {[
+                              { key: 'morning', label: 'Morning (9-1)', start: '09:00', end: '13:00' },
+                              { key: 'afternoon', label: 'Afternoon (1-5)', start: '13:00', end: '17:00' },
+                              { key: 'full', label: 'Full Day (9-5)', start: '09:00', end: '17:00' }
+                            ].map(p => {
+                              const isPresetSelected = daySched.startTime === p.start && daySched.endTime === p.end;
+                              return (
+                                <button
+                                  key={p.key}
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...schedules];
+                                    updated[idx] = {
+                                      ...daySched,
+                                      startTime: p.start,
+                                      endTime: p.end
+                                    };
+                                    setSchedules(updated);
+                                  }}
+                                  style={{
+                                    padding: '5px 2px',
+                                    width: '100%',
+                                    borderRadius: '4px',
+                                    border: '1px solid ' + (isPresetSelected ? 'rgba(190, 24, 93, 0.4)' : 'var(--border-color)'),
+                                    backgroundColor: isPresetSelected ? 'rgba(190, 24, 93, 0.08)' : 'transparent',
+                                    color: isPresetSelected ? 'var(--accent)' : 'var(--text-secondary)',
+                                    fontSize: '9px',
+                                    fontWeight: isPresetSelected ? 600 : 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s',
+                                    textAlign: 'center',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  {p.label.split(' ')[0]}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Bottom Save button */}
-            <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '24px', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }}>
-                <Clock size={16} /> Save Weekly Schedule
-              </button>
+                  );
+                })}
+              </div>
             </div>
           </form>
         ) : (
