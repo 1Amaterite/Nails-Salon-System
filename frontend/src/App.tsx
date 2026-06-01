@@ -5,7 +5,7 @@ import { PublicPortal } from './pages/PublicPortal';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { OwnerDashboard } from './pages/OwnerDashboard';
 
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/$/, '');
+const API_URL = (import.meta.env.VITE_API_URL || 'https://nails-salon-backend.onrender.com').replace(/\/$/, '');
 
 function App() {
   // Navigation State

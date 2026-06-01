@@ -55,7 +55,7 @@ export function EmployeesTab({
       return;
     }
 
-    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/$/, '');
+    const API_URL = (import.meta.env.VITE_API_URL || 'https://nails-salon-backend.onrender.com').replace(/\/$/, '');
 
     try {
       const response = await fetch(`${API_URL}/api/employees`, {
@@ -105,7 +105,7 @@ export function EmployeesTab({
       return;
     }
 
-    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/$/, '');
+    const API_URL = (import.meta.env.VITE_API_URL || 'https://nails-salon-backend.onrender.com').replace(/\/$/, '');
 
     try {
       const response = await fetch(`${API_URL}/api/employees/${editingEmployee.id}`, {
@@ -150,7 +150,7 @@ export function EmployeesTab({
       return;
     }
 
-    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001').replace(/\/$/, '');
+    const API_URL = (import.meta.env.VITE_API_URL || 'https://nails-salon-backend.onrender.com').replace(/\/$/, '');
 
     try {
       const response = await fetch(`${API_URL}/api/employees/${id}`, {
