@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Branch } from '../../types';
+import { PageHeader } from '../../components/common';
 
 interface AdminWalkinTabProps {
   branches: Branch[];
@@ -34,10 +35,10 @@ export function AdminWalkinTab({
 
   return (
     <div className="glass-panel" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h3 style={{ color: 'var(--accent)', marginTop: 0, fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600 }}>Receptionist Walk-In Guest Check-In</h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Add a walk-in guest to the live queue on their behalf if they are not tech-savvy.</p>
-      </div>
+      <PageHeader
+        title="Receptionist Walk-In Guest Check-In"
+        subtitle="Add a walk-in guest to the live queue on their behalf if they are not tech-savvy."
+      />
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}>
         <div className="form-group">

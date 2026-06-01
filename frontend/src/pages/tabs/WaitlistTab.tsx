@@ -1,5 +1,6 @@
 import { UserCheck, Plus } from 'lucide-react';
 import type { WaitlistItem } from '../../types';
+import { PageHeader, EmptyState } from '../../components/common';
 
 interface WaitlistTabProps {
   waitlist: WaitlistItem[];
@@ -12,15 +13,15 @@ export function WaitlistTab({ waitlist, handleUpdateWaitlistStatus, setActiveTab
 
   return (
     <div className="glass-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
-          <h3 style={{ color: 'var(--accent)', marginTop: 0, fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600 }}>Walk-In Queue (Live Waitlist)</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Real-time check-ins waiting for the next available stylist.</p>
-        </div>
-        <button className="btn-secondary" onClick={() => setActiveTab('admin-walkin')} style={{ padding: '8px 16px', fontSize: '13px' }}>
-          <Plus size={16} /> Register Walk-In Guest
-        </button>
-      </div>
+      <PageHeader
+        title="Walk-In Queue (Live Waitlist)"
+        subtitle="Real-time check-ins waiting for the next available stylist."
+        action={
+          <button className="btn-secondary" onClick={() => setActiveTab('admin-walkin')} style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Plus size={16} /> Register Walk-In Guest
+          </button>
+        }
+      />
 
       {activeItems.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -66,13 +67,11 @@ export function WaitlistTab({ waitlist, handleUpdateWaitlistStatus, setActiveTab
           ))}
         </div>
       ) : (
-        <div className="empty-state-card">
-          <div style={{ backgroundColor: 'var(--accent-glow)', padding: '16px', borderRadius: '50%', color: 'var(--accent)', marginBottom: '8px' }}>
-            <UserCheck size={32} />
-          </div>
-          <div className="empty-state-title">No active walk-in clients</div>
-          <div className="empty-state-desc">When guests check-in via the walk-in portal, they will automatically appear here.</div>
-        </div>
+        <EmptyState
+          icon={<UserCheck size={32} />}
+          title="No active walk-in clients"
+          description="When guests check-in via the walk-in portal, they will automatically appear here."
+        />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { Scissors } from 'lucide-react';
 import type { Branch } from '../../types';
+import { PageHeader, EmptyState } from '../../components/common';
 
 interface ServicesTabProps {
   branches: Branch[];
@@ -10,12 +11,10 @@ export function ServicesTab({ branches }: ServicesTabProps) {
 
   return (
     <div className="glass-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
-          <h3 style={{ color: 'var(--accent)', marginTop: 0, fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600 }}>Service Pricing & Catalog Setup</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Configure nail treatments, buffer durations, and custom technician categories.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Service Pricing & Catalog Setup"
+        subtitle="Configure nail treatments, buffer durations, and custom technician categories."
+      />
 
       {services.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px', marginTop: '20px' }}>
@@ -37,13 +36,11 @@ export function ServicesTab({ branches }: ServicesTabProps) {
           ))}
         </div>
       ) : (
-        <div className="empty-state-card">
-          <div style={{ backgroundColor: 'var(--accent-glow)', padding: '16px', borderRadius: '50%', color: 'var(--accent)', marginBottom: '8px' }}>
-            <Scissors size={32} />
-          </div>
-          <div className="empty-state-title">No service catalogs initialized</div>
-          <div className="empty-state-desc">Services configure pricing models and display correctly in our guest portal templates.</div>
-        </div>
+        <EmptyState
+          icon={<Scissors size={32} />}
+          title="No service catalogs initialized"
+          description="Services configure pricing models and display correctly in our guest portal templates."
+        />
       )}
     </div>
   );
