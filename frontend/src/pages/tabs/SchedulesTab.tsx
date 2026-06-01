@@ -262,7 +262,23 @@ export function SchedulesTab({
   onScheduleUpdated,
   setIsDirty
 }: SchedulesTabProps) {
-  const employees = branches.find(b => b.id === selectedBranch)?.employees || [];
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (selectedBranch) {
+      const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
+      fetch(`${API_URL}/api/branches/${selectedBranch}/schedulable-staff`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setEmployees(data);
+          }
+        })
+        .catch(err => console.error('Failed to load schedulable staff:', err));
+    } else {
+      setEmployees([]);
+    }
+  }, [selectedBranch, branches]);
   
   // Selected employee for scheduling
   const [selectedEmpId, setSelectedEmpId] = useState<string>('');
@@ -295,23 +311,31 @@ export function SchedulesTab({
     if (selectedEmpId) {
       const emp = employees.find(e => e.id === selectedEmpId);
       if (emp) {
-        const initialSchedules = Array.from({ length: 7 }, (_, idx) => {
-          const existing = emp.schedules?.find((s: any) => s.dayOfWeek === idx);
-          return existing ? {
-            dayOfWeek: idx,
-            startTime: existing.startTime || '09:00',
-            endTime: existing.endTime || '17:00',
-            isOff: existing.isOff
-          } : {
-            dayOfWeek: idx,
-            startTime: '09:00',
-            endTime: '17:00',
-            isOff: idx === 0 // default Sunday off
-          };
-        });
-        setSchedules(initialSchedules);
-        setOriginalSchedules(JSON.parse(JSON.stringify(initialSchedules)));
+        if (!emp.schedules || emp.schedules.length === 0) {
+          setSchedules([]);
+          setOriginalSchedules([]);
+        } else {
+          const initialSchedules = Array.from({ length: 7 }, (_, idx) => {
+            const existing = emp.schedules?.find((s: any) => s.dayOfWeek === idx);
+            return existing ? {
+              dayOfWeek: idx,
+              startTime: existing.startTime || '09:00',
+              endTime: existing.endTime || '17:00',
+              isOff: existing.isOff
+            } : {
+              dayOfWeek: idx,
+              startTime: '09:00',
+              endTime: '17:00',
+              isOff: true
+            };
+          });
+          setSchedules(initialSchedules);
+          setOriginalSchedules(JSON.parse(JSON.stringify(initialSchedules)));
+        }
       }
+    } else {
+      setSchedules([]);
+      setOriginalSchedules([]);
     }
     setError('');
     setSuccess('');
@@ -362,11 +386,24 @@ export function SchedulesTab({
 
   // Automation: Standard Week (Mon-Fri 9-5, Sat/Sun off)
   const applyStandardWeek = () => {
-    const updated = schedules.map((s, idx) => ({
-      ...s,
+    const updated = Array.from({ length: 7 }, (_, idx) => {
+      return {
+        dayOfWeek: idx,
+        startTime: '09:00',
+        endTime: '17:00',
+        isOff: idx === 0 || idx === 6 // Sunday and Saturday off
+      };
+    });
+    setSchedules(updated);
+    setSuccess('Standard week template loaded. Remember to click Save.');
+  };
+
+  const applyStandardWeekFromEmpty = () => {
+    const updated = Array.from({ length: 7 }, (_, idx) => ({
+      dayOfWeek: idx,
       startTime: '09:00',
       endTime: '17:00',
-      isOff: idx === 0 || idx === 6 // Sunday and Saturday off
+      isOff: idx === 0 || idx === 6
     }));
     setSchedules(updated);
     setSuccess('Standard week template loaded. Remember to click Save.');
@@ -374,13 +411,35 @@ export function SchedulesTab({
 
   // Automation: Set all to off-duty
   const applyAllOff = () => {
-    const updated = schedules.map(s => ({
-      ...s,
-      isOff: true
-    }));
+    const updated = Array.from({ length: 7 }, (_, idx) => {
+      const existing = schedules.find((s: any) => s.dayOfWeek === idx) || schedules[idx];
+      return {
+        dayOfWeek: idx,
+        startTime: existing?.startTime || '09:00',
+        endTime: existing?.endTime || '17:00',
+        isOff: true
+      };
+    });
     setSchedules(updated);
     setSuccess('All days set to Day Off. Remember to click Save.');
   };
+
+  const handleClearDay = (idx: number) => {
+    const updated = Array.from({ length: 7 }, (_, i) => {
+      const existing = schedules.find((s: any) => s.dayOfWeek === i) || schedules[i];
+      if (i === idx) {
+        return {
+          dayOfWeek: i,
+          startTime: null,
+          endTime: null,
+          isOff: true
+        };
+      }
+      return existing ? { ...existing } : { dayOfWeek: i, startTime: '09:00', endTime: '17:00', isOff: true };
+    });
+    setSchedules(updated);
+  };
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -423,10 +482,10 @@ export function SchedulesTab({
     }
   };
 
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
       <UnsavedChangesModal
         isOpen={pendingEmpId !== null}
         onConfirm={handleConfirmDiscard}
@@ -487,9 +546,10 @@ export function SchedulesTab({
               flexWrap: 'wrap',
               gap: '16px',
               borderBottom: '1px solid var(--border-color)',
-              paddingBottom: '16px',
-              marginBottom: '20px',
-              paddingTop: '4px'
+              margin: '-24px -24px 20px -24px',
+              padding: '24px 24px 16px 24px',
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px'
             }}>
               <div style={{ flex: '1 1 300px', minWidth: '200px' }}>
                 <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--accent)', fontSize: '20px', fontWeight: 600, margin: 0 }}>
@@ -598,8 +658,48 @@ export function SchedulesTab({
               </div>
             )}
 
+            {/* Smart Empty State Quick Start Banner */}
+            {schedules.length === 0 && (
+              <div className="data-card" style={{
+                padding: '24px',
+                marginBottom: '24px',
+                backgroundColor: 'rgba(190, 24, 93, 0.02)',
+                border: '1.5px dashed var(--accent)',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                textAlign: 'center',
+                boxShadow: 'none'
+              }}>
+                <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>
+                  No schedule defined for this stylist.
+                </div>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={applyStandardWeekFromEmpty}
+                  style={{
+                    backgroundColor: 'var(--accent)',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    padding: '10px 24px',
+                    fontSize: '13.5px',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Apply Standard Week (Mon-Fri, 9am-5pm)
+                </button>
+              </div>
+            )}
+
             {/* 7-Column Horizontal Calendar layout - breathable & scrollable on small screens */}
-            <div style={{ overflowX: 'auto', paddingBottom: '160px', width: '100%', borderRadius: '8px' }}>
+            <div style={{ overflowX: 'auto', paddingBottom: '24px', width: '100%', borderRadius: '8px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '12px', minWidth: '800px' }}>
                 {dayNames.map((dayName, idx) => {
                   const daySched = schedules[idx] || { dayOfWeek: idx, startTime: '09:00', endTime: '17:00', isOff: true };
@@ -628,23 +728,38 @@ export function SchedulesTab({
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderBottom: '1px solid var(--border-color)',
-                        paddingBottom: '8px'
+                        paddingBottom: '8px',
+                        paddingLeft: '16px',
+                        paddingRight: '16px',
+                        width: '100%'
                       }}>
-                        <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-primary)' }}>{dayName}</span>
+                        <span 
+                          title={dayName}
+                          style={{ 
+                            fontWeight: 600, 
+                            fontSize: '13.5px', 
+                            color: 'var(--text-primary)',
+                            maxWidth: 'calc(100% - 20px)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: 'inline-block'
+                          }}
+                        >
+                          {dayName}
+                        </span>
                         
                         {!daySched.isOff && (
                           <button
                             type="button"
-                            onClick={() => {
-                              const updated = [...schedules];
-                              updated[idx] = { ...daySched, isOff: true };
-                              setSchedules(updated);
-                            }}
+                            onClick={() => handleClearDay(idx)}
                             title="Remove hours"
                             style={{
                               position: 'absolute',
-                              right: '-2px',
-                              top: '-2px',
+                              right: '0px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              marginTop: '-4px',
                               background: 'transparent',
                               border: 'none',
                               color: 'var(--text-secondary)',
@@ -665,7 +780,7 @@ export function SchedulesTab({
                               e.currentTarget.style.backgroundColor = 'transparent';
                             }}
                           >
-                            <X size={14} />
+                            <X size={13} />
                           </button>
                         )}
                       </div>
@@ -676,13 +791,13 @@ export function SchedulesTab({
                           {/* Dashed Placeholder Card */}
                           <div
                             onClick={() => {
-                              const updated = [...schedules];
-                              updated[idx] = {
-                                ...daySched,
-                                isOff: false,
-                                startTime: '09:00',
-                                endTime: '17:00'
-                              };
+                              const updated = Array.from({ length: 7 }, (_, i) => {
+                                if (i === idx) {
+                                  return { dayOfWeek: i, startTime: '09:00', endTime: '17:00', isOff: false };
+                                }
+                                const existing = schedules.find((s: any) => s.dayOfWeek === i);
+                                return existing ? { ...existing } : { dayOfWeek: i, startTime: '09:00', endTime: '17:00', isOff: true };
+                              });
                               setSchedules(updated);
                             }}
                             style={{
@@ -730,13 +845,13 @@ export function SchedulesTab({
                                 key={p.key}
                                 type="button"
                                 onClick={() => {
-                                  const updated = [...schedules];
-                                  updated[idx] = {
-                                    ...daySched,
-                                    isOff: false,
-                                    startTime: p.start,
-                                    endTime: p.end
-                                  };
+                                  const updated = Array.from({ length: 7 }, (_, i) => {
+                                    if (i === idx) {
+                                      return { dayOfWeek: i, startTime: p.start, endTime: p.end, isOff: false };
+                                    }
+                                    const existing = schedules.find((s: any) => s.dayOfWeek === i);
+                                    return existing ? { ...existing } : { dayOfWeek: i, startTime: '09:00', endTime: '17:00', isOff: true };
+                                  });
                                   setSchedules(updated);
                                 }}
                                 style={{
@@ -777,8 +892,13 @@ export function SchedulesTab({
                               label="Start"
                               value24={daySched.startTime || '09:00'}
                               onChange={(val) => {
-                                const updated = [...schedules];
-                                updated[idx] = { ...daySched, startTime: val };
+                                const updated = Array.from({ length: 7 }, (_, i) => {
+                                  const existing = schedules.find((s: any) => s.dayOfWeek === i) || schedules[i];
+                                  if (i === idx) {
+                                    return { ...daySched, startTime: val };
+                                  }
+                                  return existing ? { ...existing } : { dayOfWeek: i, startTime: '09:00', endTime: '17:00', isOff: true };
+                                });
                                 setSchedules(updated);
                               }}
                             />
@@ -787,8 +907,13 @@ export function SchedulesTab({
                               value24={daySched.endTime || '17:00'}
                               relativeTo24={daySched.startTime}
                               onChange={(val) => {
-                                const updated = [...schedules];
-                                updated[idx] = { ...daySched, endTime: val };
+                                const updated = Array.from({ length: 7 }, (_, i) => {
+                                  const existing = schedules.find((s: any) => s.dayOfWeek === i) || schedules[i];
+                                  if (i === idx) {
+                                    return { ...daySched, endTime: val };
+                                  }
+                                  return existing ? { ...existing } : { dayOfWeek: i, startTime: '09:00', endTime: '17:00', isOff: true };
+                                });
                                 setSchedules(updated);
                               }}
                             />
@@ -807,12 +932,13 @@ export function SchedulesTab({
                                   key={p.key}
                                   type="button"
                                   onClick={() => {
-                                    const updated = [...schedules];
-                                    updated[idx] = {
-                                      ...daySched,
-                                      startTime: p.start,
-                                      endTime: p.end
-                                    };
+                                    const updated = Array.from({ length: 7 }, (_, i) => {
+                                      const existing = schedules.find((s: any) => s.dayOfWeek === i) || schedules[i];
+                                      if (i === idx) {
+                                        return { ...daySched, startTime: p.start, endTime: p.end };
+                                      }
+                                      return existing ? { ...existing } : { dayOfWeek: i, startTime: '09:00', endTime: '17:00', isOff: true };
+                                    });
                                     setSchedules(updated);
                                   }}
                                   style={{
@@ -842,6 +968,7 @@ export function SchedulesTab({
                 })}
               </div>
             </div>
+
           </form>
         ) : (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>

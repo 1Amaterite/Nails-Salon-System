@@ -4,6 +4,8 @@ import { LoginPortal } from './pages/LoginPortal';
 import { PublicPortal } from './pages/PublicPortal';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { OwnerDashboard } from './pages/OwnerDashboard';
+import { useNotification } from './context/NotificationContext';
+
 
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) {
@@ -16,6 +18,7 @@ const getApiUrl = () => {
 const API_URL = getApiUrl();
 
 function App() {
+  const { showToast } = useNotification();
   // Navigation State
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [activeTab, setActiveTabState] = useState<string>(() => {
@@ -197,10 +200,10 @@ function App() {
     };
     setWaitlist(prev => [...prev, newEntry]);
     if (currentPath === '/admin' || currentPath === '/owner') {
-      alert(`${entry.firstName} has been added to the live waiting queue.`);
+      showToast(`${entry.firstName} has been added to the live waiting queue.`, 'success');
       setActiveTab('waitlist');
     } else {
-      alert(`Thank you, ${entry.firstName}! You have been added to our live waiting queue.`);
+      showToast(`Thank you, ${entry.firstName}! You have been added to our live waiting queue.`, 'success');
       setActiveTab('public-home');
     }
   };
@@ -250,10 +253,10 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/api/seed-initial-data`, { method: 'POST' });
       const data = await res.json();
-      alert(data.message);
+      showToast(data.message, 'success');
       fetchMetadata();
     } catch (e) {
-      alert("Failed to seed initial data. Is backend server running?");
+      showToast("Failed to seed initial data. Is backend server running?", 'error');
     } finally {
       setIsSeeding(false);
     }

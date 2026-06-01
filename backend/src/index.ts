@@ -236,6 +236,31 @@ app.get('/api/branches', async (req, res) => {
     }
 });
 
+// GET: Schedulable Staff for a Branch (non-Owners, active)
+app.get('/api/branches/:branchId/schedulable-staff', async (req, res) => {
+    const { branchId } = req.params;
+    try {
+        const employees = await prisma.employee.findMany({
+            where: {
+                branchId,
+                role: { not: 'OWNER' },
+                isActive: true
+            },
+            include: {
+                schedules: true
+            }
+        });
+        const safeEmployees = employees.map(emp => {
+            const { passwordHash, ...safeEmp } = emp as any;
+            return safeEmp;
+        });
+        res.json(safeEmployees);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 // GET: Dashboard Stats per Branch (protected by verifyJWT)
 app.get('/api/dashboard/:branchId', verifyJWT, async (req: any, res: any) => {
     const { branchId } = req.params;
@@ -307,26 +332,31 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
             return res.status(400).json({ error: "Branch ID is required." });
         }
 
-        const newEmployee = await prisma.employee.create({
-            data: {
-                name,
-                username: finalUsername,
-                passwordHash,
-                role,
-                phoneNumber,
-                specialty,
-                branchId: targetBranchId,
-                schedules: {
-                    createMany: {
-                        data: Array.from({ length: 7 }, (_, i) => ({
-                            dayOfWeek: i,
-                            startTime: "09:00",
-                            endTime: "17:00",
-                            isOff: i === 0 // Sunday off by default
-                        }))
-                    }
+        const employeeData: any = {
+            name,
+            username: finalUsername,
+            passwordHash,
+            role,
+            phoneNumber,
+            specialty,
+            branchId: targetBranchId
+        };
+
+        if (role !== 'OWNER') {
+            employeeData.schedules = {
+                createMany: {
+                    data: Array.from({ length: 7 }, (_, i) => ({
+                        dayOfWeek: i,
+                        startTime: "09:00",
+                        endTime: "17:00",
+                        isOff: i === 0 // Sunday off by default
+                    }))
                 }
-            },
+            };
+        }
+
+        const newEmployee = await prisma.employee.create({
+            data: employeeData,
             include: {
                 schedules: true
             }
@@ -412,6 +442,10 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
         }
 
         if (schedules !== undefined && Array.isArray(schedules)) {
+            const targetRole = role || employee.role;
+            if (targetRole === 'OWNER') {
+                return res.status(400).json({ error: "Owners cannot have shift schedules assigned." });
+            }
             await prisma.employeeSchedule.deleteMany({
                 where: { employeeId: id }
             });
@@ -495,8 +529,27 @@ app.delete('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
     }
 });
 
-app.listen(PORT, () => {
+// Clean up any existing schedule records for Owners on start
+async function cleanupOwnerSchedules() {
+    try {
+        const deleted = await prisma.employeeSchedule.deleteMany({
+            where: {
+                employee: {
+                    role: 'OWNER'
+                }
+            }
+        });
+        if (deleted.count > 0) {
+            console.log(`[cleanup]: Deleted ${deleted.count} orphaned schedule records for Owner accounts.`);
+        }
+    } catch (err: any) {
+        console.error("[cleanup]: Failed to clean up Owner schedules:", err.message);
+    }
+}
+
+app.listen(PORT, async () => {
     console.log(`[server]: Server is running at http://localhost:${PORT}`);
     console.log('Press [Cmd+C] or [Ctrl+C] to stop the server');
+    await cleanupOwnerSchedules();
 });
     

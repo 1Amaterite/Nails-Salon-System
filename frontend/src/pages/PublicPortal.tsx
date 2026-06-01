@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Scissors, MapPin, Clock, Globe } from 'lucide-react';
+import { useNotification } from '../context/NotificationContext';
+
 import gelExtensionsImg from '../assets/gel_extensions.png';
 import gelPolishImg from '../assets/gel_polish.png';
 import gelNaturalImg from '../assets/gel_natural.png';
@@ -20,6 +22,7 @@ export function PublicPortal({
   navigateTo,
   onPublicWalkinSubmit
 }: PublicPortalProps) {
+  const { showToast } = useNotification();
   const [publicWalkinName, setPublicWalkinName] = useState('');
   const [publicWalkinPhone, setPublicWalkinPhone] = useState('');
   const [publicWalkinService, setPublicWalkinService] = useState('Gel Manicure');
@@ -214,7 +217,7 @@ export function PublicPortal({
               <h3 style={{ color: 'var(--accent)', marginTop: 0, fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600 }}>Schedule an Appointment</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Book your luxury appointment at Nails & Lashes Lane.</p>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); alert("Appointment booked (Simulation)"); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '560px' }}>
+            <form onSubmit={(e) => { e.preventDefault(); showToast("Appointment booked (Simulation)", "success"); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '560px' }}>
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">First Name</label>
