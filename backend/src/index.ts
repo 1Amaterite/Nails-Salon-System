@@ -144,7 +144,17 @@ app.post('/api/seed-initial-data', async (req, res) => {
                     role: "OWNER",
                     phoneNumber: "01234567890",
                     specialty: "Owner",
-                    branchId: branch.id
+                    branchId: branch.id,
+                    schedules: {
+                        createMany: {
+                            data: Array.from({ length: 7 }, (_, i) => ({
+                                dayOfWeek: i,
+                                startTime: "09:00",
+                                endTime: "17:00",
+                                isOff: i === 0
+                            }))
+                        }
+                    }
                 }
             });
 
@@ -156,7 +166,17 @@ app.post('/api/seed-initial-data', async (req, res) => {
                     role: "ADMIN",
                     phoneNumber: "01234567890",
                     specialty: "Manager",
-                    branchId: branch.id
+                    branchId: branch.id,
+                    schedules: {
+                        createMany: {
+                            data: Array.from({ length: 7 }, (_, i) => ({
+                                dayOfWeek: i,
+                                startTime: "09:00",
+                                endTime: "17:00",
+                                isOff: i === 0
+                            }))
+                        }
+                    }
                 }
             });
         
@@ -166,7 +186,17 @@ app.post('/api/seed-initial-data', async (req, res) => {
                     role: "STAFF",
                     phoneNumber: "01234567890",
                     specialty: "Nail Specialist",
-                    branchId: branch.id
+                    branchId: branch.id,
+                    schedules: {
+                        createMany: {
+                            data: Array.from({ length: 7 }, (_, i) => ({
+                                dayOfWeek: i,
+                                startTime: "09:00",
+                                endTime: "17:00",
+                                isOff: i === 0
+                            }))
+                        }
+                    }
                 }
             });
 
@@ -183,8 +213,24 @@ app.post('/api/seed-initial-data', async (req, res) => {
 // GET: All Branches
 app.get('/api/branches', async (req, res) => {
     try {
-        const branches = await prisma.branch.findMany({ include: { employees: true, services: true } });
-        res.json(branches);
+        const branches = await prisma.branch.findMany({
+            include: {
+                employees: {
+                    include: {
+                        schedules: true
+                    }
+                },
+                services: true
+            }
+        });
+        const safeBranches = branches.map(branch => ({
+            ...branch,
+            employees: branch.employees.map(emp => {
+                const { passwordHash, ...safeEmp } = emp as any;
+                return safeEmp;
+            })
+        }));
+        res.json(safeBranches);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
@@ -223,6 +269,9 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
     if (creatorRole === 'ADMIN') {
         if (role === 'ADMIN' || role === 'OWNER') {
             return res.status(403).json({ error: "Admins can only create employees with STAFF role." });
+        }
+        if (branchId && branchId !== creatorBranchId) {
+            return res.status(403).json({ error: "Admins can only create employees in their own branch." });
         }
     } else if (creatorRole !== 'OWNER') {
         return res.status(403).json({ error: "Access denied. Unauthorized to create employees." });
@@ -266,7 +315,20 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
                 role,
                 phoneNumber,
                 specialty,
-                branchId: targetBranchId
+                branchId: targetBranchId,
+                schedules: {
+                    createMany: {
+                        data: Array.from({ length: 7 }, (_, i) => ({
+                            dayOfWeek: i,
+                            startTime: "09:00",
+                            endTime: "17:00",
+                            isOff: i === 0 // Sunday off by default
+                        }))
+                    }
+                }
+            },
+            include: {
+                schedules: true
             }
         });
 
@@ -278,7 +340,8 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
                 username: newEmployee.username,
                 role: newEmployee.role,
                 phoneNumber: newEmployee.phoneNumber,
-                specialty: newEmployee.specialty
+                specialty: newEmployee.specialty,
+                schedules: newEmployee.schedules
             }
         });
     } catch (error: any) {
@@ -292,7 +355,7 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
 // PUT: Update an employee (protected by verifyJWT)
 app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
     const { id } = req.params;
-    const { name, username, password, role, phoneNumber, specialty, isActive } = req.body;
+    const { name, username, password, role, phoneNumber, specialty, isActive, schedules } = req.body;
     const creatorRole = req.user.role;
 
     try {
@@ -310,6 +373,10 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
             // Admins cannot elevate a STAFF to ADMIN/OWNER
             if (role && role !== 'STAFF') {
                 return res.status(403).json({ error: "Admins can only keep employees in STAFF role." });
+            }
+            // Enforce branch restriction
+            if (employee.branchId !== req.user.branchId) {
+                return res.status(403).json({ error: "Admins can only edit employees in their own branch." });
             }
         } else if (creatorRole !== 'OWNER') {
             return res.status(403).json({ error: "Access denied. Unauthorized to edit employees." });
@@ -344,9 +411,27 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
             updateData.passwordHash = null;
         }
 
+        if (schedules !== undefined && Array.isArray(schedules)) {
+            await prisma.employeeSchedule.deleteMany({
+                where: { employeeId: id }
+            });
+            await prisma.employeeSchedule.createMany({
+                data: schedules.map((s: any) => ({
+                    employeeId: id,
+                    dayOfWeek: s.dayOfWeek,
+                    startTime: s.startTime,
+                    endTime: s.endTime,
+                    isOff: s.isOff
+                }))
+            });
+        }
+
         const updatedEmployee = await prisma.employee.update({
             where: { id },
-            data: updateData
+            data: updateData,
+            include: {
+                schedules: true
+            }
         });
 
         res.json({
@@ -358,7 +443,8 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
                 role: updatedEmployee.role,
                 phoneNumber: updatedEmployee.phoneNumber,
                 specialty: updatedEmployee.specialty,
-                isActive: updatedEmployee.isActive
+                isActive: updatedEmployee.isActive,
+                schedules: updatedEmployee.schedules
             }
         });
     } catch (error: any) {
@@ -385,6 +471,9 @@ app.delete('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
             // Admins can only delete STAFF
             if (employee.role !== 'STAFF') {
                 return res.status(403).json({ error: "Admins can only delete employees with STAFF role." });
+            }
+            if (employee.branchId !== req.user.branchId) {
+                return res.status(403).json({ error: "Admins can only delete employees in their own branch." });
             }
         } else if (creatorRole !== 'OWNER') {
             return res.status(403).json({ error: "Access denied. Unauthorized to delete employees." });

@@ -1,3 +1,12 @@
+export interface EmployeeSchedule {
+  id: string;
+  employeeId: string;
+  dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
+  startTime: string | null;
+  endTime: string | null;
+  isOff: boolean;
+}
+
 export interface Employee {
   id: string;
   name: string;
@@ -7,6 +16,7 @@ export interface Employee {
   specialty?: string | null;
   isActive: boolean;
   branchId: string;
+  schedules?: EmployeeSchedule[];
 }
 
 export interface Branch {

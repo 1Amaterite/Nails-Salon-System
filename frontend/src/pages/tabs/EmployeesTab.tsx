@@ -40,6 +40,7 @@ export function EmployeesTab({
   const [editEmpIsActive, setEditEmpIsActive] = useState(true);
   const [editEmpError, setEditEmpError] = useState('');
 
+
   const handleAddEmployeeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setNewEmpError('');
@@ -186,6 +187,8 @@ export function EmployeesTab({
     setIsEditEmployeeModalOpen(true);
   };
 
+
+
   const employees = branches.find(b => b.id === selectedBranch)?.employees || [];
 
   // Filter employees based on search query
@@ -318,12 +321,50 @@ export function EmployeesTab({
                     );
                     if (!showUsername) return null;
                     return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                         <span style={{ color: 'var(--text-secondary)' }}>Username</span>
                         <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{emp.username}</span>
                       </div>
                     );
                   })()}
+
+                  {/* Weekly Schedules Display */}
+                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', marginTop: '10px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Weekly Shift Schedule
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((dayName, idx) => {
+                        const sched = emp.schedules?.find((s: any) => s.dayOfWeek === idx);
+                        const isOff = !sched || sched.isOff;
+                        const title = sched 
+                          ? `${dayName}: ${isOff ? 'Off' : `${sched.startTime} - ${sched.endTime}`}`
+                          : `${dayName}: Off`;
+                        return (
+                          <div
+                            key={idx}
+                            title={title}
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '10px',
+                              fontWeight: 'bold',
+                              backgroundColor: isOff ? 'var(--bg-secondary)' : 'rgba(190, 24, 93, 0.1)',
+                              color: isOff ? 'var(--text-secondary)' : 'var(--accent)',
+                              border: `1px solid ${isOff ? 'var(--border-color)' : 'rgba(190, 24, 93, 0.2)'}`,
+                              cursor: 'default'
+                            }}
+                          >
+                            {dayName}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -557,18 +598,7 @@ export function EmployeesTab({
                   />
                 </div>
 
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                  <input
-                    id="edit-emp-active-checkbox"
-                    type="checkbox"
-                    checked={editEmpIsActive}
-                    onChange={e => setEditEmpIsActive(e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent)' }}
-                  />
-                  <label htmlFor="edit-emp-active-checkbox" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer' }}>
-                    Active (Authorized & Available for shifts)
-                  </label>
-                </div>
+
 
                 {(editEmpRole === 'ADMIN' || editEmpRole === 'OWNER') && (
                   <>
@@ -593,6 +623,21 @@ export function EmployeesTab({
                     </div>
                   </>
                 )}
+
+
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '8px' }}>
+                  <input
+                    id="edit-emp-active-checkbox"
+                    type="checkbox"
+                    checked={editEmpIsActive}
+                    onChange={e => setEditEmpIsActive(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent)', margin: 0 }}
+                  />
+                  <label htmlFor="edit-emp-active-checkbox" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer', margin: 0, padding: 0 }}>
+                    Active (Authorized & Available for shifts)
+                  </label>
+                </div>
 
                 {editEmpError && (
                   <div style={{ color: '#b91c1c', fontSize: '13px', backgroundColor: '#fee2e2', padding: '10px', borderRadius: '6px', border: '1px solid #fecaca' }}>

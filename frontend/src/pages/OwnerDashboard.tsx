@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, Scissors, Calendar, Shield, Settings,
-  ShoppingBag, PlusCircle, UserCheck, LogOut, Globe
+  ShoppingBag, PlusCircle, UserCheck, LogOut, Globe, Clock
 } from 'lucide-react';
 import type { Branch, WaitlistItem, DashboardStats } from '../types';
 
@@ -9,6 +9,7 @@ import { AppointmentsTab } from './tabs/AppointmentsTab';
 import { WaitlistTab }     from './tabs/WaitlistTab';
 import { AdminWalkinTab }  from './tabs/AdminWalkinTab';
 import { EmployeesTab }    from './tabs/EmployeesTab';
+import { SchedulesTab }    from './tabs/SchedulesTab';
 import { InventoryTab }    from './tabs/InventoryTab';
 import { ClientsTab }      from './tabs/ClientsTab';
 import { ServicesTab }     from './tabs/ServicesTab';
@@ -61,7 +62,8 @@ export function OwnerDashboard({
               { key: 'appointments', label: 'Clients Schedule',  Icon: Calendar },
               { key: 'waitlist',     label: 'Walk-In Queue',     Icon: UserCheck },
               { key: 'admin-walkin', label: 'Add Walk-In Guest', Icon: PlusCircle, style: { borderLeft: '3px dashed var(--accent)' } },
-              { key: 'employees',    label: 'Employees & Shifts', Icon: Users },
+              { key: 'employees',    label: 'Staff Directory', Icon: Users },
+              { key: 'schedules',    label: 'Shift Schedules', Icon: Clock },
               { key: 'inventory',    label: 'Inventory Items',   Icon: ShoppingBag },
               { key: 'clients',      label: 'Clients Directory', Icon: Users },
               { key: 'services',     label: 'Services Catalog',  Icon: Scissors },
@@ -119,6 +121,13 @@ export function OwnerDashboard({
             selectedBranch={selectedBranch}
             employeeRole={employeeRole}
             onEmployeeAdded={onEmployeeAdded}
+          />
+        )}
+        {activeTab === 'schedules' && (
+          <SchedulesTab
+            branches={branches}
+            selectedBranch={selectedBranch}
+            onScheduleUpdated={onEmployeeAdded}
           />
         )}
         {activeTab === 'inventory'  && <InventoryTab />}
