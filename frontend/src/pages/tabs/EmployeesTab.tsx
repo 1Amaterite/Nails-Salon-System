@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Search, Edit2, Trash2 } from 'lucide-react';
 import type { Branch } from '../../types';
 import { useNotification } from '../../context/NotificationContext';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchWithTimeout } from '../../utils/api';
 
 
 interface EmployeesTabProps {
@@ -68,50 +70,18 @@ export function EmployeesTab({
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
+  const queryClient = useQueryClient();
 
-    const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
-    if (!token) {
-      setErrorMsg('Authentication token missing. Please re-authenticate.');
-      return;
-    }
+  const submitMutation = useMutation({
+    mutationFn: async ({ isEdit, payload }: { isEdit: boolean; payload: any }) => {
+      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+      if (!token) throw new Error('Authentication token missing. Please re-authenticate.');
 
-    const isEdit = !!editingEmployee;
-
-    if (!isEdit && (formData.role === 'ADMIN' || formData.role === 'OWNER') && (!formData.username || !formData.password)) {
-      setErrorMsg('Username and password are required for admin/owner accounts.');
-      return;
-    }
-
-    const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
-
-    try {
+      const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
       const url = isEdit ? `${API_URL}/api/employees/${editingEmployee.id}` : `${API_URL}/api/employees`;
       const method = isEdit ? 'PUT' : 'POST';
 
-      const payload: any = {
-        name: formData.name,
-        role: formData.role,
-        phoneNumber: formData.phoneNumber,
-        specialty: formData.specialty || undefined,
-      };
-
-      if (formData.role === 'ADMIN' || formData.role === 'OWNER') {
-        payload.username = formData.username.replace(/@/g, '');
-        if (formData.password) {
-          payload.password = formData.password;
-        }
-      }
-
-      if (isEdit) {
-        payload.isActive = formData.isActive;
-      } else {
-        payload.branchId = selectedBranch;
-      }
-
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -122,16 +92,159 @@ export function EmployeesTab({
 
       const data = await response.json();
       if (!response.ok) {
-        setErrorMsg(data.error || `Failed to ${isEdit ? 'update' : 'create'} employee.`);
-        return;
+        throw new Error(data.error || `Failed to ${isEdit ? 'update' : 'create'} employee.`);
+      }
+      return data;
+    },
+    onMutate: async ({ isEdit, payload }) => {
+      await queryClient.cancelQueries({ queryKey: ['branches', selectedBranch, employeeRole] });
+      const previousBranches = queryClient.getQueryData(['branches', selectedBranch, employeeRole]);
+
+      if (previousBranches) {
+        queryClient.setQueryData(
+          ['branches', selectedBranch, employeeRole],
+          (old: Branch[] | undefined) => {
+            if (!old) return old;
+            return old.map(b => {
+              if (b.id !== selectedBranch) return b;
+              let newEmployees = [...(b.employees || [])];
+              if (isEdit) {
+                newEmployees = newEmployees.map(emp =>
+                  emp.id === editingEmployee.id ? { ...emp, ...payload } : emp
+                );
+              } else {
+                const newEmp = {
+                  id: 'temp-' + Date.now(),
+                  isActive: true,
+                  schedules: Array.from({ length: 7 }, (_, i) => ({
+                    dayOfWeek: i,
+                    startTime: "09:00",
+                    endTime: "17:00",
+                    isOff: i === 0
+                  })),
+                  ...payload
+                };
+                newEmployees.push(newEmp);
+              }
+              return { ...b, employees: newEmployees };
+            });
+          }
+        );
       }
 
-      showToast(`Employee ${isEdit ? 'updated' : 'created'} successfully.`, 'success');
+      return { previousBranches };
+    },
+    onError: (err: any, _variables, context) => {
+      if (context?.previousBranches) {
+        queryClient.setQueryData(
+          ['branches', selectedBranch, employeeRole],
+          context.previousBranches
+        );
+      }
+      setErrorMsg(err.message || 'Network error. Failed to connect to server.');
+    },
+    onSuccess: (_data, variables) => {
+      showToast(`Employee ${variables.isEdit ? 'updated' : 'created'} successfully.`, 'success');
       setIsModalOpen(false);
       onEmployeeAdded();
-    } catch (err) {
-      setErrorMsg('Network error. Failed to connect to server.');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['branches', selectedBranch, employeeRole] });
     }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+      if (!token) throw new Error('Authentication token missing. Please re-authenticate.');
+
+      const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
+
+      const response = await fetchWithTimeout(`${API_URL}/api/employees/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete employee.');
+      }
+      return data;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['branches', selectedBranch, employeeRole] });
+      const previousBranches = queryClient.getQueryData(['branches', selectedBranch, employeeRole]);
+
+      if (previousBranches) {
+        queryClient.setQueryData(
+          ['branches', selectedBranch, employeeRole],
+          (old: Branch[] | undefined) => {
+            if (!old) return old;
+            return old.map(b => {
+              if (b.id !== selectedBranch) return b;
+              return {
+                ...b,
+                employees: (b.employees || []).filter(emp => emp.id !== id)
+              };
+            });
+          }
+        );
+      }
+
+      return { previousBranches };
+    },
+    onError: (err: any, _variables, context) => {
+      if (context?.previousBranches) {
+        queryClient.setQueryData(
+          ['branches', selectedBranch, employeeRole],
+          context.previousBranches
+        );
+      }
+      showToast(err.message || 'Network error. Failed to delete employee.', 'error');
+    },
+    onSuccess: () => {
+      showToast('Employee deleted successfully.', 'success');
+      onEmployeeAdded();
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['branches', selectedBranch, employeeRole] });
+    }
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    const isEdit = !!editingEmployee;
+
+    if (!isEdit && (formData.role === 'ADMIN' || formData.role === 'OWNER') && (!formData.username || !formData.password)) {
+      setErrorMsg('Username and password are required for admin/owner accounts.');
+      return;
+    }
+
+    const payload: any = {
+      name: formData.name,
+      role: formData.role,
+      phoneNumber: formData.phoneNumber,
+      specialty: formData.specialty || undefined,
+    };
+
+    if (formData.role === 'ADMIN' || formData.role === 'OWNER') {
+      payload.username = formData.username.replace(/@/g, '');
+      if (formData.password) {
+        payload.password = formData.password;
+      }
+    }
+
+    if (isEdit) {
+      payload.isActive = formData.isActive;
+    } else {
+      payload.branchId = selectedBranch;
+    }
+
+    submitMutation.mutate({ isEdit, payload });
   };
 
   const handleDeleteEmployee = async (id: string, name: string) => {
@@ -146,33 +259,7 @@ export function EmployeesTab({
       return;
     }
 
-    const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
-    if (!token) {
-      showToast('Authentication token missing. Please re-authenticate.', 'error');
-      return;
-    }
-
-    const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
-
-    try {
-      const response = await fetch(`${API_URL}/api/employees/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        showToast(data.error || 'Failed to delete employee.', 'error');
-        return;
-      }
-
-      showToast('Employee deleted successfully.', 'success');
-      onEmployeeAdded();
-    } catch (err) {
-      showToast('Network error. Failed to delete employee.', 'error');
-    }
+    deleteMutation.mutate(id);
   };
 
   const employees = branches.find(b => b.id === selectedBranch)?.employees || [];

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, X } from 'lucide-react';
 import type { Branch } from '../../types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchWithTimeout } from '../../utils/api';
 
 interface SchedulesTabProps {
   branches: Branch[];
@@ -257,28 +259,35 @@ export function TimeSelect12Hour({ label, value24, onChange, relativeTo24 }: Tim
 }
 
 export function SchedulesTab({
-  branches,
   selectedBranch,
   onScheduleUpdated,
   setIsDirty
 }: SchedulesTabProps) {
-  const [employees, setEmployees] = useState<any[]>([]);
+  const queryClient = useQueryClient();
+  const employeeRole = sessionStorage.getItem('employeeRole') || '';
 
-  useEffect(() => {
-    if (selectedBranch) {
+  const { data: employeesData, isPending } = useQuery<any[]>({
+    queryKey: ['schedulableStaff', selectedBranch, employeeRole],
+    queryFn: async () => {
+      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+      if (!token) throw new Error('Authentication token missing. Please re-authenticate.');
+
       const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
-      fetch(`${API_URL}/api/branches/${selectedBranch}/schedulable-staff`)
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setEmployees(data);
-          }
-        })
-        .catch(err => console.error('Failed to load schedulable staff:', err));
-    } else {
-      setEmployees([]);
-    }
-  }, [selectedBranch, branches]);
+      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/schedulable-staff`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to fetch schedulable staff');
+      }
+      return res.json();
+    },
+    enabled: !!selectedBranch
+  });
+
+  const employees = employeesData || [];
   
   // Selected employee for scheduling
   const [selectedEmpId, setSelectedEmpId] = useState<string>('');
@@ -441,45 +450,75 @@ export function SchedulesTab({
   };
 
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
+  const mutation = useMutation({
+    mutationFn: async (updatedSchedules: any[]) => {
+      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+      if (!token) throw new Error('Authentication token missing. Please re-authenticate.');
 
-    if (!selectedEmpId) return;
+      const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
 
-    const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
-    if (!token) {
-      setError('Authentication token missing. Please re-authenticate.');
-      return;
-    }
-
-    const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : 'https://nails-salon-backend.onrender.com')).replace(/\/$/, '');
-
-    try {
-      const response = await fetch(`${API_URL}/api/employees/${selectedEmpId}`, {
+      const response = await fetchWithTimeout(`${API_URL}/api/employees/${selectedEmpId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          schedules
+          schedules: updatedSchedules
         })
       });
 
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || 'Failed to update schedule.');
-        return;
+        throw new Error(data.error || 'Failed to update schedule.');
+      }
+      return data;
+    },
+    onMutate: async (updatedSchedules) => {
+      await queryClient.cancelQueries({ queryKey: ['schedulableStaff', selectedBranch, employeeRole] });
+
+      const previousStaff = queryClient.getQueryData(['schedulableStaff', selectedBranch, employeeRole]);
+
+      if (previousStaff) {
+        queryClient.setQueryData(
+          ['schedulableStaff', selectedBranch, employeeRole],
+          (old: any[] | undefined) => {
+            if (!old) return old;
+            return old.map((emp) =>
+              emp.id === selectedEmpId ? { ...emp, schedules: updatedSchedules } : emp
+            );
+          }
+        );
       }
 
+      return { previousStaff };
+    },
+    onError: (err: any, _variables, context) => {
+      if (context?.previousStaff) {
+        queryClient.setQueryData(
+          ['schedulableStaff', selectedBranch, employeeRole],
+          context.previousStaff
+        );
+      }
+      setError(err.message || 'Network error. Failed to connect to server.');
+    },
+    onSuccess: () => {
       setSuccess('Schedules saved successfully!');
       setOriginalSchedules(JSON.parse(JSON.stringify(schedules)));
       onScheduleUpdated();
-    } catch (err) {
-      setError('Network error. Failed to connect to server.');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedulableStaff', selectedBranch, employeeRole] });
     }
+  });
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!selectedEmpId) return;
+    mutation.mutate(schedules);
   };
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -497,7 +536,12 @@ export function SchedulesTab({
           Select Stylist
         </h3>
         
-        {employees.length === 0 ? (
+        {isPending && !employeesData ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px', color: 'var(--accent)' }}>
+            <div className="spinner" style={{ width: '24px', height: '24px', border: '2px solid var(--accent-glow)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            <span style={{ marginLeft: '12px', fontSize: '14px', fontWeight: 500 }}>Loading...</span>
+          </div>
+        ) : employees.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>No employees registered in this branch.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

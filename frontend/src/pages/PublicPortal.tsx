@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Scissors, MapPin, Clock, Globe } from 'lucide-react';
+import { Scissors, MapPin, Clock, Globe, Sparkles, Sparkle, Gem, Heart } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 
 import gelExtensionsImg from '../assets/gel_extensions.png';
@@ -80,18 +80,18 @@ export function PublicPortal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
             <div className="hero-center-container">
               {/* Floating bubbles in the background */}
-              <div className="decor-bubble bubble-1">💅</div>
-              <div className="decor-bubble bubble-2">✨</div>
-              <div className="decor-bubble bubble-3">🧴</div>
-              <div className="decor-bubble bubble-4">💖</div>
+              <div className="decor-bubble bubble-1"><Sparkles size={28} strokeWidth={1.5} style={{ color: 'var(--accent)' }} /></div>
+              <div className="decor-bubble bubble-2"><Sparkle size={28} strokeWidth={1.5} style={{ color: 'var(--accent-blue)' }} /></div>
+              <div className="decor-bubble bubble-3"><Gem size={28} strokeWidth={1.5} style={{ color: 'var(--accent-blue)' }} /></div>
+              <div className="decor-bubble bubble-4"><Heart size={28} strokeWidth={1.5} style={{ color: 'var(--accent)' }} /></div>
 
               {/* Centered White Card */}
               <div className="hero-center-card">
                 <span className="micro-badge">Welcome to Premium Care</span>
-                <h2>
-                  <span>Nail & Lash perfection</span> at Nails & Lashes Lane
+                <h2 style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', fontWeight: 700 }}>
+                  Nail & Lash perfection at <span style={{ borderBottom: '2px solid var(--accent)' }}>Nails & Lashes Lane</span>
                 </h2>
-                <p>
+                <p style={{ color: '#64748B' }}>
                   Experience the art of beauty care with our expert licensed artists. 
                   Book your premium session today and let your nails & lashes do the talking.
                 </p>

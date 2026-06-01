@@ -236,9 +236,12 @@ app.get('/api/branches', async (req, res) => {
     }
 });
 
-// GET: Schedulable Staff for a Branch (non-Owners, active)
-app.get('/api/branches/:branchId/schedulable-staff', async (req, res) => {
+// GET: Schedulable Staff for a Branch (non-Owners, active, protected by verifyJWT)
+app.get('/api/branches/:branchId/schedulable-staff', verifyJWT, async (req: any, res: any) => {
     const { branchId } = req.params;
+    if (req.user.role === 'ADMIN' && req.user.branchId !== branchId) {
+        return res.status(403).json({ error: "Access denied. You can only access your own branch's staff." });
+    }
     try {
         const employees = await prisma.employee.findMany({
             where: {
@@ -264,6 +267,9 @@ app.get('/api/branches/:branchId/schedulable-staff', async (req, res) => {
 // GET: Dashboard Stats per Branch (protected by verifyJWT)
 app.get('/api/dashboard/:branchId', verifyJWT, async (req: any, res: any) => {
     const { branchId } = req.params;
+    if (req.user.role === 'ADMIN' && req.user.branchId !== branchId) {
+        return res.status(403).json({ error: "Access denied. You can only access your own branch's dashboard." });
+    }
     try {
         const totalAppointments = await prisma.appointment.count({ where: { branchId } });
         const waitingQueue = await prisma.appointment.count({ where: { branchId, status: "WAITING" } });
@@ -550,6 +556,12 @@ async function cleanupOwnerSchedules() {
 app.listen(PORT, async () => {
     console.log(`[server]: Server is running at http://localhost:${PORT}`);
     console.log('Press [Cmd+C] or [Ctrl+C] to stop the server');
+    try {
+        await prisma.$connect();
+        console.log('[db]: Connection pool warmed up successfully.');
+    } catch (dbErr: any) {
+        console.error('[db]: Failed to pre-warm connection pool:', dbErr.message);
+    }
     await cleanupOwnerSchedules();
 });
     

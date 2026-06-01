@@ -33,7 +33,7 @@ export function AdminWalkinTab({
   };
 
   return (
-    <div className="glass-panel" style={{ borderLeft: '4px solid var(--accent-teal)' }}>
+    <div className="glass-panel" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
       <div style={{ marginBottom: '24px' }}>
         <h3 style={{ color: 'var(--accent)', marginTop: 0, fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600 }}>Receptionist Walk-In Guest Check-In</h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Add a walk-in guest to the live queue on their behalf if they are not tech-savvy.</p>

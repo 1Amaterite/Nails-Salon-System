@@ -5,7 +5,9 @@ import { PublicPortal } from './pages/PublicPortal';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { OwnerDashboard } from './pages/OwnerDashboard';
 import { useNotification } from './context/NotificationContext';
+import { fetchWithTimeout } from './utils/api';
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) {
@@ -19,6 +21,8 @@ const API_URL = getApiUrl();
 
 function App() {
   const { showToast } = useNotification();
+  const queryClient = useQueryClient();
+
   // Navigation State
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [activeTab, setActiveTabState] = useState<string>(() => {
@@ -74,7 +78,7 @@ function App() {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/login`, {
+      const response = await fetchWithTimeout(`${API_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password: passcode })
@@ -99,6 +103,7 @@ function App() {
         setErrorMsg('');
         setPasscode('');
         setUsername('');
+        queryClient.clear(); // Purge cache on new login
         navigateTo('/owner');
       } else if (empRole === 'ADMIN') {
         setIsAdminAuth(true);
@@ -109,6 +114,7 @@ function App() {
         setErrorMsg('');
         setPasscode('');
         setUsername('');
+        queryClient.clear(); // Purge cache on new login
         navigateTo('/admin');
       } else {
         setErrorMsg('Unauthorized. You do not have permission to access the management portals.');
@@ -132,8 +138,9 @@ function App() {
     setErrorMsg('');
     setPasscode('');
     setUsername('');
+    queryClient.clear(); // Purge cache on logout
     navigateTo('/login');
-  }, [navigateTo]);
+  }, [navigateTo, queryClient]);
 
   // Redirect and route guards
   useEffect(() => {
@@ -151,15 +158,61 @@ function App() {
   }, [currentPath, isAdminAuth, isOwnerAuth, navigateTo]);
 
   // App Data State
-  const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [isSeeding, setIsSeeding] = useState(false);
-  const [stats, setStats] = useState<DashboardStats>({
+
+  // Purge/clear cache when branch changes
+  useEffect(() => {
+    if (selectedBranch) {
+      queryClient.clear();
+    }
+  }, [selectedBranch, queryClient]);
+
+  // Fetch branches with React Query
+  const { data: branchesData } = useQuery<Branch[]>({
+    queryKey: ['branches', selectedBranch, employeeRole],
+    queryFn: async () => {
+      const res = await fetchWithTimeout(`${API_URL}/api/branches`);
+      if (!res.ok) throw new Error('Failed to fetch branches');
+      return res.json();
+    }
+  });
+
+  const branches = branchesData || [];
+
+  // Automatically select the first branch if none selected
+  useEffect(() => {
+    if (branches.length > 0 && !selectedBranch) {
+      setSelectedBranch(branches[0].id);
+    }
+  }, [branches, selectedBranch]);
+
+  // Fetch Stats when Branch changes with React Query
+  const { data: statsData } = useQuery<DashboardStats>({
+    queryKey: ['dashboardStats', selectedBranch, employeeRole],
+    queryFn: async () => {
+      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetchWithTimeout(`${API_URL}/api/dashboard/${selectedBranch}`, { headers });
+      if (res.status === 401 || res.status === 403) {
+        handleLogout();
+        throw new Error('Session expired or unauthorized.');
+      }
+      if (!res.ok) throw new Error('Failed to fetch dashboard stats');
+      return res.json();
+    },
+    enabled: !!selectedBranch && (isAdminAuth || isOwnerAuth)
+  });
+
+  const stats = statsData || {
     appointmentsToday: 0,
     waitingQueueCount: 0,
     activeStylists: 0,
     totalServices: 0
-  });
+  };
 
   // Live waitlist state
   const [waitlist, setWaitlist] = useState<WaitlistItem[]>([
@@ -208,53 +261,13 @@ function App() {
     }
   };
 
-  // Fetch branches and baseline info
-  const fetchMetadata = () => {
-    fetch(`${API_URL}/api/branches`)
-      .then((res) => res.json())
-      .then((data: Branch[]) => {
-        setBranches(data);
-        if (data.length > 0 && !selectedBranch) {
-          setSelectedBranch(data[0].id);
-        }
-      })
-      .catch(() => console.log("CORS/Connection warning: Run backend & seed database."));
-  };
-
-  useEffect(() => {
-    fetchMetadata();
-  }, []);
-
-  // Fetch Stats when Branch changes
-  useEffect(() => {
-    if (selectedBranch && (isAdminAuth || isOwnerAuth)) {
-      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      fetch(`${API_URL}/api/dashboard/${selectedBranch}`, { headers })
-        .then(res => {
-          if (res.status === 401 || res.status === 403) {
-            handleLogout();
-            throw new Error('Session expired or unauthorized.');
-          }
-          if (!res.ok) throw new Error('Failed to fetch dashboard stats');
-          return res.json();
-        })
-        .then(data => setStats(data))
-        .catch(() => {});
-    }
-  }, [selectedBranch, isAdminAuth, isOwnerAuth, handleLogout]);
-
   const handleSeedData = async () => {
     setIsSeeding(true);
     try {
-      const res = await fetch(`${API_URL}/api/seed-initial-data`, { method: 'POST' });
+      const res = await fetchWithTimeout(`${API_URL}/api/seed-initial-data`, { method: 'POST' });
       const data = await res.json();
       showToast(data.message, 'success');
-      fetchMetadata();
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
     } catch (e) {
       showToast("Failed to seed initial data. Is backend server running?", 'error');
     } finally {
@@ -304,7 +317,7 @@ function App() {
     handleUpdateWaitlistStatus, handleLogout, navigateTo,
     isSeeding, handleSeedData,
     onWalkinSubmit: handleWalkinSubmit,
-    onEmployeeAdded: fetchMetadata
+    onEmployeeAdded: () => queryClient.invalidateQueries({ queryKey: ['branches'] })
   };
 
   if (roleMode === 'owner') {

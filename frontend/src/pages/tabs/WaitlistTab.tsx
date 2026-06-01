@@ -46,7 +46,7 @@ export function WaitlistTab({ waitlist, handleUpdateWaitlistStatus, setActiveTab
                 {item.status === 'WAITING' && (
                   <button
                     className="btn-primary"
-                    style={{ padding: '6px 12px', fontSize: '12px', backgroundColor: 'var(--accent-teal)' }}
+                    style={{ padding: '6px 12px', fontSize: '12px', backgroundColor: 'var(--accent-blue)' }}
                     onClick={() => handleUpdateWaitlistStatus(item.id, 'IN_PROGRESS')}
                   >
                     Start Session

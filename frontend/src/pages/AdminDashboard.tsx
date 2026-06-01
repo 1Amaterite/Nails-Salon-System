@@ -4,6 +4,8 @@ import {
   ShoppingBag, PlusCircle, UserCheck, LogOut, Globe, Clock
 } from 'lucide-react';
 import type { Branch, WaitlistItem, DashboardStats } from '../types';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchWithTimeout } from '../utils/api';
 
 import { DashboardTab }     from './tabs/DashboardTab';
 import { AppointmentsTab }  from './tabs/AppointmentsTab';
@@ -15,6 +17,16 @@ import { InventoryTab }     from './tabs/InventoryTab';
 import { ClientsTab }       from './tabs/ClientsTab';
 import { ServicesTab }      from './tabs/ServicesTab';
 import { SettingsTab }      from './tabs/SettingsTab';
+
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/$/, '');
+  }
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5001'
+    : 'https://nails-salon-backend.onrender.com';
+};
+const API_URL = getApiUrl();
 
 interface AdminDashboardProps {
   activeTab: string;
@@ -93,6 +105,35 @@ export function AdminDashboard({
 }: AdminDashboardProps) {
   const [isScheduleDirty, setIsScheduleDirty] = useState(false);
   const [pendingTabKey, setPendingTabKey] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const handlePrefetch = (key: string) => {
+    const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    if (key === 'dashboard') {
+      queryClient.prefetchQuery({
+        queryKey: ['dashboardStats', selectedBranch, employeeRole],
+        queryFn: async () => {
+          const res = await fetchWithTimeout(`${API_URL}/api/dashboard/${selectedBranch}`, { headers });
+          if (!res.ok) throw new Error('Failed to fetch dashboard stats');
+          return res.json();
+        }
+      });
+    } else if (key === 'employees' || key === 'schedules') {
+      queryClient.prefetchQuery({
+        queryKey: ['schedulableStaff', selectedBranch, employeeRole],
+        queryFn: async () => {
+          const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/schedulable-staff`);
+          if (!res.ok) throw new Error('Failed to fetch schedulable staff');
+          return res.json();
+        }
+      });
+    }
+  };
 
   const handleTabClick = (key: string) => {
     if (isScheduleDirty) {
@@ -149,6 +190,7 @@ export function AdminDashboard({
                 key={key}
                 className={`nav-link ${activeTab === key ? 'active' : ''}`}
                 onClick={() => handleTabClick(key)}
+                onMouseEnter={() => handlePrefetch(key)}
                 style={style}
               >
                 <Icon size={18} />
