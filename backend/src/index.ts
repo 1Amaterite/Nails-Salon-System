@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
@@ -7,6 +7,10 @@ import jwt from 'jsonwebtoken';
 import pinoHttp from 'pino-http';
 import { logger } from './utils/logger';
 import { errorHandler } from './middlewares/errorHandler';
+
+interface CustomRequest extends Request {
+    user?: any;
+}
 
 dotenv.config();
 
@@ -41,14 +45,14 @@ app.use(express.json());
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'OK', message: 'Nail Salon System API is running successfully.' });
 });
 
 // ─── JWT Verification Middleware ──────────────────────────────────────────────
 
 // Only ADMIN and OWNER roles allowed
-const verifyJWT = (req: any, res: any, next: any) => {
+const verifyJWT = (req: CustomRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Access denied. No token provided.' });
@@ -71,7 +75,7 @@ const verifyJWT = (req: any, res: any, next: any) => {
 
 // ─── POST: Authentication Login ───────────────────────────────────────────────
 
-app.post('/api/login', async (req, res, next) => {
+app.post('/api/login', async (req: Request, res: Response, next: NextFunction) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -121,7 +125,7 @@ app.post('/api/login', async (req, res, next) => {
 
 // ─── POST: Seed Initial Branch, Services, and Staff ───────────────────────────
 
-app.post('/api/seed-initial-data', async (req, res, next) => {
+app.post('/api/seed-initial-data', async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Force reset database if requested or if no branches exist
         const forceReset = req.query.reset === 'true' || (await prisma.branch.count()) === 0;
@@ -241,7 +245,7 @@ app.post('/api/seed-initial-data', async (req, res, next) => {
 
 // ─── GET: All Branches ────────────────────────────────────────────────────────
 
-app.get('/api/branches', async (_req, res, next) => {
+app.get('/api/branches', async (_req: Request, res: Response, next: NextFunction) => {
     try {
         const branches = await prisma.branch.findMany({
             include: {
@@ -269,7 +273,7 @@ app.get('/api/branches', async (_req, res, next) => {
 
 // ─── GET: Schedulable Staff for a Branch ─────────────────────────────────────
 
-app.get('/api/branches/:branchId/schedulable-staff', verifyJWT, async (req: any, res: any, next: any) => {
+app.get('/api/branches/:branchId/schedulable-staff', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
     const { branchId } = req.params;
     if (req.user.role === 'ADMIN' && req.user.branchId !== branchId) {
         return res.status(403).json({ error: "Access denied. You can only access your own branch's staff." });
@@ -294,7 +298,7 @@ app.get('/api/branches/:branchId/schedulable-staff', verifyJWT, async (req: any,
 
 // ─── GET: Dashboard Stats per Branch ─────────────────────────────────────────
 
-app.get('/api/dashboard/:branchId', verifyJWT, async (req: any, res: any, next: any) => {
+app.get('/api/dashboard/:branchId', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
     const { branchId } = req.params;
     if (req.user.role === 'ADMIN' && req.user.branchId !== branchId) {
         return res.status(403).json({ error: "Access denied. You can only access your own branch's dashboard." });
@@ -318,7 +322,7 @@ app.get('/api/dashboard/:branchId', verifyJWT, async (req: any, res: any, next: 
 
 // ─── POST: Create Employee ────────────────────────────────────────────────────
 
-app.post('/api/employees', verifyJWT, async (req: any, res: any, next: any) => {
+app.post('/api/employees', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
     const { name, username, password, role, phoneNumber, specialty, branchId } = req.body;
     const creatorRole = req.user.role;
     const creatorBranchId = req.user.branchId;
@@ -414,7 +418,7 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any, next: any) => {
 
 // ─── PUT: Update Employee ─────────────────────────────────────────────────────
 
-app.put('/api/employees/:id', verifyJWT, async (req: any, res: any, next: any) => {
+app.put('/api/employees/:id', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
     const { name, username, password, role, phoneNumber, specialty, isActive, schedules } = req.body;
     const creatorRole = req.user.role;
@@ -512,7 +516,7 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any, next: any) =
 
 // ─── DELETE: Delete Employee ──────────────────────────────────────────────────
 
-app.delete('/api/employees/:id', verifyJWT, async (req: any, res: any, next: any) => {
+app.delete('/api/employees/:id', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
     const creatorRole = req.user.role;
 

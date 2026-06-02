@@ -5,7 +5,9 @@ import { useNotification } from '../context/NotificationContext';
 import gelExtensionsImg from '../assets/gel_extensions.webp';
 import gelPolishImg from '../assets/gel_polish.webp';
 import gelNaturalImg from '../assets/gel_natural.webp';
-import type { Branch, Service } from '../types';
+import type { Branch, Service, Employee } from '../types';
+
+export type PublicPortalEmployee = Employee;
 
 interface PublicPortalProps {
   activeTab: string;
