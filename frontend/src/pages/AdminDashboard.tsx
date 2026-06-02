@@ -21,7 +21,7 @@ import { AppointmentsTab } from './tabs/AppointmentsTab';
 import { WaitlistTab } from './tabs/WaitlistTab';
 import { AdminWalkinTab } from './tabs/AdminWalkinTab';
 import { EmployeesTab } from './tabs/EmployeesTab';
-import { SchedulesTab } from './tabs/SchedulesTab';
+import { SchedulesTab, UnsavedChangesModal } from './tabs/SchedulesTab';
 import { InventoryTab } from './tabs/InventoryTab';
 import { ClientsTab } from './tabs/ClientsTab';
 import { ServicesTab } from './tabs/ServicesTab';
@@ -54,101 +54,6 @@ interface AdminDashboardProps {
     stylist: string;
   }) => void;
   onEmployeeAdded: () => void;
-}
-
-export function UnsavedChangesModal({
-  isOpen,
-  onConfirm,
-  onCancel,
-}: {
-  isOpen: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  if (!isOpen) return null;
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(255, 244, 246, 0.4)',
-        backdropFilter: 'blur(12px) saturate(160%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 2000,
-        padding: '20px',
-      }}
-    >
-      <div
-        className="outer-bezel"
-        style={{
-          maxWidth: '400px',
-          width: '100%',
-          animation: 'modalFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-        }}
-      >
-        <div className="inner-core" style={{ padding: '28px', textAlign: 'center' }}>
-          <h3
-            style={{
-              fontFamily: 'var(--font-serif)',
-              color: 'var(--accent)',
-              fontSize: '20px',
-              fontWeight: 600,
-              margin: '0 0 12px 0',
-            }}
-          >
-            Unsaved Changes
-          </h3>
-          <p
-            style={{
-              color: 'var(--text-secondary)',
-              fontSize: '13.5px',
-              lineHeight: '1.5',
-              margin: '0 0 24px 0',
-            }}
-          >
-            You have unsaved changes. If you leave this page, your edits to the schedule will be
-            lost. Are you sure you want to discard them?
-          </p>
-
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={onCancel}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-secondary)',
-                boxShadow: 'none',
-                padding: '8px 16px',
-                fontSize: '13px',
-              }}
-            >
-              Keep Editing
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={onConfirm}
-              style={{
-                backgroundColor: 'var(--accent)',
-                color: 'white',
-                padding: '8px 16px',
-                fontSize: '13px',
-              }}
-            >
-              Discard Changes
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function AdminDashboard({
@@ -192,7 +97,8 @@ export function AdminDashboard({
         queryKey: ['schedulableStaff', selectedBranch, employeeRole],
         queryFn: async () => {
           const res = await fetchWithTimeout(
-            `${API_URL}/api/branches/${selectedBranch}/schedulable-staff`
+            `${API_URL}/api/branches/${selectedBranch}/schedulable-staff`,
+            { headers }
           );
           if (!res.ok) throw new Error('Failed to fetch schedulable staff');
           return res.json();
@@ -379,7 +285,9 @@ export function AdminDashboard({
           <InventoryTab selectedBranch={selectedBranch} employeeRole={employeeRole} />
         )}
         {activeTab === 'clients' && <ClientsTab />}
-        {activeTab === 'services' && <ServicesTab branches={branches} role={employeeRole} />}
+        {activeTab === 'services' && (
+          <ServicesTab branches={branches} selectedBranch={selectedBranch} role={employeeRole} />
+        )}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
     </div>

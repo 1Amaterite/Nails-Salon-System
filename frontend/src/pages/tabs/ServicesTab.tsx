@@ -10,16 +10,18 @@ import { ServiceFormModal } from './ServiceFormModal';
 
 interface ServicesTabProps {
   branches: Branch[];
+  selectedBranch: string;
   role?: string;
 }
 
-export function ServicesTab({ branches, role }: ServicesTabProps) {
+export function ServicesTab({ branches, selectedBranch, role }: ServicesTabProps) {
   const { showToast, confirm } = useNotification();
   const queryClient = useQueryClient();
 
   const isAuthorized = role === 'OWNER' || role === 'ADMIN';
-  const selectedBranch = branches[0]?.id || '';
-  const services = branches[0]?.services || [];
+  const branchData = branches.find((b) => b.id === selectedBranch) || branches[0];
+  const activeBranchId = branchData?.id || '';
+  const services = branchData?.services || [];
 
   // Get unique list of existing categories for combobox suggestion
   const categories = Array.from(
@@ -110,7 +112,7 @@ export function ServicesTab({ branches, role }: ServicesTabProps) {
           key={editingService?.id || 'new'}
           editingService={editingService}
           categories={categories}
-          selectedBranch={selectedBranch}
+          selectedBranch={activeBranchId}
           existingServices={services}
           onClose={() => setIsModalOpen(false)}
         />
