@@ -32,7 +32,9 @@ export function ServicesTab({ branches, role }: ServicesTabProps) {
   const services = branches[0]?.services || [];
 
   // Get unique list of existing categories for combobox suggestion
-  const categories = Array.from(new Set(services.map((s: Service) => s.category).filter(Boolean)));
+  const categories = Array.from(
+    new Set(services.map((s: Service) => s.category).filter(Boolean))
+  ) as string[];
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
