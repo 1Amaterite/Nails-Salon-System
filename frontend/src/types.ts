@@ -31,6 +31,18 @@ export interface Service {
   imageUrl?: string | null;
 }
 
+export interface ServicePayload {
+  name: string;
+  price: number;
+  category: string;
+  durationMinutes: number;
+  bufferTime: number;
+  description?: string;
+  isActive?: boolean;
+  branchId?: string;
+  imageUrl?: string;
+}
+
 export interface Branch {
   id: string;
   name: string;
