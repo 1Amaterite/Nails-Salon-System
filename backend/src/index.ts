@@ -14,6 +14,16 @@ interface CustomRequest extends Request {
 
 dotenv.config();
 
+logger.info({
+    env: {
+        NODE_ENV: process.env.NODE_ENV,
+        PORT: process.env.PORT,
+        HAS_JWT_SECRET: !!process.env.JWT_SECRET,
+        HAS_DATABASE_URL: !!process.env.DATABASE_URL,
+        HAS_DIRECT_URL: !!process.env.DIRECT_URL
+    }
+}, 'Starting Nails Salon Backend API...');
+
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5001;
