@@ -134,6 +134,7 @@ model Service {
     price           Decimal     @db.Decimal(10, 2)
     category        String
     isActive        Boolean     @default(true)
+    imageUrl        String?
     branchId        String
 
     // Relations

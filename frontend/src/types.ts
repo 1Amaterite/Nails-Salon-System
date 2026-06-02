@@ -28,6 +28,7 @@ export interface Service {
   bufferTime: number;
   isActive: boolean;
   description?: string | null;
+  imageUrl?: string | null;
 }
 
 export interface Branch {

@@ -562,7 +562,7 @@ app.delete('/api/employees/:id', verifyJWT, async (req: CustomRequest, res: Resp
 // ─── POST: Create Service ─────────────────────────────────────────────────────
 
 app.post('/api/services', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
-    const { name, description, durationMinutes, bufferTime, price, category, branchId } = req.body;
+    const { name, description, durationMinutes, bufferTime, price, category, branchId, isActive, imageUrl } = req.body;
     const creatorRole = req.user.role;
 
     if (creatorRole !== 'ADMIN' && creatorRole !== 'OWNER') {
@@ -574,15 +574,31 @@ app.post('/api/services', verifyJWT, async (req: CustomRequest, res: Response, n
     }
 
     try {
+        // Case-insensitive uniqueness check for the service name in the branch
+        const existingService = await prisma.service.findFirst({
+            where: {
+                name: {
+                    equals: name.trim(),
+                    mode: 'insensitive',
+                },
+                branchId,
+            },
+        });
+        if (existingService) {
+            return res.status(400).json({ error: 'A service with this name already exists in this branch.' });
+        }
+
         const service = await prisma.service.create({
             data: {
-                name,
+                name: name.trim(),
                 description,
                 durationMinutes: parseInt(durationMinutes, 10),
                 bufferTime: bufferTime ? parseInt(bufferTime, 10) : 5,
                 price: parseFloat(price),
                 category,
                 branchId,
+                isActive: isActive !== undefined ? Boolean(isActive) : true,
+                imageUrl: imageUrl || null,
             },
         });
         res.status(201).json(service);
@@ -595,7 +611,7 @@ app.post('/api/services', verifyJWT, async (req: CustomRequest, res: Response, n
 
 app.put('/api/services/:id', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const { name, description, durationMinutes, bufferTime, price, category, isActive } = req.body;
+    const { name, description, durationMinutes, bufferTime, price, category, isActive, imageUrl } = req.body;
     const creatorRole = req.user.role;
 
     if (creatorRole !== 'ADMIN' && creatorRole !== 'OWNER') {
@@ -609,13 +625,32 @@ app.put('/api/services/:id', verifyJWT, async (req: CustomRequest, res: Response
         }
 
         const updateData: any = {};
-        if (name !== undefined) updateData.name = name;
+        if (name !== undefined) {
+            const trimmedName = name.trim();
+            if (trimmedName.toLowerCase() !== service.name.toLowerCase()) {
+                const existingService = await prisma.service.findFirst({
+                    where: {
+                        name: {
+                            equals: trimmedName,
+                            mode: 'insensitive',
+                        },
+                        branchId: service.branchId,
+                        id: { not: id },
+                    },
+                });
+                if (existingService) {
+                    return res.status(400).json({ error: 'A service with this name already exists in this branch.' });
+                }
+            }
+            updateData.name = trimmedName;
+        }
         if (description !== undefined) updateData.description = description;
         if (durationMinutes !== undefined) updateData.durationMinutes = parseInt(durationMinutes, 10);
         if (bufferTime !== undefined) updateData.bufferTime = parseInt(bufferTime, 10);
         if (price !== undefined) updateData.price = parseFloat(price);
         if (category !== undefined) updateData.category = category;
-        if (isActive !== undefined) updateData.isActive = isActive;
+        if (isActive !== undefined) updateData.isActive = Boolean(isActive);
+        if (imageUrl !== undefined) updateData.imageUrl = imageUrl || null;
 
         const updatedService = await prisma.service.update({
             where: { id },
