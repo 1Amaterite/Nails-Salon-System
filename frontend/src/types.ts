@@ -19,6 +19,14 @@ export interface Employee {
   schedules?: EmployeeSchedule[];
 }
 
+export interface Service {
+  id: string;
+  name: string;
+  price: string;
+  category?: string | null;
+  durationMinutes: number;
+}
+
 export interface Branch {
   id: string;
   name: string;
@@ -26,7 +34,7 @@ export interface Branch {
   phone?: string | null;
   email?: string | null;
   employees?: Employee[];
-  services?: any[];
+  services?: Service[];
 }
 
 export interface WaitlistItem {

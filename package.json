@@ -8,11 +8,21 @@
     "frontend"
   ],
   "scripts": {
+    "prepare": "husky",
     "db:up": "docker-compose up -d",
     "db:down": "docker-compose down",
     "backend:dev": "npm run dev -w backend",
     "frontend:dev": "npm run dev -w frontend",
     "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\""
+  },
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx}": [
+      "eslint --config frontend/eslint.config.js --fix",
+      "prettier --write"
+    ],
+    "frontend/src/**/*.{css,json,md}": [
+      "prettier --write"
+    ]
   },
   "repository": {
     "type": "git",
@@ -27,6 +37,8 @@
   "homepage": "https://github.com/1Amaterite/Nails-Salon-System#readme",
   "devDependencies": {
     "@types/node": "^25.9.1",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7"
   }
 }

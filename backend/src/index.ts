@@ -4,95 +4,124 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import pinoHttp from 'pino-http';
+import { logger } from './utils/logger';
+import { errorHandler } from './middlewares/errorHandler';
 
 dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5001;
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-key-123';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    logger.fatal('JWT_SECRET environment variable is not set. Refusing to start.');
+    process.exit(1);
+}
+
+// ─── Middleware ───────────────────────────────────────────────────────────────
+
+// Automatic request/response logging (method, url, status, response time)
+app.use(pinoHttp({
+    logger,
+    // Do not log health checks to keep logs clean
+    autoLogging: {
+        ignore: (req) => req.url === '/api/health',
+    },
+    customLogLevel: (_req, res) => {
+        if (res.statusCode >= 500) return 'error';
+        if (res.statusCode >= 400) return 'warn';
+        return 'info';
+    },
+}));
 
 app.use(cors());
 app.use(express.json());
 
-// API Health Check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', message: 'Nail Salon System API is running successfully.'});
+// ─── Health Check ─────────────────────────────────────────────────────────────
+
+app.get('/api/health', (_req, res) => {
+    res.json({ status: 'OK', message: 'Nail Salon System API is running successfully.' });
 });
 
-// JWT Verification Middleware (only ADMIN and OWNER roles allowed)
+// ─── JWT Verification Middleware ──────────────────────────────────────────────
+
+// Only ADMIN and OWNER roles allowed
 const verifyJWT = (req: any, res: any, next: any) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: "Access denied. No token provided." });
+        return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
 
     const token = authHeader.split(' ')[1];
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, JWT_SECRET!) as any;
         req.user = decoded;
-        
+
         if (decoded.role !== 'ADMIN' && decoded.role !== 'OWNER') {
-            return res.status(403).json({ error: "Access denied. Admins or owners only." });
+            return res.status(403).json({ error: 'Access denied. Admins or owners only.' });
         }
-        
+
         next();
     } catch (error) {
-        return res.status(401).json({ error: "Invalid or expired token." });
+        return res.status(401).json({ error: 'Invalid or expired token.' });
     }
 };
 
-// POST: Authentication login endpoint
-app.post('/api/login', async (req, res) => {
+// ─── POST: Authentication Login ───────────────────────────────────────────────
+
+app.post('/api/login', async (req, res, next) => {
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
-        return res.status(400).json({ error: "Username and password are required." });
+        return res.status(400).json({ error: 'Username and password are required.' });
     }
-    
+
     try {
         const employee = await prisma.employee.findUnique({
-            where: { username: username.toLowerCase().trim() }
+            where: { username: username.toLowerCase().trim() },
         });
-        
+
         if (!employee || !employee.passwordHash) {
-            return res.status(401).json({ error: "Invalid username or password." });
+            return res.status(401).json({ error: 'Invalid username or password.' });
         }
-        
+
         const isPasswordValid = await bcrypt.compare(password, employee.passwordHash);
         if (!isPasswordValid) {
-            return res.status(401).json({ error: "Invalid username or password." });
+            return res.status(401).json({ error: 'Invalid username or password.' });
         }
-        
+
         const token = jwt.sign(
-            { 
-                userId: employee.id, 
-                username: employee.username, 
+            {
+                userId: employee.id,
+                username: employee.username,
                 role: employee.role,
-                branchId: employee.branchId
+                branchId: employee.branchId,
             },
-            JWT_SECRET,
+            JWT_SECRET!,
             { expiresIn: '1d' }
         );
-        
+
         res.json({
-            message: "Login successful",
+            message: 'Login successful',
             token,
             employee: {
                 id: employee.id,
                 name: employee.name,
                 username: employee.username,
                 role: employee.role,
-                branchId: employee.branchId
-            }
+                branchId: employee.branchId,
+            },
         });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error) {
+        next(error);
     }
 });
 
-// Seed Initial Branch, Services, and Staff
-app.post('/api/seed-initial-data', async (req, res) => {
+// ─── POST: Seed Initial Branch, Services, and Staff ───────────────────────────
+
+app.post('/api/seed-initial-data', async (req, res, next) => {
     try {
         // Force reset database if requested or if no branches exist
         const forceReset = req.query.reset === 'true' || (await prisma.branch.count()) === 0;
@@ -116,196 +145,198 @@ app.post('/api/seed-initial-data', async (req, res) => {
             // Create Default Branch
             const branch = await prisma.branch.create({
                 data: {
-                    name: "Nails Salon System",
-                    address: "123 Luxury Way, Suite 100",
-                    phone: "(555) 0199",
-                    email: "nailsandlasheslane.2014@gmail.com"
-                }
+                    name: 'Nails Salon System',
+                    address: '123 Luxury Way, Suite 100',
+                    phone: '(555) 0199',
+                    email: 'nailsandlasheslane.2014@gmail.com',
+                },
             });
 
             // Create Default Services
-            const services = await prisma.service.createMany({
+            await prisma.service.createMany({
                 data: [
-                    { name: "Gel Manicure", price: 45.00, durationMinutes: 45, category: "Hand Care", branchId: branch.id },
-                    { name: "Luxury Pedicure", price: 60.00, durationMinutes: 60, category: "Foot Care", branchId: branch.id },
-                    { name: "Acrylic Full Set", price: 85.00, durationMinutes: 90, category: "Nail Extensions", branchId: branch.id },
-                    { name: "Volume Lash Extensions", price: 120.00, durationMinutes: 120, category: "Eyelash Extensions", branchId: branch.id }
-                ] 
+                    { name: 'Gel Manicure', price: 45.0, durationMinutes: 45, category: 'Hand Care', branchId: branch.id },
+                    { name: 'Luxury Pedicure', price: 60.0, durationMinutes: 60, category: 'Foot Care', branchId: branch.id },
+                    { name: 'Acrylic Full Set', price: 85.0, durationMinutes: 90, category: 'Nail Extensions', branchId: branch.id },
+                    { name: 'Volume Lash Extensions', price: 120.0, durationMinutes: 120, category: 'Eyelash Extensions', branchId: branch.id },
+                ],
             });
 
-            const ownerPasswordHash = await bcrypt.hash("owner123", 10);
-            const adminPasswordHash = await bcrypt.hash("admin123", 10);
+            const ownerPasswordHash = await bcrypt.hash('owner123', 10);
+            const adminPasswordHash = await bcrypt.hash('admin123', 10);
 
             await prisma.employee.create({
                 data: {
-                    name: "Andres Owner",
-                    username: "owner",
+                    name: 'Andres Owner',
+                    username: 'owner',
                     passwordHash: ownerPasswordHash,
-                    role: "OWNER",
-                    phoneNumber: "01234567890",
-                    specialty: "Owner",
+                    role: 'OWNER',
+                    phoneNumber: '01234567890',
+                    specialty: 'Owner',
                     branchId: branch.id,
                     schedules: {
                         createMany: {
                             data: Array.from({ length: 7 }, (_, i) => ({
                                 dayOfWeek: i,
-                                startTime: "09:00",
-                                endTime: "17:00",
-                                isOff: i === 0
-                            }))
-                        }
-                    }
-                }
+                                startTime: '09:00',
+                                endTime: '17:00',
+                                isOff: i === 0,
+                            })),
+                        },
+                    },
+                },
             });
 
             await prisma.employee.create({
                 data: {
-                    name: "Andres Admin",
-                    username: "admin",
+                    name: 'Andres Admin',
+                    username: 'admin',
                     passwordHash: adminPasswordHash,
-                    role: "ADMIN",
-                    phoneNumber: "01234567890",
-                    specialty: "Manager",
+                    role: 'ADMIN',
+                    phoneNumber: '01234567890',
+                    specialty: 'Manager',
                     branchId: branch.id,
                     schedules: {
                         createMany: {
                             data: Array.from({ length: 7 }, (_, i) => ({
                                 dayOfWeek: i,
-                                startTime: "09:00",
-                                endTime: "17:00",
-                                isOff: i === 0
-                            }))
-                        }
-                    }
-                }
-            });
-        
-            await prisma.employee.create({
-                data: {
-                    name: "Sara Technician",
-                    role: "STAFF",
-                    phoneNumber: "01234567890",
-                    specialty: "Nail Specialist",
-                    branchId: branch.id,
-                    schedules: {
-                        createMany: {
-                            data: Array.from({ length: 7 }, (_, i) => ({
-                                dayOfWeek: i,
-                                startTime: "09:00",
-                                endTime: "17:00",
-                                isOff: i === 0
-                            }))
-                        }
-                    }
-                }
+                                startTime: '09:00',
+                                endTime: '17:00',
+                                isOff: i === 0,
+                            })),
+                        },
+                    },
+                },
             });
 
-            return res.status(201).json({ message: "Seeding complete!", branchId: branch.id });
+            await prisma.employee.create({
+                data: {
+                    name: 'Sara Technician',
+                    role: 'STAFF',
+                    phoneNumber: '01234567890',
+                    specialty: 'Nail Specialist',
+                    branchId: branch.id,
+                    schedules: {
+                        createMany: {
+                            data: Array.from({ length: 7 }, (_, i) => ({
+                                dayOfWeek: i,
+                                startTime: '09:00',
+                                endTime: '17:00',
+                                isOff: i === 0,
+                            })),
+                        },
+                    },
+                },
+            });
+
+            logger.info({ branchId: branch.id }, 'Database seeded successfully');
+            return res.status(201).json({ message: 'Seeding complete!', branchId: branch.id });
         }
 
-        return res.status(200).json({ message: "Data already populated." });
-
-    } catch (error: any) {
-        return res.status(500).json({ error: error.message });
+        return res.status(200).json({ message: 'Data already populated.' });
+    } catch (error) {
+        next(error);
     }
 });
 
-// GET: All Branches
-app.get('/api/branches', async (req, res) => {
+// ─── GET: All Branches ────────────────────────────────────────────────────────
+
+app.get('/api/branches', async (_req, res, next) => {
     try {
         const branches = await prisma.branch.findMany({
             include: {
                 employees: {
-                    include: {
-                        schedules: true
-                    }
+                    include: { schedules: true },
                 },
-                services: true
-            }
+                services: true,
+            },
         });
-        const safeBranches = branches.map(branch => ({
+
+        const safeBranches = branches.map((branch) => ({
             ...branch,
-            employees: branch.employees.map(emp => {
+            employees: branch.employees.map((emp) => {
                 const { passwordHash, ...safeEmp } = emp as any;
+                void passwordHash; // intentionally stripped
                 return safeEmp;
-            })
+            }),
         }));
+
         res.json(safeBranches);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error) {
+        next(error);
     }
 });
 
-// GET: Schedulable Staff for a Branch (non-Owners, active, protected by verifyJWT)
-app.get('/api/branches/:branchId/schedulable-staff', verifyJWT, async (req: any, res: any) => {
+// ─── GET: Schedulable Staff for a Branch ─────────────────────────────────────
+
+app.get('/api/branches/:branchId/schedulable-staff', verifyJWT, async (req: any, res: any, next: any) => {
     const { branchId } = req.params;
     if (req.user.role === 'ADMIN' && req.user.branchId !== branchId) {
         return res.status(403).json({ error: "Access denied. You can only access your own branch's staff." });
     }
     try {
         const employees = await prisma.employee.findMany({
-            where: {
-                branchId,
-                role: { not: 'OWNER' },
-                isActive: true
-            },
-            include: {
-                schedules: true
-            }
+            where: { branchId, role: { not: 'OWNER' }, isActive: true },
+            include: { schedules: true },
         });
-        const safeEmployees = employees.map(emp => {
+
+        const safeEmployees = employees.map((emp) => {
             const { passwordHash, ...safeEmp } = emp as any;
+            void passwordHash;
             return safeEmp;
         });
+
         res.json(safeEmployees);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error) {
+        next(error);
     }
 });
 
+// ─── GET: Dashboard Stats per Branch ─────────────────────────────────────────
 
-// GET: Dashboard Stats per Branch (protected by verifyJWT)
-app.get('/api/dashboard/:branchId', verifyJWT, async (req: any, res: any) => {
+app.get('/api/dashboard/:branchId', verifyJWT, async (req: any, res: any, next: any) => {
     const { branchId } = req.params;
     if (req.user.role === 'ADMIN' && req.user.branchId !== branchId) {
         return res.status(403).json({ error: "Access denied. You can only access your own branch's dashboard." });
     }
     try {
         const totalAppointments = await prisma.appointment.count({ where: { branchId } });
-        const waitingQueue = await prisma.appointment.count({ where: { branchId, status: "WAITING" } });
+        const waitingQueue = await prisma.appointment.count({ where: { branchId, status: 'WAITING' } });
         const employeeCount = await prisma.employee.count({ where: { branchId } });
         const serviceCount = await prisma.service.count({ where: { branchId } });
+
         res.json({
             appointmentsToday: totalAppointments,
             waitingQueueCount: waitingQueue,
             activeStylists: employeeCount,
-            totalServices: serviceCount
+            totalServices: serviceCount,
         });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+    } catch (error) {
+        next(error);
     }
 });
 
-// POST: Create a new employee (protected by verifyJWT)
-app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
+// ─── POST: Create Employee ────────────────────────────────────────────────────
+
+app.post('/api/employees', verifyJWT, async (req: any, res: any, next: any) => {
     const { name, username, password, role, phoneNumber, specialty, branchId } = req.body;
     const creatorRole = req.user.role;
     const creatorBranchId = req.user.branchId;
 
     if (!name || !role || !phoneNumber) {
-        return res.status(400).json({ error: "Name, role, and phone number are required." });
+        return res.status(400).json({ error: 'Name, role, and phone number are required.' });
     }
 
     // Role-based restrictions
     if (creatorRole === 'ADMIN') {
         if (role === 'ADMIN' || role === 'OWNER') {
-            return res.status(403).json({ error: "Admins can only create employees with STAFF role." });
+            return res.status(403).json({ error: 'Admins can only create employees with STAFF role.' });
         }
         if (branchId && branchId !== creatorBranchId) {
-            return res.status(403).json({ error: "Admins can only create employees in their own branch." });
+            return res.status(403).json({ error: 'Admins can only create employees in their own branch.' });
         }
     } else if (creatorRole !== 'OWNER') {
-        return res.status(403).json({ error: "Access denied. Unauthorized to create employees." });
+        return res.status(403).json({ error: 'Access denied. Unauthorized to create employees.' });
     }
 
     // Check target role specific requirements
@@ -314,19 +345,17 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
 
     if (role === 'ADMIN' || role === 'OWNER') {
         if (!username || !password) {
-            return res.status(400).json({ error: "Username and password are required for admin and owner roles." });
+            return res.status(400).json({ error: 'Username and password are required for admin and owner roles.' });
         }
         finalUsername = username.toLowerCase().trim();
 
         try {
-            const existing = await prisma.employee.findUnique({
-                where: { username: finalUsername }
-            });
+            const existing = await prisma.employee.findUnique({ where: { username: finalUsername } });
             if (existing) {
-                return res.status(400).json({ error: "Username already taken." });
+                return res.status(400).json({ error: 'Username already taken.' });
             }
-        } catch (err: any) {
-            return res.status(500).json({ error: err.message });
+        } catch (err) {
+            return next(err);
         }
 
         passwordHash = await bcrypt.hash(password, 10);
@@ -335,7 +364,7 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
     try {
         const targetBranchId = branchId || creatorBranchId;
         if (!targetBranchId) {
-            return res.status(400).json({ error: "Branch ID is required." });
+            return res.status(400).json({ error: 'Branch ID is required.' });
         }
 
         const employeeData: any = {
@@ -345,7 +374,7 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
             role,
             phoneNumber,
             specialty,
-            branchId: targetBranchId
+            branchId: targetBranchId,
         };
 
         if (role !== 'OWNER') {
@@ -353,23 +382,21 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
                 createMany: {
                     data: Array.from({ length: 7 }, (_, i) => ({
                         dayOfWeek: i,
-                        startTime: "09:00",
-                        endTime: "17:00",
-                        isOff: i === 0 // Sunday off by default
-                    }))
-                }
+                        startTime: '09:00',
+                        endTime: '17:00',
+                        isOff: i === 0, // Sunday off by default
+                    })),
+                },
             };
         }
 
         const newEmployee = await prisma.employee.create({
             data: employeeData,
-            include: {
-                schedules: true
-            }
+            include: { schedules: true },
         });
 
         res.status(201).json({
-            message: "Employee created successfully.",
+            message: 'Employee created successfully.',
             employee: {
                 id: newEmployee.id,
                 name: newEmployee.name,
@@ -377,19 +404,17 @@ app.post('/api/employees', verifyJWT, async (req: any, res: any) => {
                 role: newEmployee.role,
                 phoneNumber: newEmployee.phoneNumber,
                 specialty: newEmployee.specialty,
-                schedules: newEmployee.schedules
-            }
+                schedules: newEmployee.schedules,
+            },
         });
-    } catch (error: any) {
-        if (error.code === 'P2002') {
-            return res.status(400).json({ error: "Username is already in use by another account." });
-        }
-        res.status(500).json({ error: error.message });
+    } catch (error) {
+        next(error);
     }
 });
 
-// PUT: Update an employee (protected by verifyJWT)
-app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
+// ─── PUT: Update Employee ─────────────────────────────────────────────────────
+
+app.put('/api/employees/:id', verifyJWT, async (req: any, res: any, next: any) => {
     const { id } = req.params;
     const { name, username, password, role, phoneNumber, specialty, isActive, schedules } = req.body;
     const creatorRole = req.user.role;
@@ -397,25 +422,22 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
     try {
         const employee = await prisma.employee.findUnique({ where: { id } });
         if (!employee) {
-            return res.status(404).json({ error: "Employee not found." });
+            return res.status(404).json({ error: 'Employee not found.' });
         }
 
         // Role-based restrictions
         if (creatorRole === 'ADMIN') {
-            // Admins can only edit STAFF
             if (employee.role !== 'STAFF') {
-                return res.status(403).json({ error: "Admins can only edit employees with STAFF role." });
+                return res.status(403).json({ error: 'Admins can only edit employees with STAFF role.' });
             }
-            // Admins cannot elevate a STAFF to ADMIN/OWNER
             if (role && role !== 'STAFF') {
-                return res.status(403).json({ error: "Admins can only keep employees in STAFF role." });
+                return res.status(403).json({ error: 'Admins can only keep employees in STAFF role.' });
             }
-            // Enforce branch restriction
             if (employee.branchId !== req.user.branchId) {
-                return res.status(403).json({ error: "Admins can only edit employees in their own branch." });
+                return res.status(403).json({ error: 'Admins can only edit employees in their own branch.' });
             }
         } else if (creatorRole !== 'OWNER') {
-            return res.status(403).json({ error: "Access denied. Unauthorized to edit employees." });
+            return res.status(403).json({ error: 'Access denied. Unauthorized to edit employees.' });
         }
 
         const updateData: any = {};
@@ -425,7 +447,7 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
         if (isActive !== undefined) updateData.isActive = isActive;
         if (role !== undefined) updateData.role = role;
 
-        // Manage credentials if they are updating to or keeping admin/owner
+        // Manage credentials if updating to or keeping admin/owner
         const targetRole = role || employee.role;
         if (targetRole === 'ADMIN' || targetRole === 'OWNER') {
             if (username !== undefined) {
@@ -433,7 +455,7 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
                 if (finalUsername !== employee.username) {
                     const existing = await prisma.employee.findUnique({ where: { username: finalUsername } });
                     if (existing) {
-                        return res.status(400).json({ error: "Username already taken." });
+                        return res.status(400).json({ error: 'Username already taken.' });
                     }
                     updateData.username = finalUsername;
                 }
@@ -442,40 +464,36 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
                 updateData.passwordHash = await bcrypt.hash(password, 10);
             }
         } else {
-            // If they are demoted to STAFF, clear their login details
+            // Demoted to STAFF — clear login details
             updateData.username = null;
             updateData.passwordHash = null;
         }
 
         if (schedules !== undefined && Array.isArray(schedules)) {
-            const targetRole = role || employee.role;
-            if (targetRole === 'OWNER') {
-                return res.status(400).json({ error: "Owners cannot have shift schedules assigned." });
+            const effectiveRole = role || employee.role;
+            if (effectiveRole === 'OWNER') {
+                return res.status(400).json({ error: 'Owners cannot have shift schedules assigned.' });
             }
-            await prisma.employeeSchedule.deleteMany({
-                where: { employeeId: id }
-            });
+            await prisma.employeeSchedule.deleteMany({ where: { employeeId: id } });
             await prisma.employeeSchedule.createMany({
                 data: schedules.map((s: any) => ({
                     employeeId: id,
                     dayOfWeek: s.dayOfWeek,
                     startTime: s.startTime,
                     endTime: s.endTime,
-                    isOff: s.isOff
-                }))
+                    isOff: s.isOff,
+                })),
             });
         }
 
         const updatedEmployee = await prisma.employee.update({
             where: { id },
             data: updateData,
-            include: {
-                schedules: true
-            }
+            include: { schedules: true },
         });
 
         res.json({
-            message: "Employee updated successfully.",
+            message: 'Employee updated successfully.',
             employee: {
                 id: updatedEmployee.id,
                 name: updatedEmployee.name,
@@ -484,84 +502,90 @@ app.put('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
                 phoneNumber: updatedEmployee.phoneNumber,
                 specialty: updatedEmployee.specialty,
                 isActive: updatedEmployee.isActive,
-                schedules: updatedEmployee.schedules
-            }
+                schedules: updatedEmployee.schedules,
+            },
         });
-    } catch (error: any) {
-        if (error.code === 'P2002') {
-            return res.status(400).json({ error: "Username is already in use by another account." });
-        }
-        res.status(500).json({ error: error.message });
+    } catch (error) {
+        next(error);
     }
 });
 
-// DELETE: Delete an employee (protected by verifyJWT)
-app.delete('/api/employees/:id', verifyJWT, async (req: any, res: any) => {
+// ─── DELETE: Delete Employee ──────────────────────────────────────────────────
+
+app.delete('/api/employees/:id', verifyJWT, async (req: any, res: any, next: any) => {
     const { id } = req.params;
     const creatorRole = req.user.role;
 
     try {
         const employee = await prisma.employee.findUnique({ where: { id } });
         if (!employee) {
-            return res.status(404).json({ error: "Employee not found." });
+            return res.status(404).json({ error: 'Employee not found.' });
         }
 
         // Role-based restrictions
         if (creatorRole === 'ADMIN') {
-            // Admins can only delete STAFF
             if (employee.role !== 'STAFF') {
-                return res.status(403).json({ error: "Admins can only delete employees with STAFF role." });
+                return res.status(403).json({ error: 'Admins can only delete employees with STAFF role.' });
             }
             if (employee.branchId !== req.user.branchId) {
-                return res.status(403).json({ error: "Admins can only delete employees in their own branch." });
+                return res.status(403).json({ error: 'Admins can only delete employees in their own branch.' });
             }
         } else if (creatorRole !== 'OWNER') {
-            return res.status(403).json({ error: "Access denied. Unauthorized to delete employees." });
+            return res.status(403).json({ error: 'Access denied. Unauthorized to delete employees.' });
         }
 
-        // Don't let an owner delete themselves
         if (employee.id === req.user.userId) {
-            return res.status(400).json({ error: "You cannot delete your own account." });
+            return res.status(400).json({ error: 'You cannot delete your own account.' });
         }
 
         await prisma.employee.delete({ where: { id } });
 
-        res.json({ message: "Employee deleted successfully." });
-    } catch (error: any) {
-        if (error.code === 'P2003' || error.message.includes('Foreign key constraint')) {
-            return res.status(400).json({ error: "Cannot delete this employee because they have transaction or appointment records. Please set them to inactive instead." });
-        }
-        res.status(500).json({ error: error.message });
+        res.json({ message: 'Employee deleted successfully.' });
+    } catch (error) {
+        next(error);
     }
 });
 
-// Clean up any existing schedule records for Owners on start
+// ─── Startup Helpers ──────────────────────────────────────────────────────────
+
 async function cleanupOwnerSchedules() {
     try {
         const deleted = await prisma.employeeSchedule.deleteMany({
-            where: {
-                employee: {
-                    role: 'OWNER'
-                }
-            }
+            where: { employee: { role: 'OWNER' } },
         });
         if (deleted.count > 0) {
-            console.log(`[cleanup]: Deleted ${deleted.count} orphaned schedule records for Owner accounts.`);
+            logger.info({ count: deleted.count }, 'Deleted orphaned schedule records for Owner accounts');
         }
-    } catch (err: any) {
-        console.error("[cleanup]: Failed to clean up Owner schedules:", err.message);
+    } catch (err) {
+        logger.error({ err }, 'Failed to clean up Owner schedules');
     }
 }
 
+// ─── Global Error Handler — MUST be last ─────────────────────────────────────
+
+app.use(errorHandler);
+
+// ─── Process-level Safety Net ────────────────────────────────────────────────
+
+process.on('uncaughtException', (err) => {
+    logger.fatal({ err }, 'Uncaught Exception — shutting down');
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+    logger.fatal({ reason }, 'Unhandled Promise Rejection — shutting down');
+    process.exit(1);
+});
+
+// ─── Server Bootstrap ─────────────────────────────────────────────────────────
+
 app.listen(PORT, async () => {
-    console.log(`[server]: Server is running at http://localhost:${PORT}`);
-    console.log('Press [Cmd+C] or [Ctrl+C] to stop the server');
+    logger.info({ port: PORT }, 'Server is running');
     try {
         await prisma.$connect();
-        console.log('[db]: Connection pool warmed up successfully.');
-    } catch (dbErr: any) {
-        console.error('[db]: Failed to pre-warm connection pool:', dbErr.message);
+        logger.info('Database connection pool warmed up successfully');
+    } catch (dbErr) {
+        logger.error({ err: dbErr }, 'Failed to pre-warm database connection pool');
     }
     await cleanupOwnerSchedules();
 });
-    

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Branch, WaitlistItem, DashboardStats } from './types';
 import { LoginPortal } from './pages/LoginPortal';
 import { PublicPortal } from './pages/PublicPortal';
@@ -9,14 +9,7 @@ import { fetchWithTimeout } from './utils/api';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.replace(/\/$/, '');
-  }
-  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5001'
-    : 'https://nails-salon-backend.onrender.com';
-};
+import { getApiUrl } from './utils/getApiUrl';
 const API_URL = getApiUrl();
 
 function App() {
@@ -28,7 +21,9 @@ function App() {
   const [activeTab, setActiveTabState] = useState<string>(() => {
     const saved = sessionStorage.getItem('activeTab_' + window.location.pathname);
     if (saved) return saved;
-    return window.location.pathname === '/admin' || window.location.pathname === '/owner' ? 'dashboard' : 'public-home';
+    return window.location.pathname === '/admin' || window.location.pathname === '/owner'
+      ? 'dashboard'
+      : 'public-home';
   });
 
   const setActiveTab = useCallback((tab: string) => {
@@ -36,33 +31,37 @@ function App() {
     sessionStorage.setItem('activeTab_' + window.location.pathname, tab);
   }, []);
 
-  const roleMode = currentPath === '/owner' ? 'owner' : (currentPath === '/admin' ? 'admin' : 'public');
+  const roleMode =
+    currentPath === '/owner' ? 'owner' : currentPath === '/admin' ? 'admin' : 'public';
 
   // Auth State
-  const [isAdminAuth, setIsAdminAuth] = useState(() => sessionStorage.getItem('isAdminAuth') === 'true');
-  const [isOwnerAuth, setIsOwnerAuth] = useState(() => sessionStorage.getItem('isOwnerAuth') === 'true');
-  const [employeeRole, setEmployeeRole] = useState(() => sessionStorage.getItem('employeeRole') || '');
+  const [isAdminAuth, setIsAdminAuth] = useState(
+    () => sessionStorage.getItem('isAdminAuth') === 'true'
+  );
+  const [isOwnerAuth, setIsOwnerAuth] = useState(
+    () => sessionStorage.getItem('isOwnerAuth') === 'true'
+  );
+  const [employeeRole, setEmployeeRole] = useState(
+    () => sessionStorage.getItem('employeeRole') || ''
+  );
   const [username, setUsername] = useState('');
   const [passcode, setPasscode] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Set default active tabs on route load/change
-  useEffect(() => {
-    const saved = sessionStorage.getItem('activeTab_' + currentPath);
-    if (saved) {
-      setActiveTabState(saved);
-    } else {
-      if (currentPath === '/admin' || currentPath === '/owner') {
-        setActiveTabState('dashboard');
-      } else {
-        setActiveTabState('public-home');
-      }
-    }
-  }, [currentPath]);
-
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
+      const path = window.location.pathname;
+      setCurrentPath(path);
+      const saved = sessionStorage.getItem('activeTab_' + path);
+      if (saved) {
+        setActiveTabState(saved);
+      } else {
+        if (path === '/admin' || path === '/owner') {
+          setActiveTabState('dashboard');
+        } else {
+          setActiveTabState('public-home');
+        }
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -74,6 +73,18 @@ function App() {
     setErrorMsg('');
     setPasscode('');
     setUsername('');
+
+    // Update active tab for the path
+    const saved = sessionStorage.getItem('activeTab_' + path);
+    if (saved) {
+      setActiveTabState(saved);
+    } else {
+      if (path === '/admin' || path === '/owner') {
+        setActiveTabState('dashboard');
+      } else {
+        setActiveTabState('public-home');
+      }
+    }
   }, []);
 
   const handleLogin = async () => {
@@ -81,15 +92,15 @@ function App() {
       const response = await fetchWithTimeout(`${API_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password: passcode })
+        body: JSON.stringify({ username, password: passcode }),
       });
-      
+
       const data = await response.json();
       if (!response.ok) {
         setErrorMsg(data.error || 'Invalid credentials. Please try again.');
         return;
       }
-      
+
       const empRole = data.employee.role;
       if (empRole === 'OWNER') {
         setIsOwnerAuth(true);
@@ -119,7 +130,7 @@ function App() {
       } else {
         setErrorMsg('Unauthorized. You do not have permission to access the management portals.');
       }
-    } catch (error) {
+    } catch {
       setErrorMsg('Connection error. Is the backend server running?');
     }
   };
@@ -145,21 +156,36 @@ function App() {
   // Redirect and route guards
   useEffect(() => {
     if (currentPath === '/admin' && !isAdminAuth) {
-      navigateTo('/login');
+      Promise.resolve().then(() => navigateTo('/login'));
     } else if (currentPath === '/owner' && !isOwnerAuth) {
-      navigateTo('/login');
+      Promise.resolve().then(() => navigateTo('/login'));
     } else if (currentPath === '/login') {
       if (isOwnerAuth) {
-        navigateTo('/owner');
+        Promise.resolve().then(() => navigateTo('/owner'));
       } else if (isAdminAuth) {
-        navigateTo('/admin');
+        Promise.resolve().then(() => navigateTo('/admin'));
       }
     }
   }, [currentPath, isAdminAuth, isOwnerAuth, navigateTo]);
 
   // App Data State
-  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [selectedBranchState] = useState<string>('');
   const [isSeeding, setIsSeeding] = useState(false);
+
+  // Fetch branches with React Query
+  const { data: branchesData } = useQuery<Branch[]>({
+    queryKey: ['branches', selectedBranchState, employeeRole],
+    queryFn: async () => {
+      const res = await fetchWithTimeout(`${API_URL}/api/branches`);
+      if (!res.ok) throw new Error('Failed to fetch branches');
+      return res.json();
+    },
+  });
+
+  const branches = useMemo(() => branchesData || [], [branchesData]);
+
+  // Derive selectedBranch to avoid synchronous setState inside an effect
+  const selectedBranch = selectedBranchState || (branches.length > 0 ? branches[0].id : '');
 
   // Purge/clear cache when branch changes
   useEffect(() => {
@@ -167,25 +193,6 @@ function App() {
       queryClient.clear();
     }
   }, [selectedBranch, queryClient]);
-
-  // Fetch branches with React Query
-  const { data: branchesData } = useQuery<Branch[]>({
-    queryKey: ['branches', selectedBranch, employeeRole],
-    queryFn: async () => {
-      const res = await fetchWithTimeout(`${API_URL}/api/branches`);
-      if (!res.ok) throw new Error('Failed to fetch branches');
-      return res.json();
-    }
-  });
-
-  const branches = branchesData || [];
-
-  // Automatically select the first branch if none selected
-  useEffect(() => {
-    if (branches.length > 0 && !selectedBranch) {
-      setSelectedBranch(branches[0].id);
-    }
-  }, [branches, selectedBranch]);
 
   // Fetch Stats when Branch changes with React Query
   const { data: statsData } = useQuery<DashboardStats>({
@@ -204,14 +211,14 @@ function App() {
       if (!res.ok) throw new Error('Failed to fetch dashboard stats');
       return res.json();
     },
-    enabled: !!selectedBranch && (isAdminAuth || isOwnerAuth)
+    enabled: !!selectedBranch && (isAdminAuth || isOwnerAuth),
   });
 
   const stats = statsData || {
     appointmentsToday: 0,
     waitingQueueCount: 0,
     activeStylists: 0,
-    totalServices: 0
+    totalServices: 0,
   };
 
   // Live waitlist state
@@ -223,7 +230,7 @@ function App() {
       service: 'Gellack/Shellac/Gel polish',
       stylist: 'Sara Technician',
       checkInTime: '02:15 PM',
-      status: 'WAITING'
+      status: 'WAITING',
     },
     {
       id: '2',
@@ -232,16 +239,26 @@ function App() {
       service: 'Gel extensions',
       stylist: 'First Available Stylist',
       checkInTime: '02:30 PM',
-      status: 'WAITING'
-    }
+      status: 'WAITING',
+    },
   ]);
 
-  const handleUpdateWaitlistStatus = (id: string, newStatus: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED') => {
-    setWaitlist(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+  const handleUpdateWaitlistStatus = (
+    id: string,
+    newStatus: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED'
+  ) => {
+    setWaitlist((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+    );
   };
 
   // Handle walk-in checks from either Public or Receptionist portals
-  const handleWalkinSubmit = (entry: { firstName: string; phone: string; service: string; stylist?: string }) => {
+  const handleWalkinSubmit = (entry: {
+    firstName: string;
+    phone: string;
+    service: string;
+    stylist?: string;
+  }) => {
     const newEntry: WaitlistItem = {
       id: Date.now().toString(),
       firstName: entry.firstName,
@@ -249,14 +266,17 @@ function App() {
       service: entry.service,
       stylist: entry.stylist || 'First Available Stylist',
       checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'WAITING'
+      status: 'WAITING',
     };
-    setWaitlist(prev => [...prev, newEntry]);
+    setWaitlist((prev) => [...prev, newEntry]);
     if (currentPath === '/admin' || currentPath === '/owner') {
       showToast(`${entry.firstName} has been added to the live waiting queue.`, 'success');
       setActiveTab('waitlist');
     } else {
-      showToast(`Thank you, ${entry.firstName}! You have been added to our live waiting queue.`, 'success');
+      showToast(
+        `Thank you, ${entry.firstName}! You have been added to our live waiting queue.`,
+        'success'
+      );
       setActiveTab('public-home');
     }
   };
@@ -268,8 +288,8 @@ function App() {
       const data = await res.json();
       showToast(data.message, 'success');
       queryClient.invalidateQueries({ queryKey: ['branches'] });
-    } catch (e) {
-      showToast("Failed to seed initial data. Is backend server running?", 'error');
+    } catch {
+      showToast('Failed to seed initial data. Is backend server running?', 'error');
     } finally {
       setIsSeeding(false);
     }
@@ -278,7 +298,7 @@ function App() {
   // Rendering Routing Decision
   if (currentPath === '/login') {
     return (
-      <LoginPortal 
+      <LoginPortal
         currentPath={currentPath}
         username={username}
         setUsername={setUsername}
@@ -301,7 +321,7 @@ function App() {
 
   if (roleMode === 'public') {
     return (
-      <PublicPortal 
+      <PublicPortal
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         branches={branches}
@@ -312,12 +332,20 @@ function App() {
   }
 
   const sharedProps = {
-    activeTab, setActiveTab, employeeRole,
-    branches, selectedBranch, stats, waitlist,
-    handleUpdateWaitlistStatus, handleLogout, navigateTo,
-    isSeeding, handleSeedData,
+    activeTab,
+    setActiveTab,
+    employeeRole,
+    branches,
+    selectedBranch,
+    stats,
+    waitlist,
+    handleUpdateWaitlistStatus,
+    handleLogout,
+    navigateTo,
+    isSeeding,
+    handleSeedData,
     onWalkinSubmit: handleWalkinSubmit,
-    onEmployeeAdded: () => queryClient.invalidateQueries({ queryKey: ['branches'] })
+    onEmployeeAdded: () => queryClient.invalidateQueries({ queryKey: ['branches'] }),
   };
 
   if (roleMode === 'owner') {
