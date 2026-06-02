@@ -1,40 +1,43 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
 
 :root {
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif; /* Decorative display font — public headlines only */
+  --font-sans:
+    'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-display:
+    'Playfair Display', Georgia, 'Times New Roman', serif; /* Decorative display font — public headlines only */
   --font-serif: var(--font-sans); /* Legacy alias — maps to UI font */
-  
+
   /* Brand Color System (Derived from Logo) */
-  --bg-primary: #FAF9F6; /* Soft, warm off-white stone background */
-  --bg-secondary: #FFFFFF; /* Pure White component cards */
+  --bg-primary: #faf9f6; /* Soft, warm off-white stone background */
+  --bg-secondary: #ffffff; /* Pure White component cards */
   --bg-glass: rgba(255, 255, 255, 0.85); /* Premium glassmorphism overlay */
-  
-  --accent: #D14777; /* Primary desaturated rose pink (elegant luxury spa look) */
-  --accent-hover: #B5365E; /* Slightly darker rose pink for hover */
+
+  --accent: #d14777; /* Primary desaturated rose pink (elegant luxury spa look) */
+  --accent-hover: #b5365e; /* Slightly darker rose pink for hover */
   --accent-glow: rgba(209, 71, 119, 0.08); /* 8% opacity tint of desaturated pink */
-  
-  --accent-blue: #2563EB; /* Secondary Blue (The Logo Blue - Bright Royal Blue) */
-  --accent-blue-hover: #1D4ED8; /* Slightly darker royal blue for hover */
+
+  --accent-blue: #2563eb; /* Secondary Blue (The Logo Blue - Bright Royal Blue) */
+  --accent-blue-hover: #1d4ed8; /* Slightly darker royal blue for hover */
   --accent-blue-glow: rgba(37, 99, 235, 0.08); /* 8% opacity tint of blue */
-  
-  --text-primary: #0F172A; /* Text & Typography (The Logo Navy) */
+
+  --text-primary: #0f172a; /* Text & Typography (The Logo Navy) */
   --text-secondary: #475569; /* Lighter slate gray for secondary text and labels */
-  --border-color: #F1F5F9; /* Very subtle border (border-slate-100) */
-  --border-color-hover: #E2E8F0; /* Slightly darker border on hover */
-  
-  --success-green: #10B981; /* Success/Action (The Logo Green) */
-  
+  --border-color: #f1f5f9; /* Very subtle border (border-slate-100) */
+  --border-color-hover: #e2e8f0; /* Slightly darker border on hover */
+
+  --success-green: #10b981; /* Success/Action (The Logo Green) */
+
   /* Modern shadows */
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
-  
+
   --radius-sm: 6px;
   --radius-md: 8px; /* For Inputs & Dropdowns */
   --radius-lg: 16px; /* For Component Cards (rounded-xl/rounded-2xl) */
   --radius-full: 9999px;
-  
+
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -144,7 +147,7 @@ body {
 }
 
 .nav-link.active {
-  color: #FFFFFF;
+  color: #ffffff;
   background-color: var(--accent);
   box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15);
   font-weight: 600;
@@ -206,7 +209,9 @@ body {
 }
 
 /* Form controls */
-select, input, textarea {
+select,
+input,
+textarea {
   width: 100%;
   padding: 12px 16px;
   background-color: var(--bg-secondary);
@@ -228,7 +233,9 @@ select {
   padding-right: 40px;
 }
 
-select:focus, input:focus, textarea:focus {
+select:focus,
+input:focus,
+textarea:focus {
   outline: none;
   border-color: var(--accent-blue);
   box-shadow: 0 0 0 3px var(--accent-blue-glow);
@@ -236,14 +243,15 @@ select:focus, input:focus, textarea:focus {
 }
 
 /* Visually match native check inputs to the brand color */
-input[type="checkbox"], input[type="radio"] {
+input[type='checkbox'],
+input[type='radio'] {
   accent-color: var(--accent);
   cursor: pointer;
 }
 
 .btn-primary {
   background-color: var(--accent);
-  color: #FFFFFF;
+  color: #ffffff;
   border: none;
   padding: 12px 24px;
   font-weight: 500;
@@ -277,7 +285,7 @@ input[type="checkbox"], input[type="radio"] {
 /* Secondary Button - Ocean Teal */
 .btn-secondary {
   background-color: var(--accent-blue);
-  color: #FFFFFF;
+  color: #ffffff;
   border: none;
   padding: 12px 24px;
   font-weight: 500;
@@ -446,12 +454,12 @@ input[type="checkbox"], input[type="radio"] {
   text-transform: uppercase;
   letter-spacing: 0.15em;
   font-weight: 600;
-  color: #B5365E;
-  background-color: #FDF2F8;
+  color: #b5365e;
+  background-color: #fdf2f8;
   padding: 6px 14px;
   border-radius: var(--radius-full);
   display: inline-block;
-  border: 1px solid #FBCFE8;
+  border: 1px solid #fbcfe8;
 }
 
 /* Custom Grid components for items */
@@ -486,19 +494,19 @@ input[type="checkbox"], input[type="radio"] {
 }
 
 .status-badge.active {
-  background-color: #ECFDF5;
+  background-color: #ecfdf5;
   color: var(--success-green);
   border: 1px solid rgba(16, 185, 129, 0.15);
 }
 
 .status-badge.inactive {
-  background-color: #F3F4F6;
-  color: #4B5563;
+  background-color: #f3f4f6;
+  color: #4b5563;
 }
 
 .status-badge.pending {
-  background-color: #FEF3C7;
-  color: #D97706;
+  background-color: #fef3c7;
+  color: #d97706;
 }
 
 /* Empty State Cards */
@@ -736,7 +744,8 @@ input[type="checkbox"], input[type="radio"] {
 }
 
 @keyframes float-animation {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0) rotate(0deg);
   }
   50% {
@@ -857,10 +866,12 @@ input[type="checkbox"], input[type="radio"] {
   pointer-events: auto;
   min-width: 320px;
   max-width: 420px;
-  background-color: #FFFFFF;
+  background-color: #ffffff;
   color: var(--text-primary);
   border-radius: var(--radius-md);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--border-color);
   padding: 16px;
   display: flex;
@@ -886,13 +897,13 @@ input[type="checkbox"], input[type="radio"] {
 }
 
 .toast-icon-wrapper.success {
-  background-color: #DEF7EC;
-  color: #03543F;
+  background-color: #def7ec;
+  color: #03543f;
 }
 
 .toast-icon-wrapper.error {
-  background-color: #FDE8E8;
-  color: #9B1C1C;
+  background-color: #fde8e8;
+  color: #9b1c1c;
 }
 
 .toast-content {
@@ -946,7 +957,58 @@ input[type="checkbox"], input[type="radio"] {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
+/* Reusable DataTable Styles */
+.data-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  margin-top: 16px;
+}
 
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.data-table th {
+  padding: 12px 16px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.data-table td {
+  padding: 14px 16px;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table-row {
+  transition: var(--transition);
+}
+
+.data-table-row:hover {
+  background-color: rgba(190, 24, 93, 0.02);
+}
+
+.data-table-row.clickable {
+  cursor: pointer;
+}

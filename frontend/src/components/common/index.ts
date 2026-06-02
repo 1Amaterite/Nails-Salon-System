@@ -27,3 +27,12 @@ export type { FormErrorBannerProps } from './FormErrorBanner';
 
 export { InlineAlertBanner } from './InlineAlertBanner';
 export type { InlineAlertBannerProps } from './InlineAlertBanner';
+
+export { PageWrapper } from './PageWrapper';
+export type { PageWrapperProps } from './PageWrapper';
+
+export { DataTable } from './DataTable';
+export type { DataTableProps, ColumnDef } from './DataTable';
+
+export { BaseForm } from './BaseForm';
+export type { BaseFormProps } from './BaseForm';
