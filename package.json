@@ -13,6 +13,7 @@
     "db:down": "docker-compose down",
     "backend:dev": "npm run dev -w backend",
     "frontend:dev": "npm run dev -w frontend",
+    "build": "npm run build -w frontend",
     "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\""
   },
   "lint-staged": {
