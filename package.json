@@ -8,7 +8,7 @@
     "frontend"
   ],
   "scripts": {
-    "prepare": "husky",
+    "prepare": "node -e \"if (require('fs').existsSync('node_modules/husky')) { try { require('child_process').execSync('husky', { stdio: 'inherit' }) } catch (e) {} }\"",
     "db:up": "docker-compose up -d",
     "db:down": "docker-compose down",
     "backend:dev": "npm run dev -w backend",
