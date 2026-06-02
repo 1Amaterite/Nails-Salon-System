@@ -182,7 +182,7 @@ export function PublicPortal({
                 gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '20px',
                 borderTop: '1px solid var(--border-color)',
-                paddingTop: '32px',
+                paddingTop: '3px',
                 marginBottom: '20px',
               }}
             >
@@ -193,7 +193,7 @@ export function PublicPortal({
                     Find Us
                   </div>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    123 Luxury Way, Suite 100
+                    Citywalk Tarlac, Tarlac City, Philippines, 2300
                   </div>
                 </div>
               </div>
@@ -204,7 +204,7 @@ export function PublicPortal({
                     Salon Hours
                   </div>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    Mon - Sun (9:00 AM - 8:00 PM)
+                    Mon - Sun (10:00 AM - 7:00 PM)
                   </div>
                 </div>
               </div>
@@ -215,7 +215,7 @@ export function PublicPortal({
                     Contact Hotline
                   </div>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    nailsandlasheslane.2014@gmail.com
+                    09175659890
                   </div>
                 </div>
               </div>
@@ -539,10 +539,9 @@ export function PublicPortal({
 
         {/* Public Footer */}
         <footer className="public-footer">
-          <div>Nails & Lashes Lane &copy; 2026. All rights reserved.</div>
+          <div>Nails & Lashes Lane &copy; 2014. All rights reserved.</div>
           <div style={{ marginTop: '10px', fontSize: '12.5px' }}>
-            Contacts: nailsandlasheslane.2014@gmail.com | Hotline: (555) 0199 | Open Monday -
-            Sunday: 9:00 AM - 8:00 PM
+            Contacts: 09175659890 | Open Monday - Sunday: 10:00 AM - 7:00 PM
           </div>
           <div className="portal-links-row">
             <span className="portal-link" onClick={() => navigateTo('/login')}>
