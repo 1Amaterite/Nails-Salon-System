@@ -1,6 +1,14 @@
 import pino from 'pino';
 
-const isProduction = process.env.NODE_ENV === 'production';
+let canUsePretty = false;
+try {
+    require.resolve('pino-pretty');
+    canUsePretty = true;
+} catch (e) {
+    // pino-pretty not available in production
+}
+
+const isProduction = process.env.NODE_ENV === 'production' || !canUsePretty;
 
 /**
  * Application-wide logger.
