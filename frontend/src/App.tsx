@@ -187,13 +187,6 @@ function App() {
   // Derive selectedBranch to avoid synchronous setState inside an effect
   const selectedBranch = selectedBranchState || (branches.length > 0 ? branches[0].id : '');
 
-  // Purge/clear cache when branch changes
-  useEffect(() => {
-    if (selectedBranch) {
-      queryClient.clear();
-    }
-  }, [selectedBranch, queryClient]);
-
   // Fetch Stats when Branch changes with React Query
   const { data: statsData } = useQuery<DashboardStats>({
     queryKey: ['dashboardStats', selectedBranch, employeeRole],
