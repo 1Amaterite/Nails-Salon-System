@@ -12,6 +12,17 @@ interface ServicesTabProps {
   role?: string;
 }
 
+interface ServicePayload {
+  name: string;
+  price: number;
+  category: string;
+  durationMinutes: number;
+  bufferTime: number;
+  description?: string;
+  isActive?: boolean;
+  branchId?: string;
+}
+
 export function ServicesTab({ branches, role }: ServicesTabProps) {
   const { showToast, confirm } = useNotification();
   const queryClient = useQueryClient();
@@ -68,21 +79,11 @@ export function ServicesTab({ branches, role }: ServicesTabProps) {
   };
 
   const submitMutation = useMutation({
-    mutationFn: async ({
-      isEdit,
-      payload,
-    }: {
-      isEdit: boolean;
-      payload: Omit<Service, 'id' | 'price'> & {
-        price: number;
-        branchId?: string;
-        isActive?: boolean;
-      };
-    }) => {
+    mutationFn: async ({ isEdit, payload }: { isEdit: boolean; payload: ServicePayload }) => {
       const token = getAuthToken();
       const API_URL = getApiUrl();
       const url = isEdit
-        ? `${API_URL}/api/services/${editingService.id}`
+        ? `${API_URL}/api/services/${editingService?.id}`
         : `${API_URL}/api/services`;
       const method = isEdit ? 'PUT' : 'POST';
 
@@ -155,11 +156,7 @@ export function ServicesTab({ branches, role }: ServicesTabProps) {
       return;
     }
 
-    const payload: Omit<Service, 'id' | 'price'> & {
-      price: number;
-      branchId?: string;
-      isActive?: boolean;
-    } = {
+    const payload: ServicePayload = {
       name: formData.name.trim(),
       description: formData.description.trim() || undefined,
       price: priceNum,
