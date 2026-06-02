@@ -553,12 +553,103 @@ app.delete('/api/employees/:id', verifyJWT, async (req: CustomRequest, res: Resp
         }
 
         await prisma.employee.delete({ where: { id } });
-
         res.json({ message: 'Employee deleted successfully.' });
     } catch (error) {
         next(error);
     }
 });
+
+// ─── POST: Create Service ─────────────────────────────────────────────────────
+
+app.post('/api/services', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { name, description, durationMinutes, bufferTime, price, category, branchId } = req.body;
+    const creatorRole = req.user.role;
+
+    if (creatorRole !== 'ADMIN' && creatorRole !== 'OWNER') {
+        return res.status(403).json({ error: 'Access denied. Admins or owners only.' });
+    }
+
+    if (!name || price === undefined || !category || !durationMinutes || !branchId) {
+        return res.status(400).json({ error: 'Name, price, category, duration, and branchId are required.' });
+    }
+
+    try {
+        const service = await prisma.service.create({
+            data: {
+                name,
+                description,
+                durationMinutes: parseInt(durationMinutes, 10),
+                bufferTime: bufferTime ? parseInt(bufferTime, 10) : 5,
+                price: parseFloat(price),
+                category,
+                branchId,
+            },
+        });
+        res.status(201).json(service);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ─── PUT: Update Service ──────────────────────────────────────────────────────
+
+app.put('/api/services/:id', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { name, description, durationMinutes, bufferTime, price, category, isActive } = req.body;
+    const creatorRole = req.user.role;
+
+    if (creatorRole !== 'ADMIN' && creatorRole !== 'OWNER') {
+        return res.status(403).json({ error: 'Access denied. Admins or owners only.' });
+    }
+
+    try {
+        const service = await prisma.service.findUnique({ where: { id } });
+        if (!service) {
+            return res.status(404).json({ error: 'Service not found.' });
+        }
+
+        const updateData: any = {};
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+        if (durationMinutes !== undefined) updateData.durationMinutes = parseInt(durationMinutes, 10);
+        if (bufferTime !== undefined) updateData.bufferTime = parseInt(bufferTime, 10);
+        if (price !== undefined) updateData.price = parseFloat(price);
+        if (category !== undefined) updateData.category = category;
+        if (isActive !== undefined) updateData.isActive = isActive;
+
+        const updatedService = await prisma.service.update({
+            where: { id },
+            data: updateData,
+        });
+        res.json(updatedService);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ─── DELETE: Delete Service ───────────────────────────────────────────────────
+
+app.delete('/api/services/:id', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const creatorRole = req.user.role;
+
+    if (creatorRole !== 'ADMIN' && creatorRole !== 'OWNER') {
+        return res.status(403).json({ error: 'Access denied. Admins or owners only.' });
+    }
+
+    try {
+        const service = await prisma.service.findUnique({ where: { id } });
+        if (!service) {
+            return res.status(404).json({ error: 'Service not found.' });
+        }
+
+        await prisma.service.delete({ where: { id } });
+        res.json({ message: 'Service deleted successfully.' });
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 // ─── Startup Helpers ──────────────────────────────────────────────────────────
 

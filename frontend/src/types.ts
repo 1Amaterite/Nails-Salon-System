@@ -25,6 +25,9 @@ export interface Service {
   price: string;
   category?: string | null;
   durationMinutes: number;
+  bufferTime: number;
+  isActive: boolean;
+  description?: string | null;
 }
 
 export interface Branch {

@@ -384,7 +384,7 @@ export function OwnerDashboard({
         )}
         {activeTab === 'inventory' && <InventoryTab />}
         {activeTab === 'clients' && <ClientsTab />}
-        {activeTab === 'services' && <ServicesTab branches={branches} />}
+        {activeTab === 'services' && <ServicesTab branches={branches} role={employeeRole} />}
         {activeTab === 'analytics' && <FinancialsTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>

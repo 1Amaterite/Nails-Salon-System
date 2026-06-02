@@ -280,7 +280,7 @@ export function PublicPortal({
                           fontFamily: 'var(--font-serif)',
                         }}
                       >
-                        ${parseFloat(s.price).toFixed(2)}
+                        ₱{parseFloat(s.price).toFixed(2)}
                       </span>
                     </div>
                     <div
@@ -369,7 +369,7 @@ export function PublicPortal({
                         fontFamily: 'var(--font-serif)',
                       }}
                     >
-                      $45.00
+                      ₱45.00
                     </span>
                   </div>
                   <p

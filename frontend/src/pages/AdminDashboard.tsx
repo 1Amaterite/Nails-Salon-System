@@ -377,7 +377,7 @@ export function AdminDashboard({
         )}
         {activeTab === 'inventory' && <InventoryTab />}
         {activeTab === 'clients' && <ClientsTab />}
-        {activeTab === 'services' && <ServicesTab branches={branches} />}
+        {activeTab === 'services' && <ServicesTab branches={branches} role={employeeRole} />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
     </div>
