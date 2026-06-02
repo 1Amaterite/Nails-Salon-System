@@ -51,6 +51,7 @@ export interface Branch {
   email?: string | null;
   employees?: Employee[];
   services?: Service[];
+  inventoryItems?: InventoryItem[];
 }
 
 export interface WaitlistItem {
@@ -68,4 +69,23 @@ export interface DashboardStats {
   waitingQueueCount: number;
   activeStylists: number;
   totalServices: number;
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  stockQuantity: number;
+  reorderLevel: number;
+  cost: string | number;
+  branchId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface InventoryItemPayload {
+  name: string;
+  quantity: number;
+  reorderLevel: number;
+  costPrice: number;
+  branchId?: string;
 }

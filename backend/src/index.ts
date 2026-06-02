@@ -176,6 +176,15 @@ app.post('/api/seed-initial-data', async (req: Request, res: Response, next: Nex
                 ],
             });
 
+            // Create Default Inventory Items
+            await prisma.item.createMany({
+                data: [
+                    { name: 'Acetone 1L', stockQuantity: 15, reorderLevel: 5, cost: 250.0, branchId: branch.id },
+                    { name: 'Red Gel Polish', stockQuantity: 8, reorderLevel: 10, cost: 180.0, branchId: branch.id },
+                    { name: 'Cotton Pads (Pack of 100)', stockQuantity: 3, reorderLevel: 5, cost: 95.0, branchId: branch.id },
+                ],
+            });
+
             const ownerPasswordHash = await bcrypt.hash('owner123', 10);
             const adminPasswordHash = await bcrypt.hash('admin123', 10);
 
@@ -680,6 +689,203 @@ app.delete('/api/services/:id', verifyJWT, async (req: CustomRequest, res: Respo
 
         await prisma.service.delete({ where: { id } });
         res.json({ message: 'Service deleted successfully.' });
+    } catch (error) {
+        next(error);
+    }
+});
+
+
+// ─── GET: All Inventory Items for a Branch ────────────────────────────────────
+
+app.get('/api/branches/:branchId/inventory', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { branchId } = req.params;
+    const creatorRole = req.user.role;
+    const creatorBranchId = req.user.branchId;
+
+    if (creatorRole === 'ADMIN' && branchId !== creatorBranchId) {
+        return res.status(403).json({ error: "Access denied. You can only access your own branch's inventory." });
+    }
+
+    try {
+        const inventory = await prisma.item.findMany({
+            where: { branchId },
+            orderBy: { name: 'asc' },
+        });
+        res.json(inventory);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ─── POST: Create Inventory Item ──────────────────────────────────────────────
+
+app.post('/api/inventory', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { name, quantity, reorderLevel, costPrice, branchId } = req.body;
+    const creatorRole = req.user.role;
+    const creatorBranchId = req.user.branchId;
+
+    if (creatorRole !== 'ADMIN' && creatorRole !== 'OWNER') {
+        return res.status(403).json({ error: 'Access denied. Admins or owners only.' });
+    }
+
+    const targetBranchId = branchId || creatorBranchId;
+    if (!targetBranchId) {
+        return res.status(400).json({ error: 'Branch ID is required.' });
+    }
+
+    if (creatorRole === 'ADMIN' && targetBranchId !== creatorBranchId) {
+        return res.status(403).json({ error: 'Access denied. You can only add inventory to your own branch.' });
+    }
+
+    if (!name || quantity === undefined || reorderLevel === undefined || costPrice === undefined) {
+        return res.status(400).json({ error: 'Name, quantity, reorderLevel, and costPrice are required.' });
+    }
+
+    const parsedQuantity = parseInt(quantity, 10);
+    const parsedReorderLevel = parseInt(reorderLevel, 10);
+    const parsedCostPrice = parseFloat(costPrice);
+
+    if (isNaN(parsedQuantity) || parsedQuantity < 0) {
+        return res.status(400).json({ error: 'Quantity must be a non-negative integer.' });
+    }
+    if (isNaN(parsedReorderLevel) || parsedReorderLevel < 0) {
+        return res.status(400).json({ error: 'Reorder level must be a non-negative integer.' });
+    }
+    if (isNaN(parsedCostPrice) || parsedCostPrice < 0) {
+        return res.status(400).json({ error: 'Cost price must be a non-negative number.' });
+    }
+
+    try {
+        // Case-insensitive uniqueness check for the item name in the branch
+        const existingItem = await prisma.item.findFirst({
+            where: {
+                name: {
+                    equals: name.trim(),
+                    mode: 'insensitive',
+                },
+                branchId: targetBranchId,
+            },
+        });
+        if (existingItem) {
+            return res.status(400).json({ error: 'An inventory item with this name already exists in this branch.' });
+        }
+
+        const newItem = await prisma.item.create({
+            data: {
+                name: name.trim(),
+                stockQuantity: parsedQuantity,
+                reorderLevel: parsedReorderLevel,
+                cost: parsedCostPrice,
+                branchId: targetBranchId,
+            },
+        });
+        res.status(201).json(newItem);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ─── PUT: Update Inventory Item ───────────────────────────────────────────────
+
+app.put('/api/inventory/:id', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { name, quantity, reorderLevel, costPrice } = req.body;
+    const creatorRole = req.user.role;
+    const creatorBranchId = req.user.branchId;
+
+    if (creatorRole !== 'ADMIN' && creatorRole !== 'OWNER') {
+        return res.status(403).json({ error: 'Access denied. Admins or owners only.' });
+    }
+
+    try {
+        const item = await prisma.item.findUnique({ where: { id } });
+        if (!item) {
+            return res.status(404).json({ error: 'Inventory item not found.' });
+        }
+
+        if (creatorRole === 'ADMIN' && item.branchId !== creatorBranchId) {
+            return res.status(403).json({ error: "Access denied. You cannot edit another branch's inventory item." });
+        }
+
+        const updateData: any = {};
+        
+        if (name !== undefined) {
+            const trimmedName = name.trim();
+            if (trimmedName.toLowerCase() !== item.name.toLowerCase()) {
+                const existingItem = await prisma.item.findFirst({
+                    where: {
+                        name: {
+                            equals: trimmedName,
+                            mode: 'insensitive',
+                        },
+                        branchId: item.branchId,
+                        id: { not: id },
+                    },
+                });
+                if (existingItem) {
+                    return res.status(400).json({ error: 'An inventory item with this name already exists in this branch.' });
+                }
+            }
+            updateData.name = trimmedName;
+        }
+
+        if (quantity !== undefined) {
+            const parsedQuantity = parseInt(quantity, 10);
+            if (isNaN(parsedQuantity) || parsedQuantity < 0) {
+                return res.status(400).json({ error: 'Quantity must be a non-negative integer.' });
+            }
+            updateData.stockQuantity = parsedQuantity;
+        }
+
+        if (reorderLevel !== undefined) {
+            const parsedReorderLevel = parseInt(reorderLevel, 10);
+            if (isNaN(parsedReorderLevel) || parsedReorderLevel < 0) {
+                return res.status(400).json({ error: 'Reorder level must be a non-negative integer.' });
+            }
+            updateData.reorderLevel = parsedReorderLevel;
+        }
+
+        if (costPrice !== undefined) {
+            const parsedCostPrice = parseFloat(costPrice);
+            if (isNaN(parsedCostPrice) || parsedCostPrice < 0) {
+                return res.status(400).json({ error: 'Cost price must be a non-negative number.' });
+            }
+            updateData.cost = parsedCostPrice;
+        }
+
+        const updatedItem = await prisma.item.update({
+            where: { id },
+            data: updateData,
+        });
+        res.json(updatedItem);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ─── DELETE: Delete Inventory Item ────────────────────────────────────────────
+
+app.delete('/api/inventory/:id', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const creatorRole = req.user.role;
+    const creatorBranchId = req.user.branchId;
+
+    if (creatorRole !== 'ADMIN' && creatorRole !== 'OWNER') {
+        return res.status(403).json({ error: 'Access denied. Admins or owners only.' });
+    }
+
+    try {
+        const item = await prisma.item.findUnique({ where: { id } });
+        if (!item) {
+            return res.status(404).json({ error: 'Inventory item not found.' });
+        }
+
+        if (creatorRole === 'ADMIN' && item.branchId !== creatorBranchId) {
+            return res.status(403).json({ error: "Access denied. You cannot delete another branch's inventory item." });
+        }
+
+        await prisma.item.delete({ where: { id } });
+        res.json({ message: 'Inventory item deleted successfully.' });
     } catch (error) {
         next(error);
     }

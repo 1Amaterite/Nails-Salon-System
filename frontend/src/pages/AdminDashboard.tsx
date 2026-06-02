@@ -375,7 +375,9 @@ export function AdminDashboard({
             setIsDirty={setIsScheduleDirty}
           />
         )}
-        {activeTab === 'inventory' && <InventoryTab />}
+        {activeTab === 'inventory' && (
+          <InventoryTab selectedBranch={selectedBranch} employeeRole={employeeRole} />
+        )}
         {activeTab === 'clients' && <ClientsTab />}
         {activeTab === 'services' && <ServicesTab branches={branches} role={employeeRole} />}
         {activeTab === 'settings' && <SettingsTab />}
