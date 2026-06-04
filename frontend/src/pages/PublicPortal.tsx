@@ -14,7 +14,7 @@ interface PublicPortalProps {
   setActiveTab: (tab: string) => void;
   branches: Branch[];
   navigateTo: (path: string) => void;
-  onPublicWalkinSubmit: (entry: { firstName: string; phone: string; service: string }) => void;
+  onPublicWalkinSubmit: (entry: { firstName: string; phone: string; serviceId: string }) => void;
 }
 
 export function PublicPortal({
@@ -25,20 +25,29 @@ export function PublicPortal({
   onPublicWalkinSubmit,
 }: PublicPortalProps) {
   const { showToast } = useNotification();
+
+  const activeServices = React.useMemo(() => {
+    return (branches[0]?.services || []).filter((s) => s.isActive);
+  }, [branches]);
+
   const [publicWalkinName, setPublicWalkinName] = useState('');
   const [publicWalkinPhone, setPublicWalkinPhone] = useState('');
-  const [publicWalkinService, setPublicWalkinService] = useState('Gel Manicure');
+  const [publicWalkinServiceId, setPublicWalkinServiceId] = useState('');
 
   const handleWalkinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const serviceId = publicWalkinServiceId || activeServices[0]?.id;
+    if (!serviceId) return;
+
     onPublicWalkinSubmit({
       firstName: publicWalkinName,
       phone: publicWalkinPhone,
-      service: publicWalkinService,
+      serviceId,
     });
+
     setPublicWalkinName('');
     setPublicWalkinPhone('');
-    setPublicWalkinService('Gel Manicure');
+    setPublicWalkinServiceId('');
   };
   return (
     <div className="app-container" style={{ display: 'block' }}>
@@ -515,15 +524,18 @@ export function PublicPortal({
               <div className="form-group">
                 <label className="form-label">Requested Treatment</label>
                 <select
-                  value={publicWalkinService}
-                  onChange={(e) => setPublicWalkinService(e.target.value)}
+                  value={publicWalkinServiceId || activeServices[0]?.id || ''}
+                  onChange={(e) => setPublicWalkinServiceId(e.target.value)}
+                  required
                 >
-                  <option value="Gel Manicure">Gel Manicure</option>
-                  <option value="Gellack/Shellac/Gel polish">Gellack/Shellac/Gel polish</option>
-                  <option value="Gel extensions">Gel extensions</option>
-                  <option value="Gel on natural nails">Gel on natural nails</option>
-                  <option value="Luxury Pedicure">Luxury Pedicure</option>
-                  <option value="Volume Lash Extensions">Volume Lash Extensions</option>
+                  <option value="" disabled>
+                    Select a treatment...
+                  </option>
+                  {activeServices.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} - ₱{parseFloat(s.price).toFixed(2)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <button

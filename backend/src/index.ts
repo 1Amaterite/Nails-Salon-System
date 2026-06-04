@@ -892,6 +892,212 @@ app.delete('/api/inventory/:id', verifyJWT, async (req: CustomRequest, res: Resp
 });
 
 
+// ─── GET: Live Waitlist Queue for a Branch ────────────────────────────────────
+
+app.get('/api/branches/:branchId/waitlist', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { branchId } = req.params;
+    const creatorRole = req.user.role;
+    const creatorBranchId = req.user.branchId;
+
+    if (creatorRole === 'ADMIN' && branchId !== creatorBranchId) {
+        return res.status(403).json({ error: "Access denied. You can only access your own branch's waitlist." });
+    }
+
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const waitlist = await prisma.appointment.findMany({
+            where: {
+                branchId,
+                status: { in: ['WAITING', 'IN_PROGRESS'] },
+                appointmentDate: {
+                    gte: today
+                }
+            },
+            include: {
+                client: true,
+                employee: true,
+                services: {
+                    include: {
+                        service: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'asc'
+            }
+        });
+
+        const mappedWaitlist = waitlist.map((appt) => {
+            const serviceNames = appt.services.map((s) => s.service.name).join(', ') || 'N/A';
+            return {
+                id: appt.id,
+                firstName: appt.client?.firstName || 'Walk-in',
+                phone: appt.client?.phoneNumber || '',
+                service: serviceNames,
+                stylist: appt.employee?.name || 'First Available Stylist',
+                checkInTime: appt.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: appt.status,
+            };
+        });
+
+        res.json(mappedWaitlist);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ─── POST: Register Walk-In Guest in Queue ────────────────────────────────────
+
+app.post('/api/branches/:branchId/waitlist', async (req: Request, res: Response, next: NextFunction) => {
+    const { branchId } = req.params;
+    const { firstName, phone, serviceId, employeeId } = req.body;
+
+    if (!firstName || !phone || !serviceId) {
+        return res.status(400).json({ error: 'First name, phone number, and service ID are required.' });
+    }
+
+    try {
+        // Ensure branch exists
+        const branchExists = await prisma.branch.findUnique({ where: { id: branchId } });
+        if (!branchExists) {
+            return res.status(404).json({ error: 'Branch not found.' });
+        }
+
+        // Ensure service exists
+        const serviceExists = await prisma.service.findFirst({
+            where: { id: serviceId, branchId }
+        });
+        if (!serviceExists) {
+            return res.status(404).json({ error: 'Service not found in this branch.' });
+        }
+
+        // Ensure employee exists if specified
+        if (employeeId) {
+            const employeeExists = await prisma.employee.findFirst({
+                where: { id: employeeId, branchId, isActive: true }
+            });
+            if (!employeeExists) {
+                return res.status(404).json({ error: 'Stylist not found or inactive in this branch.' });
+            }
+        }
+
+        // Database transaction to create client and appointment
+        const result = await prisma.$transaction(async (tx) => {
+            const cleanPhone = phone.trim();
+            const client = await tx.client.upsert({
+                where: { phoneNumber: cleanPhone },
+                update: { firstName: firstName.trim() },
+                create: {
+                    firstName: firstName.trim(),
+                    lastName: '',
+                    phoneNumber: cleanPhone
+                }
+            });
+
+            const appointment = await tx.appointment.create({
+                data: {
+                    branchId,
+                    clientId: client.id,
+                    employeeId: employeeId || null,
+                    appointmentDate: new Date(),
+                    status: 'WAITING',
+                    services: {
+                        create: {
+                            serviceId: serviceId
+                        }
+                    }
+                },
+                include: {
+                    client: true,
+                    employee: true,
+                    services: {
+                        include: {
+                            service: true
+                        }
+                    }
+                }
+            });
+
+            return appointment;
+        });
+
+        const serviceNames = result.services.map((s) => s.service.name).join(', ') || 'N/A';
+        const responseData = {
+            id: result.id,
+            firstName: result.client.firstName,
+            phone: result.client.phoneNumber || '',
+            service: serviceNames,
+            stylist: result.employee ? result.employee.name : 'First Available Stylist',
+            checkInTime: result.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: result.status,
+        };
+
+        res.status(201).json(responseData);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ─── PUT: Update Waitlist Status ──────────────────────────────────────────────
+
+app.put('/api/waitlist/:id/status', verifyJWT, async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    const creatorRole = req.user.role;
+    const creatorBranchId = req.user.branchId;
+
+    if (!status || !['WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(status)) {
+        return res.status(400).json({ error: 'Valid status is required.' });
+    }
+
+    try {
+        const appointment = await prisma.appointment.findUnique({
+            where: { id },
+            include: { branch: true }
+        });
+
+        if (!appointment) {
+            return res.status(404).json({ error: 'Waitlist entry not found.' });
+        }
+
+        if (creatorRole === 'ADMIN' && appointment.branchId !== creatorBranchId) {
+            return res.status(403).json({ error: 'Access denied. You cannot modify queue entries of another branch.' });
+        }
+
+        const updated = await prisma.appointment.update({
+            where: { id },
+            data: { status },
+            include: {
+                client: true,
+                employee: true,
+                services: {
+                    include: {
+                        service: true
+                    }
+                }
+            }
+        });
+
+        const serviceNames = updated.services.map((s) => s.service.name).join(', ') || 'N/A';
+        const responseData = {
+            id: updated.id,
+            firstName: updated.client.firstName,
+            phone: updated.client.phoneNumber || '',
+            service: serviceNames,
+            stylist: updated.employee ? updated.employee.name : 'First Available Stylist',
+            checkInTime: updated.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: updated.status,
+        };
+
+        res.json(responseData);
+    } catch (error) {
+        next(error);
+    }
+});
+
+
 // ─── Startup Helpers ──────────────────────────────────────────────────────────
 
 async function cleanupOwnerSchedules() {

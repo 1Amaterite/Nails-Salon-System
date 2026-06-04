@@ -51,8 +51,8 @@ interface OwnerDashboardProps {
   onWalkinSubmit: (entry: {
     firstName: string;
     phone: string;
-    service: string;
-    stylist: string;
+    serviceId: string;
+    employeeId?: string;
   }) => void;
   onEmployeeAdded: () => void;
 }

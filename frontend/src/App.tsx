@@ -7,7 +7,7 @@ import { OwnerDashboard } from './pages/OwnerDashboard';
 import { useNotification } from './context/NotificationContext';
 import { fetchWithTimeout } from './utils/api';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { getApiUrl } from './utils/getApiUrl';
 const API_URL = getApiUrl();
@@ -214,64 +214,121 @@ function App() {
     totalServices: 0,
   };
 
-  // Live waitlist state
-  const [waitlist, setWaitlist] = useState<WaitlistItem[]>([
-    {
-      id: '1',
-      firstName: 'Emily',
-      phone: '(555) 123-4567',
-      service: 'Gellack/Shellac/Gel polish',
-      stylist: 'Sara Technician',
-      checkInTime: '02:15 PM',
-      status: 'WAITING',
+  // Fetch waitlist with React Query
+  const { data: waitlistData } = useQuery<WaitlistItem[]>({
+    queryKey: ['waitlist', selectedBranch, employeeRole],
+    queryFn: async () => {
+      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/waitlist`, {
+        headers,
+      });
+      if (res.status === 401 || res.status === 403) {
+        handleLogout();
+        throw new Error('Session expired or unauthorized.');
+      }
+      if (!res.ok) throw new Error('Failed to fetch waitlist');
+      return res.json();
     },
-    {
-      id: '2',
-      firstName: 'Sophia',
-      phone: '(555) 987-6543',
-      service: 'Gel extensions',
-      stylist: 'First Available Stylist',
-      checkInTime: '02:30 PM',
-      status: 'WAITING',
+    enabled: !!selectedBranch && (isAdminAuth || isOwnerAuth),
+    refetchInterval: 10000, // Poll every 10 seconds for real-time live queue updates
+  });
+
+  const waitlist = useMemo(() => waitlistData || [], [waitlistData]);
+
+  // Mutation to add a walk-in
+  const addWalkinMutation = useMutation({
+    mutationFn: async (entry: {
+      firstName: string;
+      phone: string;
+      serviceId: string;
+      employeeId?: string;
+    }) => {
+      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to submit walk-in.');
+      }
+      return res.json();
     },
-  ]);
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['waitlist', selectedBranch] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
+
+      if (currentPath === '/admin' || currentPath === '/owner') {
+        showToast(`${data.firstName} has been added to the live waiting queue.`, 'success');
+        setActiveTab('waitlist');
+      } else {
+        showToast(
+          `Thank you, ${data.firstName}! You have been added to our live waiting queue.`,
+          'success'
+        );
+        setActiveTab('public-home');
+      }
+    },
+    onError: (error: Error) => {
+      showToast(error.message, 'error');
+    },
+  });
+
+  const handleWalkinSubmit = (entry: {
+    firstName: string;
+    phone: string;
+    serviceId: string;
+    employeeId?: string;
+  }) => {
+    addWalkinMutation.mutate(entry);
+  };
+
+  // Mutation to update waitlist status
+  const updateWaitlistStatusMutation = useMutation({
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED';
+    }) => {
+      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetchWithTimeout(`${API_URL}/api/waitlist/${id}/status`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to update waitlist status.');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['waitlist', selectedBranch] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
+      showToast(`Status updated successfully to ${data.status.replace('_', ' ')}.`, 'success');
+    },
+    onError: (error: Error) => {
+      showToast(error.message, 'error');
+    },
+  });
 
   const handleUpdateWaitlistStatus = (
     id: string,
     newStatus: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED'
   ) => {
-    setWaitlist((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
-    );
-  };
-
-  // Handle walk-in checks from either Public or Receptionist portals
-  const handleWalkinSubmit = (entry: {
-    firstName: string;
-    phone: string;
-    service: string;
-    stylist?: string;
-  }) => {
-    const newEntry: WaitlistItem = {
-      id: Date.now().toString(),
-      firstName: entry.firstName,
-      phone: entry.phone,
-      service: entry.service,
-      stylist: entry.stylist || 'First Available Stylist',
-      checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'WAITING',
-    };
-    setWaitlist((prev) => [...prev, newEntry]);
-    if (currentPath === '/admin' || currentPath === '/owner') {
-      showToast(`${entry.firstName} has been added to the live waiting queue.`, 'success');
-      setActiveTab('waitlist');
-    } else {
-      showToast(
-        `Thank you, ${entry.firstName}! You have been added to our live waiting queue.`,
-        'success'
-      );
-      setActiveTab('public-home');
-    }
+    updateWaitlistStatusMutation.mutate({ id, status: newStatus });
   };
 
   const handleSeedData = async () => {
