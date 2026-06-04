@@ -1,0 +1,382 @@
+import prisma from '../config/prisma';
+import { addMinutesToTime } from '../utils/time';
+import { AppointmentStatus, Prisma } from '@prisma/client';
+
+// ─── Shared Appointment Include ───────────────────────────────────────────────
+// Reused in all queries to avoid duplicating the deep-include shape.
+const APPOINTMENT_INCLUDE = {
+    client: true,
+    employee: true,
+    services: { include: { service: true } },
+} as const;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface WaitlistEntry {
+    firstName: string;
+    phone: string;
+    serviceId: string;
+    employeeId?: string;
+}
+
+interface BookAppointmentPayload {
+    firstName: string;
+    lastName?: string;
+    phone: string;
+    serviceId: string;
+    employeeId?: string;
+    date: string;
+    startTime: string;
+}
+
+// ─── Overlap Query Helper ─────────────────────────────────────────────────────
+
+function buildOverlapWhere(
+    employeeId: string,
+    appointmentDate: Date,
+    startTime: string,
+    endTime: string
+): Prisma.AppointmentWhereInput {
+    return {
+        employeeId,
+        appointmentDate,
+        status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] as AppointmentStatus[] },
+        OR: [
+            { startTime: { lte: startTime }, endTime: { gt: startTime } },
+            { startTime: { lt: endTime }, endTime: { gte: endTime } },
+            { startTime: { gte: startTime }, endTime: { lte: endTime } },
+        ],
+    };
+}
+
+// ─── Waitlist ─────────────────────────────────────────────────────────────────
+
+/**
+ * Returns today's WAITING and IN_PROGRESS queue entries for a branch.
+ */
+export async function getWaitlist(branchId: string) {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0); // Use UTC consistently with the rest of the service
+
+    const waitlist = await prisma.appointment.findMany({
+        where: {
+            branchId,
+            status: { in: ['WAITING', 'IN_PROGRESS'] },
+            appointmentDate: { gte: today },
+        },
+        include: APPOINTMENT_INCLUDE,
+        orderBy: { createdAt: 'asc' },
+    });
+
+    return waitlist.map((appt) => ({
+        id: appt.id,
+        firstName: appt.client?.firstName ?? 'Walk-in',
+        phone: appt.client?.phoneNumber ?? '',
+        service: appt.services.map((s) => s.service.name).join(', ') || 'N/A',
+        stylist: appt.employee?.name ?? 'First Available Stylist',
+        checkInTime: appt.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: appt.status,
+    }));
+}
+
+/**
+ * Registers a walk-in guest into the queue. Validates branch, service,
+ * and optionally stylist before creating the appointment record.
+ */
+export async function addToWaitlist(branchId: string, payload: WaitlistEntry) {
+    const { firstName, phone, serviceId, employeeId } = payload;
+
+    const branchExists = await prisma.branch.findUnique({ where: { id: branchId } });
+    if (!branchExists) throw Object.assign(new Error('Branch not found.'), { status: 404 });
+
+    const serviceExists = await prisma.service.findFirst({ where: { id: serviceId, branchId } });
+    if (!serviceExists) throw Object.assign(new Error('Service not found in this branch.'), { status: 404 });
+
+    if (employeeId) {
+        const emp = await prisma.employee.findFirst({ where: { id: employeeId, branchId, isActive: true } });
+        if (!emp) throw Object.assign(new Error('Stylist not found or inactive in this branch.'), { status: 404 });
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const cleanPhone = phone.trim();
+        const client = await tx.client.upsert({
+            where: { phoneNumber: cleanPhone },
+            update: { firstName: firstName.trim() },
+            create: { firstName: firstName.trim(), lastName: '', phoneNumber: cleanPhone },
+        });
+
+        const appointment = await tx.appointment.create({
+            data: {
+                branchId,
+                clientId: client.id,
+                employeeId: employeeId ?? null,
+                appointmentDate: new Date(),
+                status: 'WAITING',
+                services: { create: { serviceId } },
+            },
+            include: APPOINTMENT_INCLUDE,
+        });
+
+        return {
+            id: appointment.id,
+            firstName: appointment.client.firstName,
+            phone: appointment.client.phoneNumber ?? '',
+            service: appointment.services.map((s) => s.service.name).join(', ') || 'N/A',
+            stylist: appointment.employee?.name ?? 'First Available Stylist',
+            checkInTime: appointment.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: appointment.status,
+        };
+    });
+}
+
+/**
+ * Updates the status of a waitlist entry. Enforces branch-scoped access
+ * for ADMIN callers.
+ */
+export async function updateWaitlistStatus(
+    id: string,
+    status: string,
+    callerRole: string,
+    callerBranchId: string
+) {
+    const appointment = await prisma.appointment.findUnique({
+        where: { id },
+        include: { branch: true },
+    });
+
+    if (!appointment) throw Object.assign(new Error('Waitlist entry not found.'), { status: 404 });
+
+    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+        throw Object.assign(
+            new Error('Access denied. You cannot modify queue entries of another branch.'),
+            { status: 403 }
+        );
+    }
+
+    const updated = await prisma.appointment.update({
+        where: { id },
+        data: { status: status as AppointmentStatus },
+        include: APPOINTMENT_INCLUDE,
+    });
+
+    return {
+        id: updated.id,
+        firstName: updated.client.firstName,
+        phone: updated.client.phoneNumber ?? '',
+        service: updated.services.map((s) => s.service.name).join(', ') || 'N/A',
+        stylist: updated.employee?.name ?? 'First Available Stylist',
+        checkInTime: updated.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: updated.status,
+    };
+}
+
+// ─── Scheduled Appointments ───────────────────────────────────────────────────
+
+/**
+ * Returns all scheduled (non-walk-in) appointments for a branch,
+ * with optional date and status filters.
+ */
+export async function getAppointments(branchId: string, date?: string, status?: string) {
+    const where: Record<string, unknown> = {
+        branchId,
+        startTime: { not: null }, // Distinguishes scheduled from walk-ins
+    };
+
+    if (date) where.appointmentDate = new Date(`${date}T00:00:00.000Z`);
+    if (status) where.status = status;
+
+    return prisma.appointment.findMany({
+        where,
+        include: APPOINTMENT_INCLUDE,
+        orderBy: [{ appointmentDate: 'asc' }, { startTime: 'asc' }],
+    });
+}
+
+/**
+ * Books a scheduled appointment with conflict validation and optional
+ * auto-assignment of the first available stylist.
+ *
+ * Algorithm:
+ *  1. Validate date is not in the past.
+ *  2. Fetch service duration to compute `endTime`.
+ *  3a. If `employeeId` provided: verify the stylist is active, working,
+ *      and has no overlapping booking.
+ *  3b. If no `employeeId`: iterate branch staff to find the first free slot.
+ *  4. Upsert the client record (phone as unique key).
+ *  5. Create the appointment inside a transaction.
+ */
+export async function bookAppointment(branchId: string, payload: BookAppointmentPayload) {
+    const { firstName, lastName, phone, serviceId, employeeId, date, startTime } = payload;
+
+    // 1. Date validation
+    const parsedDate = new Date(`${date}T00:00:00.000Z`);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    if (parsedDate < today) {
+        throw Object.assign(new Error('Cannot book appointments in the past.'), { status: 400 });
+    }
+
+    // 2. Fetch service to get total slot duration
+    const service = await prisma.service.findFirst({ where: { id: serviceId, branchId } });
+    if (!service) throw Object.assign(new Error('Service not found in this branch.'), { status: 404 });
+
+    const duration = service.durationMinutes + service.bufferTime;
+    const endTime = addMinutesToTime(startTime, duration);
+    const dayOfWeek = parsedDate.getUTCDay();
+    let selectedEmployeeId = employeeId ?? null;
+
+    // 3. Stylist validation / auto-assignment
+    if (selectedEmployeeId) {
+        const stylist = await prisma.employee.findFirst({
+            where: { id: selectedEmployeeId, branchId, isActive: true, role: { not: 'OWNER' } },
+            include: { schedules: { where: { dayOfWeek } } },
+        });
+        if (!stylist) {
+            throw Object.assign(
+                new Error('Preferred stylist is not active or not found in this branch.'),
+                { status: 400 }
+            );
+        }
+
+        const schedule = stylist.schedules[0];
+        if (!schedule || schedule.isOff || !schedule.startTime || !schedule.endTime) {
+            throw Object.assign(
+                new Error('Preferred stylist is not scheduled to work on this day.'),
+                { status: 400 }
+            );
+        }
+
+        if (startTime < schedule.startTime || endTime > schedule.endTime) {
+            throw Object.assign(
+                new Error(`Preferred stylist is only available from ${schedule.startTime} to ${schedule.endTime}.`),
+                { status: 400 }
+            );
+        }
+
+        const overlap = await prisma.appointment.findFirst({
+            where: buildOverlapWhere(selectedEmployeeId, parsedDate, startTime, endTime),
+        });
+        if (overlap) {
+            throw Object.assign(
+                new Error('The preferred stylist has a scheduling conflict during this time slot.'),
+                { status: 400 }
+            );
+        }
+    } else {
+        // Auto-assign: batch-query all conflicts for the time window,
+        // then pick the first candidate with no conflict — avoids N+1 DB hits.
+        const candidates = await prisma.employee.findMany({
+            where: { branchId, isActive: true, role: { not: 'OWNER' } },
+            include: { schedules: { where: { dayOfWeek } } },
+        });
+
+        // Fetch all conflicting appointments for the entire candidate pool at once.
+        const conflictingAppointments = await prisma.appointment.findMany({
+            where: {
+                employeeId: { in: candidates.map((e) => e.id) },
+                appointmentDate: parsedDate,
+                status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] as AppointmentStatus[] },
+                OR: [
+                    { startTime: { lte: startTime }, endTime: { gt: startTime } },
+                    { startTime: { lt: endTime }, endTime: { gte: endTime } },
+                    { startTime: { gte: startTime }, endTime: { lte: endTime } },
+                ],
+            },
+            select: { employeeId: true },
+        });
+        const busyEmployeeIds = new Set(
+            conflictingAppointments.map((a) => a.employeeId).filter(Boolean)
+        );
+
+        let assignedEmp: (typeof candidates)[number] | null = null;
+        for (const emp of candidates) {
+            const schedule = emp.schedules[0];
+            if (!schedule || schedule.isOff || !schedule.startTime || !schedule.endTime) continue;
+            if (startTime < schedule.startTime || endTime > schedule.endTime) continue;
+            if (!busyEmployeeIds.has(emp.id)) {
+                assignedEmp = emp;
+                break;
+            }
+        }
+
+        if (!assignedEmp) {
+            throw Object.assign(
+                new Error('No stylists are available during this time slot.'),
+                { status: 400 }
+            );
+        }
+        selectedEmployeeId = assignedEmp.id;
+    }
+
+    // 4 & 5. Upsert client + create appointment in a transaction
+    return prisma.$transaction(async (tx) => {
+        const cleanPhone = phone.trim();
+        const client = await tx.client.upsert({
+            where: { phoneNumber: cleanPhone },
+            update: { firstName: firstName.trim(), lastName: (lastName ?? '').trim() },
+            create: {
+                firstName: firstName.trim(),
+                lastName: (lastName ?? '').trim(),
+                phoneNumber: cleanPhone,
+            },
+        });
+
+        return tx.appointment.create({
+            data: {
+                branchId,
+                clientId: client.id,
+                employeeId: selectedEmployeeId,
+                appointmentDate: parsedDate,
+                startTime,
+                endTime,
+                status: 'CONFIRMED',
+                services: { create: { serviceId } },
+            },
+            include: APPOINTMENT_INCLUDE,
+        });
+    });
+}
+
+/**
+ * Updates the status of a scheduled appointment.
+ * Enforces branch-scoped access for ADMIN callers.
+ */
+export async function updateAppointmentStatus(
+    id: string,
+    status: string,
+    callerRole: string,
+    callerBranchId: string
+) {
+    const appointment = await prisma.appointment.findUnique({ where: { id } });
+    if (!appointment) throw Object.assign(new Error('Appointment not found.'), { status: 404 });
+
+    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+        throw Object.assign(
+            new Error('Access denied. You cannot modify appointments of another branch.'),
+            { status: 403 }
+        );
+    }
+
+    return prisma.appointment.update({
+        where: { id },
+        data: { status: status as AppointmentStatus },
+        include: APPOINTMENT_INCLUDE,
+    });
+}
+
+/**
+ * Deletes an appointment. Enforces branch-scoped access for ADMIN callers.
+ */
+export async function deleteAppointment(id: string, callerRole: string, callerBranchId: string) {
+    const appointment = await prisma.appointment.findUnique({ where: { id } });
+    if (!appointment) throw Object.assign(new Error('Appointment not found.'), { status: 404 });
+
+    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+        throw Object.assign(
+            new Error('Access denied. You cannot delete appointments of another branch.'),
+            { status: 403 }
+        );
+    }
+
+    await prisma.appointment.delete({ where: { id } });
+}

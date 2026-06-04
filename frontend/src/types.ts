@@ -22,7 +22,8 @@ export interface Employee {
 export interface Service {
   id: string;
   name: string;
-  price: string;
+  /** Prisma Decimal serialized as a number in JSON responses. */
+  price: number;
   category?: string | null;
   durationMinutes: number;
   bufferTime: number;
@@ -61,7 +62,7 @@ export interface WaitlistItem {
   service: string;
   stylist: string;
   checkInTime: string;
-  status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED';
+  status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
 
 export interface DashboardStats {
@@ -76,7 +77,8 @@ export interface InventoryItem {
   name: string;
   stockQuantity: number;
   reorderLevel: number;
-  cost: string | number;
+  /** Prisma Decimal serialized as a number in JSON responses. */
+  cost: number;
   branchId: string;
   createdAt?: string;
   updatedAt?: string;

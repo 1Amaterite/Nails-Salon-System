@@ -63,7 +63,15 @@ export function EmployeesTab({
   // Modal & Form State
   const { isOpen: isModalOpen, open: openModal, close: closeModal } = useModalState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    username: string;
+    password: string;
+    role: 'OWNER' | 'ADMIN' | 'STAFF';
+    phoneNumber: string;
+    specialty: string;
+    isActive: boolean;
+  }>({
     name: '',
     username: '',
     password: '',
@@ -254,7 +262,7 @@ export function EmployeesTab({
 
     const payload: EmployeePayload = {
       name: formData.name.trim(),
-      role: formData.role as 'OWNER' | 'ADMIN' | 'STAFF',
+      role: formData.role,
       phoneNumber: formData.phoneNumber.trim(),
       specialty: formData.specialty.trim() || undefined,
     };
@@ -701,7 +709,12 @@ export function EmployeesTab({
                 ) : (
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        role: e.target.value as 'OWNER' | 'ADMIN' | 'STAFF',
+                      })
+                    }
                     required
                   >
                     <option value="STAFF">Staff (Technician / Artist)</option>

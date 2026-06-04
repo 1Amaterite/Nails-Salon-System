@@ -179,7 +179,7 @@ export function OwnerDashboard({
               { key: 'employees', label: 'Staff Directory', Icon: Users },
               { key: 'schedules', label: 'Shift Schedules', Icon: Clock },
               { key: 'inventory', label: 'Inventory Items', Icon: ShoppingBag },
-              { key: 'clients', label: 'Clients Directory', Icon: Users },
+              { key: 'clients', label: 'Clients Directory', Icon: Users, soon: true },
               { key: 'services', label: 'Services Catalog', Icon: Scissors },
               {
                 key: 'analytics',
@@ -187,8 +187,8 @@ export function OwnerDashboard({
                 Icon: Shield,
                 style: { borderLeft: '3px solid var(--accent)' },
               },
-              { key: 'settings', label: 'Settings Panel', Icon: Settings },
-            ].map(({ key, label, Icon, style }) => (
+              { key: 'settings', label: 'Settings Panel', Icon: Settings, soon: true },
+            ].map(({ key, label, Icon, style, soon }) => (
               <div
                 key={key}
                 className={`nav-link ${activeTab === key ? 'active' : ''}`}
@@ -198,6 +198,24 @@ export function OwnerDashboard({
               >
                 <Icon size={18} />
                 {label}
+                {soon && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      color: 'var(--text-secondary)',
+                      backgroundColor: 'var(--bg-primary)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      padding: '1px 5px',
+                    }}
+                  >
+                    Soon
+                  </span>
+                )}
               </div>
             ))}
           </nav>

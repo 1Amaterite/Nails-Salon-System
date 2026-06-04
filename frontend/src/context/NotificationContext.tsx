@@ -23,6 +23,9 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+// Monotonic counter — guaranteed unique even under rapid toast firing.
+let _toastCounter = 0;
+
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [confirmModal, setConfirmModal] = useState<{
@@ -36,40 +39,41 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   } | null>(null);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts(prev => [...prev, { id, message, type, isExiting: false }]);
+    const id = String(++_toastCounter);
+    setToasts((prev) => [...prev, { id, message, type, isExiting: false }]);
 
     // Trigger exit animation after 3s
     setTimeout(() => {
-      setToasts(prev =>
-        prev.map(t => (t.id === id ? { ...t, isExiting: true } : t))
-      );
+      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, isExiting: true } : t)));
       // Remove completely after animation finishes (300ms)
       setTimeout(() => {
-        setToasts(prev => prev.filter(t => t.id !== id));
+        setToasts((prev) => prev.filter((t) => t.id !== id));
       }, 300);
     }, 3000);
   }, []);
 
-  const confirm = useCallback(({
-    title,
-    body,
-    confirmLabel = 'Confirm',
-    cancelLabel = 'Cancel',
-    isDestructive = false
-  }: ConfirmOptions): Promise<boolean> => {
-    return new Promise<boolean>(resolve => {
-      setConfirmModal({
-        isOpen: true,
-        title,
-        body,
-        confirmLabel,
-        cancelLabel,
-        isDestructive,
-        resolve
+  const confirm = useCallback(
+    ({
+      title,
+      body,
+      confirmLabel = 'Confirm',
+      cancelLabel = 'Cancel',
+      isDestructive = false,
+    }: ConfirmOptions): Promise<boolean> => {
+      return new Promise<boolean>((resolve) => {
+        setConfirmModal({
+          isOpen: true,
+          title,
+          body,
+          confirmLabel,
+          cancelLabel,
+          isDestructive,
+          resolve,
+        });
       });
-    });
-  }, []);
+    },
+    []
+  );
 
   const handleConfirmClose = (result: boolean) => {
     if (confirmModal?.resolve) {
@@ -85,11 +89,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       {/* Toast Notifications List */}
       {toasts.length > 0 && (
         <div className="toast-container">
-          {toasts.map(toast => (
-            <div
-              key={toast.id}
-              className={`toast-item ${toast.isExiting ? 'exit' : ''}`}
-            >
+          {toasts.map((toast) => (
+            <div key={toast.id} className={`toast-item ${toast.isExiting ? 'exit' : ''}`}>
               <div className={`toast-icon-wrapper ${toast.type}`}>
                 {toast.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
               </div>
@@ -104,24 +105,28 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       {/* Confirmation Modal */}
       {confirmModal && confirmModal.isOpen && (
         <div className="custom-modal-overlay" onClick={() => handleConfirmClose(false)}>
-          <div className="custom-modal-container outer-bezel" onClick={e => e.stopPropagation()}>
+          <div className="custom-modal-container outer-bezel" onClick={(e) => e.stopPropagation()}>
             <div className="inner-core" style={{ padding: '28px' }}>
-              <h3 style={{
-                fontFamily: 'var(--font-serif)',
-                color: confirmModal.isDestructive ? '#dc2626' : 'var(--accent)',
-                fontSize: '20px',
-                fontWeight: 600,
-                margin: '0 0 12px 0'
-              }}>
+              <h3
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  color: confirmModal.isDestructive ? '#dc2626' : 'var(--accent)',
+                  fontSize: '20px',
+                  fontWeight: 600,
+                  margin: '0 0 12px 0',
+                }}
+              >
                 {confirmModal.title}
               </h3>
-              
-              <p style={{
-                color: 'var(--text-secondary)',
-                fontSize: '14.5px',
-                lineHeight: '1.5',
-                margin: '0 0 24px 0'
-              }}>
+
+              <p
+                style={{
+                  color: 'var(--text-secondary)',
+                  fontSize: '14.5px',
+                  lineHeight: '1.5',
+                  margin: '0 0 24px 0',
+                }}
+              >
                 {confirmModal.body}
               </p>
 
@@ -136,7 +141,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                     color: 'var(--text-secondary)',
                     boxShadow: 'none',
                     padding: '8px 16px',
-                    fontSize: '13.5px'
+                    fontSize: '13.5px',
                   }}
                 >
                   {confirmModal.cancelLabel}
@@ -150,7 +155,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                     color: '#FFFFFF',
                     border: 'none',
                     padding: '8px 16px',
-                    fontSize: '13.5px'
+                    fontSize: '13.5px',
                   }}
                 >
                   {confirmModal.confirmLabel}
@@ -164,6 +169,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useNotification() {
   const context = useContext(NotificationContext);
   if (!context) {

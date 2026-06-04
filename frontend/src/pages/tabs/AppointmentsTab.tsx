@@ -44,7 +44,6 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
 
   // Fetch appointments
   const API_URL = getApiUrl();
-  const token = getAuthToken();
 
   const {
     data: appointmentsData,
@@ -53,6 +52,7 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
   } = useQuery<Appointment[]>({
     queryKey: ['appointments', selectedBranch, filterDate, statusFilter],
     queryFn: async () => {
+      const token = getAuthToken(); // resolved inside queryFn — errors caught by React Query
       let url = `${API_URL}/api/branches/${selectedBranch}/appointments`;
       const params = new URLSearchParams();
       if (filterDate) params.append('date', filterDate);
@@ -76,6 +76,7 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
   // Update Status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const token = getAuthToken();
       const res = await fetchWithTimeout(`${API_URL}/api/appointments/${id}/status`, {
         method: 'PUT',
         headers: {
@@ -103,6 +104,7 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
   // Delete/Cancel mutation
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
+      const token = getAuthToken();
       const res = await fetchWithTimeout(`${API_URL}/api/appointments/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
@@ -199,8 +201,7 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
           'N/A';
         const total =
           appt.services?.reduce(
-            (sum: number, s: AppointmentServiceRelation) =>
-              sum + parseFloat(s.service?.price || '0'),
+            (sum: number, s: AppointmentServiceRelation) => sum + (s.service?.price ?? 0),
             0
           ) || 0;
         return (

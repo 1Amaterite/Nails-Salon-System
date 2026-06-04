@@ -7,6 +7,31 @@ import gelPolishImg from '../assets/gel_polish.webp';
 import gelNaturalImg from '../assets/gel_natural.webp';
 import type { Branch, Service, Employee } from '../types';
 
+/** Time slots shown to customers in the booking and walk-in forms.
+ *  Update this list when the salon changes its operating hours. */
+const TIME_SLOTS = [
+  '09:00',
+  '09:30',
+  '10:00',
+  '10:30',
+  '11:00',
+  '11:30',
+  '12:00',
+  '12:30',
+  '13:00',
+  '13:30',
+  '14:00',
+  '14:30',
+  '15:00',
+  '15:30',
+  '16:00',
+  '16:30',
+  '17:00',
+  '17:30',
+  '18:00',
+  '18:30',
+] as const;
+
 export type PublicPortalEmployee = Employee;
 
 interface PublicPortalProps {
@@ -52,31 +77,7 @@ export function PublicPortal({
     return `${year}-${month}-${day}`;
   }, []);
 
-  const timeSlots = React.useMemo(
-    () => [
-      '09:00',
-      '09:30',
-      '10:00',
-      '10:30',
-      '11:00',
-      '11:30',
-      '12:00',
-      '12:30',
-      '13:00',
-      '13:30',
-      '14:00',
-      '14:30',
-      '15:00',
-      '15:30',
-      '16:00',
-      '16:30',
-      '17:00',
-      '17:30',
-      '18:00',
-      '18:30',
-    ],
-    []
-  );
+  const timeSlots = React.useMemo(() => TIME_SLOTS, []);
 
   // Walk-in form state
   const [publicWalkinName, setPublicWalkinName] = useState('');
@@ -376,7 +377,7 @@ export function PublicPortal({
                           fontFamily: 'var(--font-serif)',
                         }}
                       >
-                        ₱{parseFloat(s.price).toFixed(2)}
+                        ₱{s.price.toFixed(2)}
                       </span>
                     </div>
                     <div
@@ -554,6 +555,8 @@ export function PublicPortal({
                 <input
                   type="tel"
                   placeholder="(555) 000-0000"
+                  pattern="[0-9+\-\s().]{7,20}"
+                  title="Please enter a valid phone number (digits, spaces, +, -, parentheses)"
                   value={bookingPhone}
                   onChange={(e) => setBookingPhone(e.target.value)}
                   required
@@ -571,7 +574,7 @@ export function PublicPortal({
                   </option>
                   {activeServices.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} - ₱{parseFloat(s.price).toFixed(2)}
+                      {s.name} - ₱{s.price.toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -665,6 +668,8 @@ export function PublicPortal({
                 <input
                   type="tel"
                   placeholder="(555) 000-0000"
+                  pattern="[0-9+\-\s().]{7,20}"
+                  title="Please enter a valid phone number (digits, spaces, +, -, parentheses)"
                   value={publicWalkinPhone}
                   onChange={(e) => setPublicWalkinPhone(e.target.value)}
                   required
@@ -682,7 +687,7 @@ export function PublicPortal({
                   </option>
                   {activeServices.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} - ₱{parseFloat(s.price).toFixed(2)}
+                      {s.name} - ₱{s.price.toFixed(2)}
                     </option>
                   ))}
                 </select>

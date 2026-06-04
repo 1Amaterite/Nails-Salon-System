@@ -47,6 +47,7 @@ function App() {
   const [username, setUsername] = useState('');
   const [passcode, setPasscode] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -87,7 +88,9 @@ function App() {
     }
   }, []);
 
-  const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
+    if (isLoggingIn) return; // prevent double-submit
+    setIsLoggingIn(true);
     try {
       const response = await fetchWithTimeout(`${API_URL}/api/login`, {
         method: 'POST',
@@ -132,8 +135,10 @@ function App() {
       }
     } catch {
       setErrorMsg('Connection error. Is the backend server running?');
+    } finally {
+      setIsLoggingIn(false);
     }
-  };
+  }, [isLoggingIn, username, passcode, navigateTo, queryClient]);
 
   const handleLogout = useCallback(() => {
     setIsAdminAuth(false);
@@ -169,7 +174,9 @@ function App() {
   }, [currentPath, isAdminAuth, isOwnerAuth, navigateTo]);
 
   // App Data State
-  const [selectedBranchState] = useState<string>('');
+  // selectedBranchState: multi-branch selector is not yet wired up.
+  // For now the app always uses branches[0] (single-branch mode).
+  const selectedBranchState = '';
   const [isSeeding, setIsSeeding] = useState(false);
 
   // Fetch branches with React Query
@@ -404,6 +411,7 @@ function App() {
         setPasscode={setPasscode}
         errorMsg={errorMsg}
         handleLogin={handleLogin}
+        isLoggingIn={isLoggingIn}
         navigateTo={navigateTo}
       />
     );

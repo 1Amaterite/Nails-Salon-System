@@ -96,7 +96,7 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
             </option>
             {activeServices.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name} - ₱{parseFloat(s.price).toFixed(2)}
+                {s.name} - ₱{s.price.toFixed(2)}
               </option>
             ))}
           </select>

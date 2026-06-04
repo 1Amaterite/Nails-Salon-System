@@ -151,7 +151,7 @@ export function InventoryTab({ selectedBranch, employeeRole }: InventoryTabProps
       header: 'Cost Price',
       render: (item) => (
         <span style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-          {formatPHP(parseFloat(item.cost.toString()))}
+          {formatPHP(item.cost)}
         </span>
       ),
     },

@@ -30,7 +30,7 @@ export function InventoryFormModal({
         name: editingItem.name,
         quantity: editingItem.stockQuantity.toString(),
         reorderLevel: editingItem.reorderLevel.toString(),
-        costPrice: parseFloat(editingItem.cost.toString()).toString(),
+        costPrice: editingItem.cost.toString(),
       };
     }
     return {

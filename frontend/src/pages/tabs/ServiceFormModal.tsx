@@ -31,7 +31,7 @@ export function ServiceFormModal({
       return {
         name: editingService.name,
         description: editingService.description || '',
-        price: parseFloat(editingService.price).toString(),
+        price: editingService.price.toString(),
         category: editingService.category || '',
         durationMinutes: editingService.durationMinutes.toString(),
         bufferTime: (editingService.bufferTime ?? 5).toString(),

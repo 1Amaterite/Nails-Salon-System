@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
-
-const isProduction = process.env.NODE_ENV === 'production';
+import { IS_PRODUCTION } from '../config/env';
 
 // ─── Known Prisma Error Codes ────────────────────────────────────────────────
 const PRISMA_ERROR_MAP: Record<string, { status: number; message: string }> = {
@@ -14,9 +13,8 @@ const PRISMA_ERROR_MAP: Record<string, { status: number; message: string }> = {
 // ─── Error Shape ─────────────────────────────────────────────────────────────
 interface AppError extends Error {
     status?: number;
-    code?: string;       // Prisma error code
-    meta?: unknown;      // Prisma error metadata
-    isOperational?: boolean;
+    code?: string;   // Prisma error code
+    meta?: unknown;  // Prisma error metadata
 }
 
 /**
@@ -59,20 +57,22 @@ export function errorHandler(err: AppError, req: Request, res: Response, _next: 
         return;
     }
 
-    // ── 3. Operational errors (errors thrown intentionally with a status) ──
-    if (err.isOperational && err.status) {
+    // ── 3. Operational / intentional errors (thrown with a .status property) ──
+    // All service-layer errors are thrown as:
+    //   throw Object.assign(new Error('...'), { status: 4xx })
+    // The presence of a valid HTTP status code is sufficient to treat them
+    // as intentional user-facing errors — no separate isOperational flag needed.
+    if (err.status && err.status >= 400 && err.status < 600) {
         res.status(err.status).json({ error: err.message });
         return;
     }
 
-    // ── 4. Unknown / programming errors ───────────────────────────────────
-    const statusCode = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
-
-    res.status(statusCode).json({
-        error: isProduction
+    // ── 4. Unknown / programming errors ───────────────────────────────────────
+    res.status(500).json({
+        error: IS_PRODUCTION
             ? 'An unexpected error occurred. Please try again later.'
             : err.message || 'Internal Server Error',
         // Only expose the stack in development — never in production
-        ...(isProduction ? {} : { stack: err.stack }),
+        ...(IS_PRODUCTION ? {} : { stack: err.stack }),
     });
 }
