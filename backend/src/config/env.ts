@@ -1,3 +1,8 @@
+import dotenv from 'dotenv';
+
+// Load environment variables before validation
+dotenv.config();
+
 /**
  * Centralized environment variable validation.
  *

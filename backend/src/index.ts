@@ -51,9 +51,23 @@ app.use(
     })
 );
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://nails-salon-system-frontend.vercel.app'
+];
+
+if (FRONTEND_URL) {
+    FRONTEND_URL.split(',').forEach(o => {
+        const trimmed = o.trim();
+        if (trimmed && !allowedOrigins.includes(trimmed)) {
+            allowedOrigins.push(trimmed);
+        }
+    });
+}
+
 app.use(
     cors({
-        origin: FRONTEND_URL,
+        origin: allowedOrigins,
         credentials: true,
     })
 );
