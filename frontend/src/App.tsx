@@ -331,6 +331,54 @@ function App() {
     updateWaitlistStatusMutation.mutate({ id, status: newStatus });
   };
 
+  // Mutation to book a scheduled appointment
+  const bookAppointmentMutation = useMutation({
+    mutationFn: async (entry: {
+      firstName: string;
+      lastName: string;
+      phone: string;
+      serviceId: string;
+      employeeId?: string;
+      date: string;
+      startTime: string;
+    }) => {
+      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/appointments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to book appointment.');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
+      showToast('Appointment booked successfully!', 'success');
+      setActiveTab('public-home');
+    },
+    onError: (error: Error) => {
+      showToast(error.message, 'error');
+    },
+  });
+
+  const handleBookingSubmit = useCallback(
+    (entry: {
+      firstName: string;
+      lastName: string;
+      phone: string;
+      serviceId: string;
+      employeeId?: string;
+      date: string;
+      startTime: string;
+    }) => {
+      bookAppointmentMutation.mutate(entry);
+    },
+    [bookAppointmentMutation]
+  );
+
   const handleSeedData = async () => {
     setIsSeeding(true);
     try {
@@ -377,6 +425,7 @@ function App() {
         branches={branches}
         navigateTo={navigateTo}
         onPublicWalkinSubmit={handleWalkinSubmit}
+        onPublicBookingSubmit={handleBookingSubmit}
       />
     );
   }

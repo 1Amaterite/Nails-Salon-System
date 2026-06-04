@@ -257,7 +257,14 @@ export function OwnerDashboard({
         </header>
 
         {activeTab === 'dashboard' && <DashboardTab stats={stats} waitlist={waitlist} />}
-        {activeTab === 'appointments' && <AppointmentsTab navigateTo={navigateTo} />}
+        {activeTab === 'appointments' && (
+          <AppointmentsTab
+            branches={branches}
+            selectedBranch={selectedBranch}
+            employeeRole={employeeRole}
+            navigateTo={navigateTo}
+          />
+        )}
         {activeTab === 'waitlist' && (
           <WaitlistTab
             waitlist={waitlist}

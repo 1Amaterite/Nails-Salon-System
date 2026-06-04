@@ -15,6 +15,15 @@ interface PublicPortalProps {
   branches: Branch[];
   navigateTo: (path: string) => void;
   onPublicWalkinSubmit: (entry: { firstName: string; phone: string; serviceId: string }) => void;
+  onPublicBookingSubmit: (entry: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    serviceId: string;
+    employeeId?: string;
+    date: string;
+    startTime: string;
+  }) => void;
 }
 
 export function PublicPortal({
@@ -23,6 +32,7 @@ export function PublicPortal({
   branches,
   navigateTo,
   onPublicWalkinSubmit,
+  onPublicBookingSubmit,
 }: PublicPortalProps) {
   const { showToast } = useNotification();
 
@@ -30,9 +40,57 @@ export function PublicPortal({
     return (branches[0]?.services || []).filter((s) => s.isActive);
   }, [branches]);
 
+  const activeEmployees = React.useMemo(() => {
+    return (branches[0]?.employees || []).filter((e) => e.isActive && e.role !== 'OWNER');
+  }, [branches]);
+
+  const todayStr = React.useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  const timeSlots = React.useMemo(
+    () => [
+      '09:00',
+      '09:30',
+      '10:00',
+      '10:30',
+      '11:00',
+      '11:30',
+      '12:00',
+      '12:30',
+      '13:00',
+      '13:30',
+      '14:00',
+      '14:30',
+      '15:00',
+      '15:30',
+      '16:00',
+      '16:30',
+      '17:00',
+      '17:30',
+      '18:00',
+      '18:30',
+    ],
+    []
+  );
+
+  // Walk-in form state
   const [publicWalkinName, setPublicWalkinName] = useState('');
   const [publicWalkinPhone, setPublicWalkinPhone] = useState('');
   const [publicWalkinServiceId, setPublicWalkinServiceId] = useState('');
+
+  // Booking form state
+  const [bookingFirstName, setBookingFirstName] = useState('');
+  const [bookingLastName, setBookingLastName] = useState('');
+  const [bookingPhone, setBookingPhone] = useState('');
+  const [bookingServiceId, setBookingServiceId] = useState('');
+  const [bookingEmployeeId, setBookingEmployeeId] = useState('');
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingStartTime, setBookingStartTime] = useState('');
 
   const handleWalkinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +106,35 @@ export function PublicPortal({
     setPublicWalkinName('');
     setPublicWalkinPhone('');
     setPublicWalkinServiceId('');
+  };
+
+  const handleBookingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const serviceId = bookingServiceId || activeServices[0]?.id;
+    const startTime = bookingStartTime || timeSlots[0];
+
+    if (!serviceId || !bookingFirstName || !bookingPhone || !bookingDate || !startTime) {
+      showToast('Please fill out all required fields.', 'error');
+      return;
+    }
+
+    onPublicBookingSubmit({
+      firstName: bookingFirstName,
+      lastName: bookingLastName,
+      phone: bookingPhone,
+      serviceId,
+      employeeId: bookingEmployeeId || undefined,
+      date: bookingDate,
+      startTime,
+    });
+
+    setBookingFirstName('');
+    setBookingLastName('');
+    setBookingPhone('');
+    setBookingServiceId('');
+    setBookingEmployeeId('');
+    setBookingDate('');
+    setBookingStartTime('');
   };
   return (
     <div className="app-container" style={{ display: 'block' }}>
@@ -438,33 +525,95 @@ export function PublicPortal({
               </p>
             </div>
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                showToast('Appointment booked (Simulation)', 'success');
-              }}
+              onSubmit={handleBookingSubmit}
               style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '560px' }}
             >
               <div className="form-grid">
                 <div className="form-group">
-                  <label className="form-label">First Name</label>
-                  <input type="text" placeholder="First Name" required />
+                  <label className="form-label">First Name *</label>
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={bookingFirstName}
+                    onChange={(e) => setBookingFirstName(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Last Name</label>
-                  <input type="text" placeholder="Last Name" required />
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={bookingLastName}
+                    onChange={(e) => setBookingLastName(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input type="tel" placeholder="Phone Number" required />
+                <label className="form-label">Phone Number *</label>
+                <input
+                  type="tel"
+                  placeholder="(555) 000-0000"
+                  value={bookingPhone}
+                  onChange={(e) => setBookingPhone(e.target.value)}
+                  required
+                />
               </div>
               <div className="form-group">
-                <label className="form-label">Service Category</label>
-                <select>
-                  <option>Hand Care (Gel Manicures)</option>
-                  <option>Foot Care (Luxury Pedicures)</option>
-                  <option>Nail Extensions</option>
-                  <option>Eyelash Extensions</option>
+                <label className="form-label">Requested Treatment *</label>
+                <select
+                  value={bookingServiceId || activeServices[0]?.id || ''}
+                  onChange={(e) => setBookingServiceId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Select a treatment...
+                  </option>
+                  {activeServices.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} - ₱{parseFloat(s.price).toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Date *</label>
+                  <input
+                    type="date"
+                    min={todayStr}
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Start Time *</label>
+                  <select
+                    value={bookingStartTime || timeSlots[0]}
+                    onChange={(e) => setBookingStartTime(e.target.value)}
+                    required
+                  >
+                    {timeSlots.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Stylist Preference</label>
+                <select
+                  value={bookingEmployeeId}
+                  onChange={(e) => setBookingEmployeeId(e.target.value)}
+                >
+                  <option value="">First Available Stylist</option>
+                  {activeEmployees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <button

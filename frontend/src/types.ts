@@ -89,3 +89,40 @@ export interface InventoryItemPayload {
   costPrice: number;
   branchId?: string;
 }
+
+export type AppointmentStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'WAITING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'NO_SHOW';
+
+export interface AppointmentClient {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string | null;
+}
+
+export interface AppointmentServiceRelation {
+  appointmentId: string;
+  serviceId: string;
+  service: Service;
+}
+
+export interface Appointment {
+  id: string;
+  branchId: string;
+  clientId: string;
+  employeeId?: string | null;
+  appointmentDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  status: AppointmentStatus;
+  notes?: string | null;
+  client?: AppointmentClient | null;
+  employee?: Employee | null;
+  services?: AppointmentServiceRelation[];
+}
