@@ -199,7 +199,8 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
           'N/A';
         const total =
           appt.services?.reduce(
-            (sum: number, s: AppointmentServiceRelation) => sum + parseFloat(s.service?.price || 0),
+            (sum: number, s: AppointmentServiceRelation) =>
+              sum + parseFloat(s.service?.price || '0'),
             0
           ) || 0;
         return (
