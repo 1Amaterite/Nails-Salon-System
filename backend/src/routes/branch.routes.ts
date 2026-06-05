@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { verifyJWT } from '../middlewares/auth.middleware';
-import { listBranches, listSchedulableStaff, dashboardStats } from '../controllers/branch.controller';
+import { listBranches, listSchedulableStaff, dashboardStats, getBranchFinancials } from '../controllers/branch.controller';
 import { getAvailability } from '../controllers/appointment.controller';
-import { getBranchFinancials } from '../controllers/financials.controller';
 
 const router = Router();
 
