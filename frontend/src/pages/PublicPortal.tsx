@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Scissors, MapPin, Clock, Globe, Sparkles, Sparkle, Gem, Heart } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import { ClientAutocomplete } from '../components/common';
+import { getApiUrl } from '../utils/getApiUrl';
+import { fetchWithTimeout } from '../utils/api';
 
 import gelExtensionsImg from '../assets/gel_extensions.webp';
 import gelPolishImg from '../assets/gel_polish.webp';
@@ -93,6 +95,57 @@ export function PublicPortal({
   const [bookingEmployeeId, setBookingEmployeeId] = useState('');
   const [bookingDate, setBookingDate] = useState('');
   const [bookingStartTime, setBookingStartTime] = useState('');
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const serviceId = bookingServiceId || activeServices[0]?.id;
+    if (!bookingDate || !serviceId || !branches[0]?.id) {
+      Promise.resolve().then(() => {
+        if (active) {
+          setAvailableSlots([]);
+        }
+      });
+      return;
+    }
+    const fetchSlots = async () => {
+      setIsLoadingSlots(true);
+      try {
+        const API_URL = getApiUrl();
+        const branchId = branches[0].id;
+        const employeeQuery = bookingEmployeeId ? `&employeeId=${bookingEmployeeId}` : '';
+        const url = `${API_URL}/api/branches/${branchId}/availability?date=${bookingDate}&serviceId=${serviceId}${employeeQuery}`;
+        const res = await fetchWithTimeout(url);
+        if (res.ok && active) {
+          const data: string[] = await res.json();
+          setAvailableSlots(data);
+          setBookingStartTime((prev) => {
+            if (data.includes(prev)) return prev;
+            return data[0] || '';
+          });
+        } else if (active) {
+          setAvailableSlots([]);
+          setBookingStartTime('');
+        }
+      } catch (err) {
+        console.error('Failed to fetch available slots:', err);
+        if (active) {
+          setAvailableSlots([]);
+          setBookingStartTime('');
+        }
+      } finally {
+        if (active) {
+          setIsLoadingSlots(false);
+        }
+      }
+    };
+
+    fetchSlots();
+    return () => {
+      active = false;
+    };
+  }, [bookingDate, bookingServiceId, bookingEmployeeId, branches, activeServices]);
 
   const handleWalkinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -598,16 +651,34 @@ export function PublicPortal({
                 <div className="form-group">
                   <label className="form-label">Start Time *</label>
                   <select
-                    value={bookingStartTime || timeSlots[0]}
+                    value={bookingStartTime}
                     onChange={(e) => setBookingStartTime(e.target.value)}
                     required
+                    disabled={isLoadingSlots || !bookingDate || availableSlots.length === 0}
                   >
-                    {timeSlots.map((time) => (
+                    {!bookingDate && <option value="">Please select a date first</option>}
+                    {bookingDate && isLoadingSlots && <option value="">Loading slots...</option>}
+                    {bookingDate && !isLoadingSlots && availableSlots.length === 0 && (
+                      <option value="">No slots available</option>
+                    )}
+                    {availableSlots.map((time) => (
                       <option key={time} value={time}>
                         {time}
                       </option>
                     ))}
                   </select>
+                  {bookingDate && !isLoadingSlots && availableSlots.length === 0 && (
+                    <span
+                      style={{
+                        color: '#ef4444',
+                        fontSize: '12px',
+                        marginTop: '4px',
+                        display: 'block',
+                      }}
+                    >
+                      No available times on this date/stylist.
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="form-group">

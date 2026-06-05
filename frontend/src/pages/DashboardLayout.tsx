@@ -302,7 +302,9 @@ export function DashboardLayout() {
         {activeTab === 'services' && (
           <ServicesTab branches={branches} selectedBranch={selectedBranch} role={employeeRole} />
         )}
-        {activeTab === 'analytics' && <FinancialsTab />}
+        {activeTab === 'analytics' && (
+          <FinancialsTab selectedBranch={selectedBranch} employeeRole={employeeRole} />
+        )}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
     </div>

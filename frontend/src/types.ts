@@ -148,3 +148,52 @@ export interface Appointment {
   employee?: Employee | null;
   services?: AppointmentServiceRelation[];
 }
+
+export interface RevenueTrendItem {
+  month: string;
+  revenue: number;
+  profit: number;
+}
+
+export interface DailyTrendItem {
+  day: string;
+  revenue: number;
+}
+
+export interface CategoryDistributionItem {
+  category: string;
+  value: number;
+}
+
+export interface StylistSalesPerformance {
+  employeeId: string;
+  employeeName: string;
+  servicesCount: number;
+  salesAmount: number;
+  commissionEarned: number;
+}
+
+export interface FinancialTransaction {
+  id: string;
+  clientName: string;
+  totalAmount: number;
+  paymentMethod: string;
+  createdAt: string;
+  services: string[];
+}
+
+export interface FinancialKPIs {
+  totalRevenue: number;
+  totalTax: number;
+  totalCommission: number;
+  netProfit: number;
+}
+
+export interface FinancialData {
+  kpis: FinancialKPIs;
+  monthlyTrends: RevenueTrendItem[];
+  dailyTrends: DailyTrendItem[];
+  categoryDistribution: CategoryDistributionItem[];
+  stylistPerformance: StylistSalesPerformance[];
+  recentLedger: FinancialTransaction[];
+}

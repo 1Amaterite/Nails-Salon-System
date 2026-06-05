@@ -8,6 +8,7 @@ import {
     bookAppointment,
     updateAppointmentStatus,
     deleteAppointment,
+    getAvailableSlots,
 } from '../services/appointment.service';
 
 const VALID_WAITLIST_STATUSES = ['WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
@@ -133,3 +134,21 @@ export async function removeAppointment(req: AuthenticatedRequest, res: Response
         next(error);
     }
 }
+
+export async function getAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const { branchId } = req.params;
+    const { date, serviceId, employeeId } = req.query as { date?: string; serviceId?: string; employeeId?: string };
+
+    if (!date || !serviceId) {
+        res.status(400).json({ error: 'Date and service ID query parameters are required.' });
+        return;
+    }
+
+    try {
+        const slots = await getAvailableSlots(branchId, date, serviceId, employeeId);
+        res.json(slots);
+    } catch (error) {
+        next(error);
+    }
+}
+

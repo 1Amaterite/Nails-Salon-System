@@ -380,3 +380,92 @@ export async function deleteAppointment(id: string, callerRole: string, callerBr
 
     await prisma.appointment.delete({ where: { id } });
 }
+
+const STANDARD_TIME_SLOTS = [
+    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+    '17:00', '17:30', '18:00', '18:30'
+];
+
+/**
+ * Returns list of standard timeslots that are free for booking based on date, service duration, and preferred stylist.
+ */
+export async function getAvailableSlots(
+    branchId: string,
+    date: string,
+    serviceId: string,
+    employeeId?: string
+) {
+    const parsedDate = new Date(`${date}T00:00:00.000Z`);
+    const dayOfWeek = parsedDate.getUTCDay();
+
+    // 1. Fetch service to get duration
+    const service = await prisma.service.findFirst({ where: { id: serviceId, branchId } });
+    if (!service) throw Object.assign(new Error('Service not found in this branch.'), { status: 404 });
+    const duration = service.durationMinutes + service.bufferTime;
+
+    // 2. Fetch candidates (stylists)
+    const candidates = await prisma.employee.findMany({
+        where: {
+            branchId,
+            isActive: true,
+            role: { not: 'OWNER' },
+            ...(employeeId ? { id: employeeId } : {})
+        },
+        include: {
+            schedules: { where: { dayOfWeek } }
+        }
+    });
+
+    if (candidates.length === 0) {
+        return [];
+    }
+
+    // 3. Fetch all active appointments for these candidates on this date to check overlaps
+    const activeAppointments = await prisma.appointment.findMany({
+        where: {
+            employeeId: { in: candidates.map((c) => c.id) },
+            appointmentDate: parsedDate,
+            status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] as AppointmentStatus[] }
+        },
+        select: {
+            employeeId: true,
+            startTime: true,
+            endTime: true
+        }
+    });
+
+    const availableSlots: string[] = [];
+
+    // Helper check conflict
+    const hasConflict = (empId: string, start: string, end: string) => {
+        return activeAppointments.some(
+            (appt) =>
+                appt.employeeId === empId &&
+                appt.startTime &&
+                appt.endTime &&
+                ((appt.startTime <= start && appt.endTime > start) ||
+                    (appt.startTime < end && appt.endTime >= end) ||
+                    (appt.startTime >= start && appt.endTime <= end))
+        );
+    };
+
+    // 4. Test each standard time slot
+    for (const slotTime of STANDARD_TIME_SLOTS) {
+        const slotEndTime = addMinutesToTime(slotTime, duration);
+
+        const isFree = candidates.some((stylist) => {
+            const schedule = stylist.schedules[0];
+            if (!schedule || schedule.isOff || !schedule.startTime || !schedule.endTime) return false;
+            if (slotTime < schedule.startTime || slotEndTime > schedule.endTime) return false;
+
+            return !hasConflict(stylist.id, slotTime, slotEndTime);
+        });
+
+        if (isFree) {
+            availableSlots.push(slotTime);
+        }
+    }
+
+    return availableSlots;
+}
