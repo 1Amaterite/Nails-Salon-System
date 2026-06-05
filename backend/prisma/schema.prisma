@@ -76,6 +76,7 @@ model Client {
     birthday        DateTime?
     loyaltyPoints   Int         @default(0)
     notes           String?
+    deletedAt       DateTime?
     
     // Relations
     appointments    Appointment[]
@@ -85,6 +86,8 @@ model Client {
     // Timestamps
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
+
+    @@index([firstName, lastName])
 }   
 
 model Employee {
@@ -107,6 +110,8 @@ model Employee {
     // Timestamps
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
+
+    @@index([branchId])
 }
 
 model EmployeeSchedule {
@@ -123,6 +128,8 @@ model EmployeeSchedule {
     // Timestamps
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
+
+    @@index([employeeId])
 }
 
 model Service {
@@ -145,6 +152,8 @@ model Service {
     // Timestamps
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
+
+    @@index([branchId])
 }
 
 model Appointment {
@@ -168,6 +177,11 @@ model Appointment {
     // Timestamps
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
+
+    @@index([branchId])
+    @@index([clientId])
+    @@index([employeeId])
+    @@index([appointmentDate])
 }
 
 model AppointmentService {
@@ -179,6 +193,7 @@ model AppointmentService {
     service     Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
     @@id([appointmentId, serviceId])
+    @@index([serviceId])
 }
 
 model Transaction {
@@ -203,6 +218,10 @@ model Transaction {
     // Timestamps
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
+
+    @@index([branchId])
+    @@index([appointmentId])
+    @@index([clientId])
 }
 
 model TransactionService {
@@ -219,6 +238,10 @@ model TransactionService {
 
     // Timestamps
     createdAt       DateTime    @default(now())
+
+    @@index([transactionId])
+    @@index([serviceId])
+    @@index([employeeId])
 }
 
 model LoyaltyLedger {
@@ -235,6 +258,9 @@ model LoyaltyLedger {
 
     // Timestamps
     createdAt       DateTime    @default(now())
+
+    @@index([clientId])
+    @@index([transactionId])
 }
 
 model Item {
@@ -256,6 +282,8 @@ model Item {
     // Timestamps
     createdAt     DateTime       @default(now())
     updatedAt     DateTime       @updatedAt
+
+    @@index([branchId])
 }
 
 model InventoryLog {
@@ -270,6 +298,8 @@ model InventoryLog {
 
     // Timestamps
     createdAt      DateTime         @default(now())
+
+    @@index([itemId])
 }
 
 model Setting {

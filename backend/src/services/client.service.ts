@@ -12,14 +12,19 @@ interface ClientPayload {
  * Returns a list of all clients, optionally filtered by name or phone.
  */
 export async function getClients(search?: string) {
-    const where: any = {};
+    const where: any = { deletedAt: null };
 
     if (search) {
         const cleanSearch = search.trim();
-        where.OR = [
-            { firstName: { contains: cleanSearch, mode: 'insensitive' } },
-            { lastName: { contains: cleanSearch, mode: 'insensitive' } },
-            { phoneNumber: { contains: cleanSearch } }
+        where.AND = [
+            { deletedAt: null },
+            {
+                OR: [
+                    { firstName: { contains: cleanSearch, mode: 'insensitive' } },
+                    { lastName: { contains: cleanSearch, mode: 'insensitive' } },
+                    { phoneNumber: { contains: cleanSearch } }
+                ]
+            }
         ];
     }
 
@@ -33,8 +38,8 @@ export async function getClients(search?: string) {
  * Returns a client's details including their past appointments and services.
  */
 export async function getClientById(id: string) {
-    const client = await prisma.client.findUnique({
-        where: { id },
+    const client = await prisma.client.findFirst({
+        where: { id, deletedAt: null },
         include: {
             appointments: {
                 include: {
@@ -92,7 +97,7 @@ export async function updateClient(id: string, payload: ClientPayload) {
     const { firstName, lastName, phoneNumber, birthday, notes } = payload;
     const cleanPhone = phoneNumber?.trim() || null;
 
-    const client = await prisma.client.findUnique({ where: { id } });
+    const client = await prisma.client.findFirst({ where: { id, deletedAt: null } });
     if (!client) {
         throw Object.assign(new Error('Client not found.'), { status: 404 });
     }
@@ -127,10 +132,13 @@ export async function updateClient(id: string, payload: ClientPayload) {
  * Deletes a client by ID.
  */
 export async function deleteClient(id: string) {
-    const client = await prisma.client.findUnique({ where: { id } });
+    const client = await prisma.client.findFirst({ where: { id, deletedAt: null } });
     if (!client) {
         throw Object.assign(new Error('Client not found.'), { status: 404 });
     }
 
-    return prisma.client.delete({ where: { id } });
+    return prisma.client.update({
+        where: { id },
+        data: { deletedAt: new Date() }
+    });
 }

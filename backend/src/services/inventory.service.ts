@@ -42,14 +42,29 @@ export async function createInventoryItem(payload: CreateInventoryPayload) {
         );
     }
 
-    return prisma.item.create({
-        data: {
-            name: name.trim(),
-            stockQuantity: quantity,
-            reorderLevel,
-            cost: costPrice,
-            branchId,
-        },
+    return prisma.$transaction(async (tx) => {
+        const item = await tx.item.create({
+            data: {
+                name: name.trim(),
+                stockQuantity: quantity,
+                reorderLevel,
+                cost: costPrice,
+                branchId,
+            },
+        });
+
+        if (quantity > 0) {
+            await tx.inventoryLog.create({
+                data: {
+                    itemId: item.id,
+                    quantityChange: quantity,
+                    logType: 'INBOUND',
+                    notes: 'Initial stock setup upon item creation.',
+                },
+            });
+        }
+
+        return item;
     });
 }
 
@@ -98,7 +113,25 @@ export async function updateInventoryItem(id: string, payload: UpdateInventoryPa
     if (reorderLevel !== undefined) updateData.reorderLevel = reorderLevel;
     if (costPrice !== undefined) updateData.cost = costPrice;
 
-    return prisma.item.update({ where: { id }, data: updateData });
+    return prisma.$transaction(async (tx) => {
+        const updatedItem = await tx.item.update({ where: { id }, data: updateData });
+
+        if (quantity !== undefined) {
+            const quantityDiff = quantity - item.stockQuantity;
+            if (quantityDiff !== 0) {
+                await tx.inventoryLog.create({
+                    data: {
+                        itemId: id,
+                        quantityChange: quantityDiff,
+                        logType: quantityDiff > 0 ? 'INBOUND' : 'USAGE',
+                        notes: `Stock count manually adjusted from ${item.stockQuantity} to ${quantity}.`,
+                    },
+                });
+            }
+        }
+
+        return updatedItem;
+    });
 }
 
 /**

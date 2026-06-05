@@ -26,7 +26,7 @@ import { AdminWalkinTab } from './tabs/AdminWalkinTab';
 import { EmployeesTab } from './tabs/EmployeesTab';
 import { SchedulesTab, UnsavedChangesModal } from './tabs/SchedulesTab';
 import { InventoryTab } from './tabs/InventoryTab';
-import { ClientsTab } from './tabs/ClientsTab';
+import { ClientsTab } from './tabs/clients/ClientsTab';
 import { ServicesTab } from './tabs/ServicesTab';
 import { FinancialsTab } from './tabs/FinancialsTab';
 import { SettingsTab } from './tabs/SettingsTab';
