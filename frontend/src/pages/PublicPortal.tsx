@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Scissors, MapPin, Clock, Globe, Sparkles, Sparkle, Gem, Heart } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
+import { ClientAutocomplete } from '../components/common';
 
 import gelExtensionsImg from '../assets/gel_extensions.webp';
 import gelPolishImg from '../assets/gel_polish.webp';
@@ -532,11 +533,15 @@ export function PublicPortal({
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">First Name *</label>
-                  <input
-                    type="text"
-                    placeholder="First Name"
+                  <ClientAutocomplete
                     value={bookingFirstName}
-                    onChange={(e) => setBookingFirstName(e.target.value)}
+                    onChange={setBookingFirstName}
+                    onSelect={(client) => {
+                      setBookingFirstName(client.firstName);
+                      setBookingLastName(client.lastName || '');
+                      setBookingPhone(client.phoneNumber || '');
+                    }}
+                    placeholder="First Name"
                     required
                   />
                 </div>
@@ -654,12 +659,15 @@ export function PublicPortal({
               style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}
             >
               <div className="form-group">
-                <label className="form-label">First Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter your first name"
+                <label className="form-label">First Name *</label>
+                <ClientAutocomplete
                   value={publicWalkinName}
-                  onChange={(e) => setPublicWalkinName(e.target.value)}
+                  onChange={setPublicWalkinName}
+                  onSelect={(client) => {
+                    setPublicWalkinName(client.firstName);
+                    setPublicWalkinPhone(client.phoneNumber || '');
+                  }}
+                  placeholder="Enter your first name"
                   required
                 />
               </div>

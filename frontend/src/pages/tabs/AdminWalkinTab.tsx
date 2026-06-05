@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Branch } from '../../types';
-import { PageHeader } from '../../components/common';
+import { PageHeader, ClientAutocomplete } from '../../components/common';
 
 interface AdminWalkinTabProps {
   branches: Branch[];
@@ -55,11 +55,14 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
       >
         <div className="form-group">
           <label className="form-label">Client's First Name</label>
-          <input
-            type="text"
-            placeholder="Enter guest's first name"
+          <ClientAutocomplete
             value={walkinName}
-            onChange={(e) => setWalkinName(e.target.value)}
+            onChange={setWalkinName}
+            onSelect={(client) => {
+              setWalkinName(client.firstName);
+              setWalkinPhone(client.phoneNumber || '');
+            }}
+            placeholder="Type client's first name to autofill..."
             required
           />
         </div>

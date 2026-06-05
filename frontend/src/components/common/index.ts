@@ -36,3 +36,5 @@ export type { DataTableProps, ColumnDef } from './DataTable';
 
 export { BaseForm } from './BaseForm';
 export type { BaseFormProps } from './BaseForm';
+
+export { ClientAutocomplete } from './ClientAutocomplete';

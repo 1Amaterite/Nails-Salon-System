@@ -39,7 +39,7 @@ export async function getDashboardStats(branchId: string) {
     const tomorrowUtc = new Date(todayUtc);
     tomorrowUtc.setUTCDate(todayUtc.getUTCDate() + 1);
 
-    const [totalAppointments, waitingQueue, employeeCount, serviceCount] = await Promise.all([
+    const [totalAppointments, waitingQueue, employeeCount, serviceCount, todayAppointments, activeWaitlist] = await Promise.all([
         prisma.appointment.count({
             where: {
                 branchId,
@@ -49,12 +49,54 @@ export async function getDashboardStats(branchId: string) {
         prisma.appointment.count({ where: { branchId, status: 'WAITING' } }),
         prisma.employee.count({ where: { branchId } }),
         prisma.service.count({ where: { branchId } }),
+        prisma.appointment.findMany({
+            where: {
+                branchId,
+                appointmentDate: { gte: todayUtc, lt: tomorrowUtc },
+            },
+            include: {
+                client: true,
+            },
+        }),
+        prisma.appointment.findMany({
+            where: {
+                branchId,
+                status: { in: ['WAITING', 'IN_PROGRESS'] },
+                appointmentDate: { gte: todayUtc },
+            },
+            include: {
+                client: true,
+            },
+        }),
     ]);
+
+    // Find unique clients checked in or booked today
+    const clientsTodayMap = new Map<string, any>();
+    for (const appt of [...todayAppointments, ...activeWaitlist]) {
+        if (appt.client) {
+            clientsTodayMap.set(appt.client.id, appt.client);
+        }
+    }
+
+    const now = new Date();
+    const todayMonth = now.getMonth(); // 0-11
+    const todayDay = now.getDate();    // 1-31
+
+    const birthdayCelebrants: string[] = [];
+    for (const client of clientsTodayMap.values()) {
+        if (client.birthday) {
+            const bDate = new Date(client.birthday);
+            if (bDate.getUTCMonth() === todayMonth && bDate.getUTCDate() === todayDay) {
+                birthdayCelebrants.push(`${client.firstName} ${client.lastName || ''}`.trim());
+            }
+        }
+    }
 
     return {
         appointmentsToday: totalAppointments,
         waitingQueueCount: waitingQueue,
         activeStylists: employeeCount,
         totalServices: serviceCount,
+        birthdayCelebrants,
     };
 }

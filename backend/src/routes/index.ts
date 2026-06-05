@@ -7,6 +7,7 @@ import employeeRoutes from './employee.routes';
 import serviceRoutes from './service.routes';
 import inventoryRoutes from './inventory.routes';
 import appointmentRoutes from './appointment.routes';
+import clientRoutes from './client.routes';
 
 /**
  * Root API router.
@@ -22,6 +23,7 @@ router.use('/employees', employeeRoutes);
 router.use('/services', serviceRoutes);
 router.use('/', inventoryRoutes);       // /inventory and /branches/:id/inventory
 router.use('/', appointmentRoutes);     // /branches/:id/waitlist, /appointments, etc.
+router.use('/', clientRoutes);          // /clients, /clients/:id, etc.
 
 // ─── Legacy route aliases — keep frontend backward-compatible ─────────────────
 // Old: GET /api/dashboard/:branchId  →  New: GET /api/branches/:branchId/dashboard

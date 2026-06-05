@@ -65,11 +65,31 @@ export interface WaitlistItem {
   status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
 
+export interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string | null;
+  birthday?: string | null;
+  loyaltyPoints: number;
+  notes?: string | null;
+  appointments?: Appointment[];
+}
+
+export interface ClientPayload {
+  firstName: string;
+  lastName?: string;
+  phoneNumber?: string;
+  birthday?: string;
+  notes?: string;
+}
+
 export interface DashboardStats {
   appointmentsToday: number;
   waitingQueueCount: number;
   activeStylists: number;
   totalServices: number;
+  birthdayCelebrants?: string[];
 }
 
 export interface InventoryItem {
