@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const phoneRegex = /^[0-9+\-\s().]{7,20}$/;
+const phoneRegex = /^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$/;
 
 export const CreateClientSchema = z.object({
   firstName: z
@@ -14,10 +14,8 @@ export const CreateClientSchema = z.object({
   phoneNumber: z
     .string()
     .trim()
-    .regex(phoneRegex, 'Please enter a valid phone number (7-20 digits, spaces, +, -, parentheses)')
-    .optional()
-    .nullable()
-    .or(z.literal('')),
+    .min(1, 'Phone number is required')
+    .regex(phoneRegex, 'Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx'),
   birthday: z
     .string()
     .trim()

@@ -221,7 +221,7 @@ export function ClientsTab() {
   return (
     <>
       <PageWrapper
-        title="Client Database & CRM"
+        title="Clients Directory"
         subtitle="Manage loyalty tier points, client specific allergies, stylist preferences, and bookings."
         action={
           <div style={{ display: 'flex', gap: '10px' }}>

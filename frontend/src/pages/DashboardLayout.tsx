@@ -113,7 +113,7 @@ export function DashboardLayout() {
     { key: 'employees', label: 'Staff Directory', Icon: Users },
     { key: 'schedules', label: 'Shift Schedules', Icon: Clock },
     { key: 'inventory', label: 'Inventory Items', Icon: ShoppingBag },
-    { key: 'clients', label: 'Clients Directory', Icon: Users, soon: true },
+    { key: 'clients', label: 'Clients Directory', Icon: Users },
     { key: 'services', label: 'Services Catalog', Icon: Scissors },
     ...(employeeRole === 'OWNER'
       ? [

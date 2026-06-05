@@ -176,12 +176,15 @@ export function ClientFormModal({
 
             <div className="form-grid">
               <div className="form-group">
-                <label className="form-label">Phone Number</label>
+                <label className="form-label">Phone Number *</label>
                 <input
                   type="tel"
-                  placeholder="Enter phone number"
+                  placeholder="e.g. 0912 345 6789 or 09123456789"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
+                  pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
+                  title="Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx"
+                  required
                 />
               </div>
               <div className="form-group">
