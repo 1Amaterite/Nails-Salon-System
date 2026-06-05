@@ -8,6 +8,12 @@ import { errorHandler } from './middlewares/errorHandler';
 import prisma from './config/prisma';
 import apiRouter from './routes';
 import { IS_PRODUCTION, FRONTEND_URL } from './config/env';
+import { Decimal } from '@prisma/client/runtime/library';
+
+// Globally override Decimal serialization to return numbers in JSON responses
+(Decimal.prototype as any).toJSON = function (this: Decimal) {
+    return Number(this.toString());
+};
 
 // ─── Environment ──────────────────────────────────────────────────────────────
 

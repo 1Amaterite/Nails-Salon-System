@@ -377,7 +377,7 @@ export function PublicPortal({
                           fontFamily: 'var(--font-serif)',
                         }}
                       >
-                        ₱{s.price.toFixed(2)}
+                        ₱{Number(s.price).toFixed(2)}
                       </span>
                     </div>
                     <div
@@ -574,7 +574,7 @@ export function PublicPortal({
                   </option>
                   {activeServices.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} - ₱{s.price.toFixed(2)}
+                      {s.name} - ₱{Number(s.price).toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -687,7 +687,7 @@ export function PublicPortal({
                   </option>
                   {activeServices.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} - ₱{s.price.toFixed(2)}
+                      {s.name} - ₱{Number(s.price).toFixed(2)}
                     </option>
                   ))}
                 </select>

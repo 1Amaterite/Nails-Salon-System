@@ -61,7 +61,7 @@ export function ServiceCard({ service, isAuthorized, onEdit, onDelete }: Service
               fontFamily: 'var(--font-serif)',
             }}
           >
-            ₱{service.price.toFixed(2)}
+            ₱{Number(service.price).toFixed(2)}
           </span>
           {isAuthorized && (
             <div style={{ display: 'flex', gap: '6px' }}>
