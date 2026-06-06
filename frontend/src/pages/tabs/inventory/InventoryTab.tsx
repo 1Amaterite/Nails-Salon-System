@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { ShoppingBag, Edit2, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { InventoryItem } from '../../types';
-import { useNotification } from '../../context/NotificationContext';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
+import type { InventoryItem } from '../../../types';
+import { useNotification } from '../../../context/NotificationContext';
+import { fetchWithTimeout } from '../../../utils/api';
+import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
 import {
   PageWrapper,
   DataTable,
   SearchBar,
   PaginationControls,
   EmptyState,
-} from '../../components/common';
-import type { ColumnDef } from '../../components/common';
+} from '../../../components/common';
+import type { ColumnDef } from '../../../components/common';
 import { InventoryFormModal } from './InventoryFormModal';
 
 interface InventoryTabProps {

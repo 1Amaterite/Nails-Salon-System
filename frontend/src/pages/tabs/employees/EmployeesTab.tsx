@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Edit2, Trash2, Users } from 'lucide-react';
-import type { Branch, Employee, EmployeeSchedule } from '../../types';
-import { useNotification } from '../../context/NotificationContext';
+import type { Branch, Employee, EmployeeSchedule } from '../../../types';
+import { useNotification } from '../../../context/NotificationContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
+import { fetchWithTimeout } from '../../../utils/api';
+import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
 import {
   PageWrapper,
   DataTable,
@@ -12,10 +12,10 @@ import {
   SegmentedControl,
   PaginationControls,
   EmptyState,
-} from '../../components/common';
-import type { ColumnDef } from '../../components/common';
-import { useModalState } from '../../utils/hooks';
-import { EmployeeFormModal } from './employees/EmployeeFormModal';
+} from '../../../components/common';
+import type { ColumnDef } from '../../../components/common';
+import { useModalState } from '../../../utils/hooks';
+import { EmployeeFormModal } from './EmployeeFormModal';
 
 interface EmployeesTabProps {
   branches: Branch[];

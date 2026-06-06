@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Branch, Service } from '../../types';
-import { useNotification } from '../../context/NotificationContext';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
-import { PageHeader } from '../../components/common';
+import type { Branch, Service } from '../../../types';
+import { useNotification } from '../../../context/NotificationContext';
+import { fetchWithTimeout } from '../../../utils/api';
+import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { PageHeader } from '../../../components/common';
 import { ServiceGrid } from './ServiceGrid';
 import { ServiceFormModal } from './ServiceFormModal';
 

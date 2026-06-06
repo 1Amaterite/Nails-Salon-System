@@ -1,6 +1,6 @@
 import { Scissors } from 'lucide-react';
-import type { Service } from '../../types';
-import { EmptyState } from '../../components/common';
+import type { Service } from '../../../types';
+import { EmptyState } from '../../../components/common';
 import { ServiceCard } from './ServiceCard';
 
 interface ServiceGridProps {

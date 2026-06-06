@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { Branch } from '../../types';
-import { PageHeader, ClientAutocomplete } from '../../components/common';
+import type { Branch } from '../../../types';
+import { PageHeader, ClientAutocomplete } from '../../../components/common';
 
 interface AdminWalkinTabProps {
   branches: Branch[];

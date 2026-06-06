@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { UserCheck, Plus, RefreshCw } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { WaitlistItem, Branch, Appointment } from '../../types';
-import { PageHeader, EmptyState } from '../../components/common';
-import { useNotification } from '../../context/NotificationContext';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
-import { CheckoutModal } from './CheckoutModal';
+import type { WaitlistItem, Branch, Appointment } from '../../../types';
+import { PageHeader, EmptyState } from '../../../components/common';
+import { useNotification } from '../../../context/NotificationContext';
+import { fetchWithTimeout } from '../../../utils/api';
+import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { CheckoutModal } from '../appointments/CheckoutModal';
 
 interface WaitlistTabProps {
   waitlist: WaitlistItem[];

@@ -19,17 +19,17 @@ import { getApiUrl } from '../utils/getApiUrl';
 import { useAuth } from '../context/AuthContext';
 import { useBranch } from '../context/BranchContext';
 
-import { DashboardTab } from './tabs/DashboardTab';
-import { AppointmentsTab } from './tabs/AppointmentsTab';
-import { WaitlistTab } from './tabs/WaitlistTab';
-import { AdminWalkinTab } from './tabs/AdminWalkinTab';
-import { EmployeesTab } from './tabs/EmployeesTab';
-import { SchedulesTab, UnsavedChangesModal } from './tabs/SchedulesTab';
-import { InventoryTab } from './tabs/InventoryTab';
+import { DashboardTab } from './tabs/dashboard/DashboardTab';
+import { AppointmentsTab } from './tabs/appointments/AppointmentsTab';
+import { WaitlistTab } from './tabs/waitlist/WaitlistTab';
+import { AdminWalkinTab } from './tabs/waitlist/AdminWalkinTab';
+import { EmployeesTab } from './tabs/employees/EmployeesTab';
+import { SchedulesTab, UnsavedChangesModal } from './tabs/employees/SchedulesTab';
+import { InventoryTab } from './tabs/inventory/InventoryTab';
 import { ClientsTab } from './tabs/clients/ClientsTab';
-import { ServicesTab } from './tabs/ServicesTab';
-import { FinancialsTab } from './tabs/FinancialsTab';
-import { SettingsTab } from './tabs/SettingsTab';
+import { ServicesTab } from './tabs/services/ServicesTab';
+import { FinancialsTab } from './tabs/financials/FinancialsTab';
+import { SettingsTab } from './tabs/settings/SettingsTab';
 
 export function DashboardLayout() {
   const { employeeRole, token, logout, navigateTo, currentPath } = useAuth();

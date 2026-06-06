@@ -13,10 +13,10 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import type { FinancialData } from '../../types';
-import { PageHeader, StatCard } from '../../components/common';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
+import type { FinancialData } from '../../../types';
+import { PageHeader, StatCard } from '../../../components/common';
+import { fetchWithTimeout } from '../../../utils/api';
+import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
 
 interface FinancialsTabProps {
   selectedBranch: string;

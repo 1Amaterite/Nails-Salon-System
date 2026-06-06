@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Calendar, X, RefreshCw } from 'lucide-react';
-import type { Branch, Appointment, AppointmentServiceRelation } from '../../types';
-import { useNotification } from '../../context/NotificationContext';
+import type { Branch, Appointment, AppointmentServiceRelation } from '../../../types';
+import { useNotification } from '../../../context/NotificationContext';
 import { CheckoutModal } from './CheckoutModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
+import { fetchWithTimeout } from '../../../utils/api';
+import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
 import {
   PageWrapper,
   DataTable,
@@ -13,8 +13,8 @@ import {
   SegmentedControl,
   PaginationControls,
   EmptyState,
-} from '../../components/common';
-import type { ColumnDef } from '../../components/common';
+} from '../../../components/common';
+import type { ColumnDef } from '../../../components/common';
 
 interface AppointmentsTabProps {
   branches: Branch[];

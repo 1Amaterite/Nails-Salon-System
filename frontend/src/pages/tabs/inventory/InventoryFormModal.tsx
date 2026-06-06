@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
-import { ModalShell, FormErrorBanner } from '../../components/common';
-import { useNotification } from '../../context/NotificationContext';
-import type { InventoryItem, InventoryItemPayload } from '../../types';
+import { fetchWithTimeout } from '../../../utils/api';
+import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { ModalShell, FormErrorBanner } from '../../../components/common';
+import { useNotification } from '../../../context/NotificationContext';
+import type { InventoryItem, InventoryItemPayload } from '../../../types';
 
 interface InventoryFormModalProps {
   isOpen: boolean;

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { CreditCard, ShoppingBag, X } from 'lucide-react';
-import { ModalShell } from '../../components/common';
-import type { Appointment, Employee } from '../../types';
+import { ModalShell } from '../../../components/common';
+import type { Appointment, Employee } from '../../../types';
 
 interface CheckoutModalProps {
   isOpen: boolean;

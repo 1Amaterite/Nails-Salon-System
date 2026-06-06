@@ -1,5 +1,5 @@
 import { Settings } from 'lucide-react';
-import { PageHeader, EmptyState } from '../../components/common';
+import { PageHeader, EmptyState } from '../../../components/common';
 
 export function SettingsTab() {
   return (

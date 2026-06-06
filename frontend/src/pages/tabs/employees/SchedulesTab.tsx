@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, X } from 'lucide-react';
-import type { Branch, Employee, EmployeeSchedule } from '../../types';
+import type { Branch, Employee, EmployeeSchedule } from '../../../types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
-import { InlineAlertBanner } from '../../components/common';
-import { UnsavedChangesModal } from '../../components/common/UnsavedChangesModal';
-import { TimeSelect12Hour } from '../../components/common/TimeSelect12Hour';
+import { fetchWithTimeout } from '../../../utils/api';
+import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { InlineAlertBanner } from '../../../components/common';
+import { UnsavedChangesModal } from '../../../components/common/UnsavedChangesModal';
+import { TimeSelect12Hour } from '../../../components/common/TimeSelect12Hour';
 
 export { UnsavedChangesModal };
 

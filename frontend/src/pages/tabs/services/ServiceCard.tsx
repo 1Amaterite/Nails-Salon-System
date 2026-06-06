@@ -1,5 +1,5 @@
 import { Edit2, Trash2 } from 'lucide-react';
-import type { Service } from '../../types';
+import type { Service } from '../../../types';
 
 interface ServiceCardProps {
   service: Service;

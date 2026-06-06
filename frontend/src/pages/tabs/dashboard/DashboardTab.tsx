@@ -1,6 +1,6 @@
 import { Calendar, UserCheck, Users, Cake } from 'lucide-react';
-import type { DashboardStats, WaitlistItem } from '../../types';
-import { PageHeader, StatCard, EmptyState } from '../../components/common';
+import type { DashboardStats, WaitlistItem } from '../../../types';
+import { PageHeader, StatCard, EmptyState } from '../../../components/common';
 
 interface DashboardTabProps {
   stats: DashboardStats;
