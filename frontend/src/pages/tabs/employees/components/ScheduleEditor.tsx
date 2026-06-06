@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../../utils/getApiUrl';
 import { InlineAlertBanner } from '../../../../components/common';
 import type { Employee, EmployeeSchedule } from '../../../../types';
+import { apiClient } from '../../../../utils/apiClient';
 import { TemplateSelector } from './TemplateSelector';
 import { DayScheduleCard } from './DayScheduleCard';
 
@@ -157,22 +156,10 @@ export function ScheduleEditor({
   };
 
   const mutation = useMutation({
-    mutationFn: async (updatedSchedules: LocalSchedule[]) => {
-      const token = getAuthToken();
-      const API_URL = getApiUrl();
-
-      const response = await fetchWithTimeout(`${API_URL}/api/employees/${selectedEmp.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          schedules: updatedSchedules.map((s) => ({ ...s, branchId: selectedBranch })),
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to update schedule.');
-      return data;
-    },
+    mutationFn: (updatedSchedules: LocalSchedule[]) =>
+      apiClient.put(`/api/employees/${selectedEmp.id}`, {
+        schedules: updatedSchedules.map((s) => ({ ...s, branchId: selectedBranch })),
+      }),
     onMutate: async (updatedSchedules) => {
       await queryClient.cancelQueries({
         queryKey: ['schedulableStaff', selectedBranch, employeeRole],

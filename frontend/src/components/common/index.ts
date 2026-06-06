@@ -38,3 +38,6 @@ export { BaseForm } from './BaseForm';
 export type { BaseFormProps } from './BaseForm';
 
 export { ClientAutocomplete } from './ClientAutocomplete';
+export { ErrorBoundary } from './ErrorBoundary';
+export { TabSkeleton } from './TabSkeleton';
+export { UnsavedChangesModal } from './UnsavedChangesModal';

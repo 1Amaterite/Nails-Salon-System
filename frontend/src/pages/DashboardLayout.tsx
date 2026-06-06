@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -14,25 +14,48 @@ import {
   Shield,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../utils/api';
-import { getApiUrl } from '../utils/getApiUrl';
 import { useAuth } from '../context/AuthContext';
 import { useBranch } from '../context/BranchContext';
+import { apiClient } from '../utils/apiClient';
+import { ErrorBoundary, TabSkeleton, UnsavedChangesModal } from '../components/common';
 
-import { DashboardTab } from './tabs/dashboard/DashboardTab';
-import { AppointmentsTab } from './tabs/appointments/AppointmentsTab';
-import { WaitlistTab } from './tabs/waitlist/WaitlistTab';
-import { AdminWalkinTab } from './tabs/waitlist/AdminWalkinTab';
-import { EmployeesTab } from './tabs/employees/EmployeesTab';
-import { SchedulesTab, UnsavedChangesModal } from './tabs/employees/SchedulesTab';
-import { InventoryTab } from './tabs/inventory/InventoryTab';
-import { ClientsTab } from './tabs/clients/ClientsTab';
-import { ServicesTab } from './tabs/services/ServicesTab';
-import { FinancialsTab } from './tabs/financials/FinancialsTab';
-import { SettingsTab } from './tabs/settings/SettingsTab';
+// Dynamic lazy loaded tabs for bundle splitting and faster initial load
+const DashboardTab = lazy(() =>
+  import('./tabs/dashboard/DashboardTab').then((m) => ({ default: m.DashboardTab }))
+);
+const AppointmentsTab = lazy(() =>
+  import('./tabs/appointments/AppointmentsTab').then((m) => ({ default: m.AppointmentsTab }))
+);
+const WaitlistTab = lazy(() =>
+  import('./tabs/waitlist/WaitlistTab').then((m) => ({ default: m.WaitlistTab }))
+);
+const AdminWalkinTab = lazy(() =>
+  import('./tabs/waitlist/AdminWalkinTab').then((m) => ({ default: m.AdminWalkinTab }))
+);
+const EmployeesTab = lazy(() =>
+  import('./tabs/employees/EmployeesTab').then((m) => ({ default: m.EmployeesTab }))
+);
+const SchedulesTab = lazy(() =>
+  import('./tabs/employees/SchedulesTab').then((m) => ({ default: m.SchedulesTab }))
+);
+const InventoryTab = lazy(() =>
+  import('./tabs/inventory/InventoryTab').then((m) => ({ default: m.InventoryTab }))
+);
+const ClientsTab = lazy(() =>
+  import('./tabs/clients/ClientsTab').then((m) => ({ default: m.ClientsTab }))
+);
+const ServicesTab = lazy(() =>
+  import('./tabs/services/ServicesTab').then((m) => ({ default: m.ServicesTab }))
+);
+const FinancialsTab = lazy(() =>
+  import('./tabs/financials/FinancialsTab').then((m) => ({ default: m.FinancialsTab }))
+);
+const SettingsTab = lazy(() =>
+  import('./tabs/settings/SettingsTab').then((m) => ({ default: m.SettingsTab }))
+);
 
 export function DashboardLayout() {
-  const { employeeRole, token, logout, navigateTo, currentPath } = useAuth();
+  const { employeeRole, logout, navigateTo, currentPath } = useAuth();
   const {
     branches,
     selectedBranch,
@@ -89,38 +112,15 @@ export function DashboardLayout() {
   const queryClient = useQueryClient();
 
   const handlePrefetch = (key: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const API_URL = getApiUrl();
-
     if (key === 'dashboard') {
       queryClient.prefetchQuery({
         queryKey: ['dashboardStats', selectedBranch],
-        queryFn: async () => {
-          const res = await fetchWithTimeout(
-            `${API_URL}/api/branches/${selectedBranch}/dashboard`,
-            {
-              headers,
-            }
-          );
-          if (!res.ok) throw new Error('Failed to fetch dashboard stats');
-          return res.json();
-        },
+        queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/dashboard`),
       });
     } else if (key === 'employees' || key === 'schedules') {
       queryClient.prefetchQuery({
         queryKey: ['schedulableStaff', selectedBranch, employeeRole],
-        queryFn: async () => {
-          const res = await fetchWithTimeout(
-            `${API_URL}/api/branches/${selectedBranch}/schedulable-staff`,
-            { headers }
-          );
-          if (!res.ok) throw new Error('Failed to fetch schedulable staff');
-          return res.json();
-        },
+        queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/schedulable-staff`),
       });
     }
   };
@@ -288,58 +288,66 @@ export function DashboardLayout() {
           )}
         </header>
 
-        {activeTab === 'dashboard' && <DashboardTab stats={stats} waitlist={waitlist} />}
-        {activeTab === 'appointments' && (
-          <AppointmentsTab
-            branches={branches}
-            selectedBranch={selectedBranch}
-            employeeRole={employeeRole}
-            navigateTo={navigateTo}
-          />
-        )}
-        {activeTab === 'waitlist' && (
-          <WaitlistTab
-            waitlist={waitlist}
-            handleUpdateWaitlistStatus={handleUpdateWaitlistStatus}
-            setActiveTab={setActiveTab}
-            branches={branches}
-            selectedBranch={selectedBranch}
-          />
-        )}
-        {activeTab === 'admin-walkin' && (
-          <AdminWalkinTab
-            branches={branches}
-            selectedBranch={selectedBranch}
-            onWalkinSubmit={onWalkinSubmit}
-          />
-        )}
-        {activeTab === 'employees' && (
-          <EmployeesTab
-            branches={branches}
-            selectedBranch={selectedBranch}
-            employeeRole={employeeRole}
-            onEmployeeAdded={() => queryClient.invalidateQueries({ queryKey: ['branches'] })}
-          />
-        )}
-        {activeTab === 'schedules' && (
-          <SchedulesTab
-            branches={branches}
-            selectedBranch={selectedBranch}
-            onScheduleUpdated={() => queryClient.invalidateQueries({ queryKey: ['branches'] })}
-            setIsDirty={setIsScheduleDirty}
-          />
-        )}
-        {activeTab === 'inventory' && (
-          <InventoryTab selectedBranch={selectedBranch} employeeRole={employeeRole} />
-        )}
-        {activeTab === 'clients' && <ClientsTab />}
-        {activeTab === 'services' && (
-          <ServicesTab branches={branches} selectedBranch={selectedBranch} role={employeeRole} />
-        )}
-        {activeTab === 'analytics' && (
-          <FinancialsTab selectedBranch={selectedBranch} employeeRole={employeeRole} />
-        )}
-        {activeTab === 'settings' && <SettingsTab selectedBranch={selectedBranch} />}
+        <ErrorBoundary>
+          <Suspense fallback={<TabSkeleton />}>
+            {activeTab === 'dashboard' && <DashboardTab stats={stats} waitlist={waitlist} />}
+            {activeTab === 'appointments' && (
+              <AppointmentsTab
+                branches={branches}
+                selectedBranch={selectedBranch}
+                employeeRole={employeeRole}
+                navigateTo={navigateTo}
+              />
+            )}
+            {activeTab === 'waitlist' && (
+              <WaitlistTab
+                waitlist={waitlist}
+                handleUpdateWaitlistStatus={handleUpdateWaitlistStatus}
+                setActiveTab={setActiveTab}
+                branches={branches}
+                selectedBranch={selectedBranch}
+              />
+            )}
+            {activeTab === 'admin-walkin' && (
+              <AdminWalkinTab
+                branches={branches}
+                selectedBranch={selectedBranch}
+                onWalkinSubmit={onWalkinSubmit}
+              />
+            )}
+            {activeTab === 'employees' && (
+              <EmployeesTab
+                branches={branches}
+                selectedBranch={selectedBranch}
+                employeeRole={employeeRole}
+                onEmployeeAdded={() => queryClient.invalidateQueries({ queryKey: ['branches'] })}
+              />
+            )}
+            {activeTab === 'schedules' && (
+              <SchedulesTab
+                branches={branches}
+                selectedBranch={selectedBranch}
+                onScheduleUpdated={() => queryClient.invalidateQueries({ queryKey: ['branches'] })}
+                setIsDirty={setIsScheduleDirty}
+              />
+            )}
+            {activeTab === 'inventory' && (
+              <InventoryTab selectedBranch={selectedBranch} employeeRole={employeeRole} />
+            )}
+            {activeTab === 'clients' && <ClientsTab />}
+            {activeTab === 'services' && (
+              <ServicesTab
+                branches={branches}
+                selectedBranch={selectedBranch}
+                role={employeeRole}
+              />
+            )}
+            {activeTab === 'analytics' && (
+              <FinancialsTab selectedBranch={selectedBranch} employeeRole={employeeRole} />
+            )}
+            {activeTab === 'settings' && <SettingsTab selectedBranch={selectedBranch} />}
+          </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
   );

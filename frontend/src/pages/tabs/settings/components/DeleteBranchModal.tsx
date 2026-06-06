@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { ModalShell } from '../../../../components/common/ModalShell';
 import { InlineAlertBanner } from '../../../../components/common';
-import { fetchWithTimeout } from '../../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../../utils/getApiUrl';
+import { apiClient } from '../../../../utils/apiClient';
 import type { Branch } from '../../../../types';
 
 interface DeleteBranchModalProps {
@@ -16,8 +15,6 @@ export function DeleteBranchModal({ branch, onClose, onDeleted }: DeleteBranchMo
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const API_URL = getApiUrl();
 
   if (!branch) return null;
 
@@ -33,18 +30,7 @@ export function DeleteBranchModal({ branch, onClose, onDeleted }: DeleteBranchMo
     setIsDeleting(true);
 
     try {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/branches/${branch.id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to delete branch.');
-      }
+      await apiClient.delete(`/api/branches/${branch.id}`);
 
       setDeleteConfirmName('');
       onDeleted();

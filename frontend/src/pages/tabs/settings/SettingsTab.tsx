@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader, InlineAlertBanner } from '../../../components/common';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
 import { useAuth } from '../../../context/AuthContext';
 import { useBranch } from '../../../context/BranchContext';
 import { SettingsForm } from './components/SettingsForm';
 import { BranchManagementSection } from './components/BranchManagementSection';
+import { apiClient } from '../../../utils/apiClient';
 
 interface SettingsTabProps {
   selectedBranch: string;
@@ -25,7 +24,6 @@ interface SettingsPayload {
 
 export function SettingsTab({ selectedBranch }: SettingsTabProps) {
   const queryClient = useQueryClient();
-  const API_URL = getApiUrl();
   const { employeeRole } = useAuth();
   const { branches } = useBranch();
 
@@ -40,38 +38,14 @@ export function SettingsTab({ selectedBranch }: SettingsTabProps) {
     refetch,
   } = useQuery<SettingsPayload>({
     queryKey: ['branchSettings', selectedBranch],
-    queryFn: async () => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/settings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to fetch branch settings.');
-      }
-      return res.json();
-    },
+    queryFn: () => apiClient.get<SettingsPayload>(`/api/branches/${selectedBranch}/settings`),
     enabled: !!selectedBranch,
   });
 
   // Update Mutation
   const updateSettingsMutation = useMutation({
-    mutationFn: async (payload: SettingsPayload) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to save settings.');
-      }
-      return res.json();
-    },
+    mutationFn: (payload: SettingsPayload) =>
+      apiClient.put<SettingsPayload>(`/api/branches/${selectedBranch}/settings`, payload),
     onSuccess: (data) => {
       setSuccessAlert('Settings saved successfully!');
       queryClient.setQueryData(['branchSettings', selectedBranch], data);

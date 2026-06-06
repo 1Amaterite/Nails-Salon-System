@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { ModalShell } from '../../../../components/common/ModalShell';
 import { InlineAlertBanner } from '../../../../components/common';
-import { fetchWithTimeout } from '../../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../../utils/getApiUrl';
+import { apiClient } from '../../../../utils/apiClient';
 
 interface CreateBranchModalProps {
   isOpen: boolean;
@@ -19,8 +18,6 @@ export function CreateBranchModal({ isOpen, onClose, onCreated }: CreateBranchMo
   const [errorMsg, setErrorMsg] = useState('');
   const [isPending, setIsPending] = useState(false);
 
-  const API_URL = getApiUrl();
-
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,25 +26,12 @@ export function CreateBranchModal({ isOpen, onClose, onCreated }: CreateBranchMo
     setIsPending(true);
 
     try {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/branches`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          address: address.trim() || undefined,
-          phone: phone.trim() || undefined,
-          email: email.trim() || undefined,
-        }),
+      await apiClient.post(`/api/branches`, {
+        name: name.trim(),
+        address: address.trim() || undefined,
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create branch.');
-      }
 
       setName('');
       setAddress('');

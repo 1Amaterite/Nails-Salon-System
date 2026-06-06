@@ -3,8 +3,7 @@ import { Users } from 'lucide-react';
 import type { Branch, Employee, EmployeeSchedule } from '../../../types';
 import { useNotification } from '../../../context/NotificationContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { apiClient } from '../../../utils/apiClient';
 import {
   PageWrapper,
   DataTable,
@@ -78,26 +77,10 @@ export function EmployeesTab({
   };
 
   const submitMutation = useMutation({
-    mutationFn: async ({ isEdit, payload }: { isEdit: boolean; payload: EmployeePayload }) => {
-      const token = getAuthToken();
-      const API_URL = getApiUrl();
-      const url =
-        isEdit && editingEmployee
-          ? `${API_URL}/api/employees/${editingEmployee.id}`
-          : `${API_URL}/api/employees`;
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const response = await fetchWithTimeout(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to ${isEdit ? 'update' : 'create'} employee.`);
-      }
-      return data;
+    mutationFn: ({ isEdit, payload }: { isEdit: boolean; payload: EmployeePayload }) => {
+      const endpoint =
+        isEdit && editingEmployee ? `/api/employees/${editingEmployee.id}` : `/api/employees`;
+      return isEdit ? apiClient.put(endpoint, payload) : apiClient.post(endpoint, payload);
     },
     onMutate: async ({ isEdit, payload }) => {
       await queryClient.cancelQueries({ queryKey: ['branches', selectedBranch, employeeRole] });
@@ -158,21 +141,7 @@ export function EmployeesTab({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const token = getAuthToken();
-      const API_URL = getApiUrl();
-
-      const response = await fetchWithTimeout(`${API_URL}/api/employees/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete employee.');
-      }
-      return data;
-    },
+    mutationFn: (id: string) => apiClient.delete(`/api/employees/${id}`),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ['branches', selectedBranch, employeeRole] });
       const previousBranches = queryClient.getQueryData(['branches', selectedBranch, employeeRole]);
