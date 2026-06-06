@@ -170,7 +170,6 @@ export interface StylistSalesPerformance {
   employeeName: string;
   servicesCount: number;
   salesAmount: number;
-  commissionEarned: number;
 }
 
 export interface FinancialTransaction {
@@ -184,8 +183,6 @@ export interface FinancialTransaction {
 
 export interface FinancialKPIs {
   totalRevenue: number;
-  totalTax: number;
-  totalCommission: number;
   netProfit: number;
 }
 

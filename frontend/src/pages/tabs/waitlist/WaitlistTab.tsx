@@ -45,7 +45,6 @@ export function WaitlistTab({
       payload: {
         paymentMethod: 'CASH' | 'CARD' | 'GCASH';
         discountAmount: number;
-        taxAmount: number;
         employeeId?: string | null;
       };
     }) => {
@@ -80,7 +79,6 @@ export function WaitlistTab({
   const handleCheckoutSubmit = (payload: {
     paymentMethod: 'CASH' | 'CARD' | 'GCASH';
     discountAmount: number;
-    taxAmount: number;
     employeeId?: string | null;
   }) => {
     if (!checkoutAppt) return;

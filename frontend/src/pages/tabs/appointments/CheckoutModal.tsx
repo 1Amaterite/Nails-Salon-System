@@ -9,7 +9,6 @@ interface CheckoutModalProps {
   onSubmit: (data: {
     paymentMethod: 'CASH' | 'CARD' | 'GCASH';
     discountAmount: number;
-    taxAmount: number;
     employeeId?: string | null;
   }) => void;
   appointment: Appointment | null;
@@ -27,7 +26,6 @@ export function CheckoutModal({
 }: CheckoutModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'GCASH'>('CASH');
   const [discountInput, setDiscountInput] = useState('0');
-  const [taxInput, setTaxInput] = useState('0');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(() => appointment?.employeeId || '');
 
   // Filter branch stylists
@@ -45,8 +43,7 @@ export function CheckoutModal({
   }, [appointment]);
 
   const discountAmount = Number(discountInput) || 0;
-  const taxAmount = Number(taxInput) || 0;
-  const totalAmount = Math.max(0, subtotal - discountAmount + taxAmount);
+  const totalAmount = Math.max(0, subtotal - discountAmount);
 
   if (!isOpen || !appointment) return null;
 
@@ -55,7 +52,6 @@ export function CheckoutModal({
     onSubmit({
       paymentMethod,
       discountAmount,
-      taxAmount,
       employeeId: selectedEmployeeId || undefined,
     });
   };
@@ -246,32 +242,17 @@ export function CheckoutModal({
               </div>
             </div>
 
-            {/* Adjustments: Discount & Tax */}
-            <div
-              className="form-grid"
-              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}
-            >
-              <div className="form-group">
-                <label className="form-label">Discount Amount (₱)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max={subtotal.toString()}
-                  step="0.01"
-                  value={discountInput}
-                  onChange={(e) => setDiscountInput(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tax Provision (₱)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={taxInput}
-                  onChange={(e) => setTaxInput(e.target.value)}
-                />
-              </div>
+            {/* Adjustments: Discount */}
+            <div className="form-group">
+              <label className="form-label">Discount Amount (₱)</label>
+              <input
+                type="number"
+                min="0"
+                max={subtotal.toString()}
+                step="0.01"
+                value={discountInput}
+                onChange={(e) => setDiscountInput(e.target.value)}
+              />
             </div>
 
             {/* Invoice Breakdown */}
@@ -307,19 +288,6 @@ export function CheckoutModal({
                 >
                   <span>Discount</span>
                   <span>- ₱{discountAmount.toFixed(2)}</span>
-                </div>
-              )}
-              {taxAmount > 0 && (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '13px',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  <span>Tax Provision</span>
-                  <span>+ ₱{taxAmount.toFixed(2)}</span>
                 </div>
               )}
               <div

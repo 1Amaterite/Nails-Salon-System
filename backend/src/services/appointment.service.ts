@@ -473,7 +473,6 @@ export async function getAvailableSlots(
 interface CheckoutPayload {
     paymentMethod: 'CASH' | 'CARD' | 'GCASH';
     discountAmount: number;
-    taxAmount: number;
     employeeId?: string | null;
 }
 
@@ -530,7 +529,7 @@ export async function checkoutAppointment(
     // Compute totals
     const subtotal = appointment.services.reduce((sum, relation) => sum + Number(relation.service.price), 0);
     const discount = payload.discountAmount;
-    const tax = payload.taxAmount;
+    const tax = 0;
     const total = Math.max(0, subtotal - discount + tax);
 
     // Execute database operations inside a single transaction to guarantee consistency

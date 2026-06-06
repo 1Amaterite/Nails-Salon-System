@@ -295,7 +295,7 @@ export function DashboardLayout() {
         {activeTab === 'analytics' && (
           <FinancialsTab selectedBranch={selectedBranch} employeeRole={employeeRole} />
         )}
-        {activeTab === 'settings' && <SettingsTab />}
+        {activeTab === 'settings' && <SettingsTab selectedBranch={selectedBranch} />}
       </main>
     </div>
   );

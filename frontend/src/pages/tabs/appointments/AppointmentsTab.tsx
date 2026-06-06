@@ -116,7 +116,6 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
       payload: {
         paymentMethod: 'CASH' | 'CARD' | 'GCASH';
         discountAmount: number;
-        taxAmount: number;
         employeeId?: string | null;
       };
     }) => {
@@ -156,7 +155,6 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
   const handleCheckoutSubmit = (payload: {
     paymentMethod: 'CASH' | 'CARD' | 'GCASH';
     discountAmount: number;
-    taxAmount: number;
     employeeId?: string | null;
   }) => {
     if (!checkoutAppt) return;

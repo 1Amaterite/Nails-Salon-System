@@ -100,3 +100,91 @@ export async function getDashboardStats(branchId: string) {
         birthdayCelebrants,
     };
 }
+
+/**
+ * Retrieves the branch metadata and custom settings key-value pairs.
+ */
+export async function getBranchSettings(branchId: string) {
+    const branch = await prisma.branch.findUnique({
+        where: { id: branchId },
+        include: { settings: true },
+    });
+    if (!branch) {
+        throw Object.assign(new Error('Branch not found.'), { status: 404 });
+    }
+
+    const settingsMap = new Map(branch.settings.map((s) => [s.key, s.value]));
+
+    return {
+        name: branch.name,
+        address: branch.address,
+        phone: branch.phone,
+        email: branch.email,
+        settings: {
+            loyalty_spend_per_point: settingsMap.get('loyalty_spend_per_point') ?? '10',
+            loyalty_point_value: settingsMap.get('loyalty_point_value') ?? '1',
+        },
+    };
+}
+
+/**
+ * Updates branch metadata and settings keys in a single database transaction.
+ */
+export async function updateBranchSettings(
+    branchId: string,
+    payload: {
+        name: string;
+        address?: string | null;
+        phone?: string | null;
+        email?: string | null;
+        settings: {
+            loyalty_spend_per_point: string;
+            loyalty_point_value: string;
+        };
+    }
+) {
+    const { name, address, phone, email, settings } = payload;
+
+    return prisma.$transaction(async (tx) => {
+        // 1. Update general branch attributes
+        const updatedBranch = await tx.branch.update({
+            where: { id: branchId },
+            data: { name, address, phone, email },
+        });
+
+        // 2. Upsert each custom setting key
+        const settingsData = [
+            { key: 'loyalty_spend_per_point', value: settings.loyalty_spend_per_point },
+            { key: 'loyalty_point_value', value: settings.loyalty_point_value },
+        ];
+
+        for (const s of settingsData) {
+            await tx.setting.upsert({
+                where: {
+                    branchId_key: {
+                        branchId,
+                        key: s.key,
+                    },
+                },
+                update: { value: s.value },
+                create: {
+                    branchId,
+                    key: s.key,
+                    value: s.value,
+                },
+            });
+        }
+
+        return {
+            name: updatedBranch.name,
+            address: updatedBranch.address,
+            phone: updatedBranch.phone,
+            email: updatedBranch.email,
+            settings: {
+                loyalty_spend_per_point: settings.loyalty_spend_per_point,
+                loyalty_point_value: settings.loyalty_point_value,
+            },
+        };
+    });
+}
+

@@ -6,10 +6,6 @@ export const CheckoutAppointmentSchema = z.object({
     .number()
     .min(0, 'Discount amount must be non-negative.')
     .default(0),
-  taxAmount: z
-    .number()
-    .min(0, 'Tax amount must be non-negative.')
-    .default(0),
   employeeId: z
     .string()
     .uuid('Invalid stylist ID.')

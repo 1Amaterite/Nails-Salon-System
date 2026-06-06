@@ -38,8 +38,6 @@ export async function getFinancialsData(branchId: string) {
 
     // 2. Calculations
     let totalRevenue = 0;
-    let totalTax = 0;
-    let totalCommission = 0;
 
     // Daily revenue (last 7 days)
     const dailyMap: { [dateStr: string]: number } = {};
@@ -52,11 +50,11 @@ export async function getFinancialsData(branchId: string) {
     }
 
     // Monthly revenue (last 6 months)
-    const monthlyMap: { [monthStr: string]: { revenue: number, tax: number, commission: number } } = {};
+    const monthlyMap: { [monthStr: string]: { revenue: number } } = {};
     for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthKey = d.toLocaleDateString('en-US', { month: 'short' }); // e.g. "Jan", "Feb"
-        monthlyMap[monthKey] = { revenue: 0, tax: 0, commission: 0 };
+        monthlyMap[monthKey] = { revenue: 0 };
     }
 
     // Category breakdown
@@ -69,7 +67,6 @@ export async function getFinancialsData(branchId: string) {
             employeeName: string;
             servicesCount: number;
             salesAmount: number;
-            commissionEarned: number;
         }
     } = {};
 
@@ -93,9 +90,7 @@ export async function getFinancialsData(branchId: string) {
     // Loop through transactions to populate aggregates
     for (const t of transactions) {
         const rev = Number(t.totalAmount);
-        const tax = Number(t.taxAmount);
         totalRevenue += rev;
-        totalTax += tax;
 
         // Group by day of week if within the last 7 days
         const txDate = new Date(t.createdAt);
@@ -112,19 +107,11 @@ export async function getFinancialsData(branchId: string) {
         const monthKey = txDate.toLocaleDateString('en-US', { month: 'short' });
         if (monthKey in monthlyMap) {
             monthlyMap[monthKey].revenue += rev;
-            monthlyMap[monthKey].tax += tax;
         }
 
         // Group service items for category and stylists
         for (const ts of t.services) {
             const price = Number(ts.priceCharged);
-            const commission = price * 0.3; // 30% commission
-            totalCommission += commission;
-
-            // Add to monthly map commission
-            if (monthKey in monthlyMap) {
-                monthlyMap[monthKey].commission += commission;
-            }
 
             // Category aggregation
             const cat = ts.service?.category || 'Uncategorized';
@@ -139,12 +126,10 @@ export async function getFinancialsData(branchId: string) {
                         employeeName: ts.employee.name,
                         servicesCount: 0,
                         salesAmount: 0,
-                        commissionEarned: 0,
                     };
                 }
                 stylistMap[empId].servicesCount += 1;
                 stylistMap[empId].salesAmount += price;
-                stylistMap[empId].commissionEarned += commission;
             }
         }
     }
@@ -174,14 +159,11 @@ export async function getFinancialsData(branchId: string) {
     const stylistPerformance = Object.values(stylistMap).map((s) => ({
         ...s,
         salesAmount: Math.round(s.salesAmount * 100) / 100,
-        commissionEarned: Math.round(s.commissionEarned * 100) / 100,
     })).sort((a, b) => b.salesAmount - a.salesAmount);
 
     return {
         kpis: {
             totalRevenue: Math.round(totalRevenue * 100) / 100,
-            totalTax: Math.round(totalTax * 100) / 100,
-            totalCommission: Math.round(totalCommission * 100) / 100,
             netProfit: Math.round(netProfit * 100) / 100,
         },
         monthlyTrends,

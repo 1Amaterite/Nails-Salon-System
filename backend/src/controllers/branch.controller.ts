@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import { getAllBranches, getSchedulableStaff, getDashboardStats } from '../services/branch.service';
+import { getAllBranches, getSchedulableStaff, getDashboardStats, getBranchSettings as getBranchSettingsService, updateBranchSettings as updateBranchSettingsService } from '../services/branch.service';
 import { getFinancialsData } from '../services/financials.service';
 
 export async function listBranches(_req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -63,6 +63,40 @@ export async function getBranchFinancials(req: AuthenticatedRequest, res: Respon
     try {
         const financials = await getFinancialsData(branchId);
         res.json(financials);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getBranchSettings(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    const { branchId } = req.params;
+    const { role, branchId: callerBranchId } = req.user!;
+
+    if (role === 'ADMIN' && branchId !== callerBranchId) {
+        res.status(403).json({ error: "Access denied. You can only access your own branch's settings." });
+        return;
+    }
+
+    try {
+        const settings = await getBranchSettingsService(branchId);
+        res.json(settings);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateBranchSettings(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    const { branchId } = req.params;
+    const { role, branchId: callerBranchId } = req.user!;
+
+    if (role === 'ADMIN' && branchId !== callerBranchId) {
+        res.status(403).json({ error: "Access denied. You can only modify your own branch's settings." });
+        return;
+    }
+
+    try {
+        const updated = await updateBranchSettingsService(branchId, req.body);
+        res.json(updated);
     } catch (error) {
         next(error);
     }
