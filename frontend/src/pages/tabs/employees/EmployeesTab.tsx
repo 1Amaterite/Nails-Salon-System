@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit2, Trash2, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import type { Branch, Employee, EmployeeSchedule } from '../../../types';
 import { useNotification } from '../../../context/NotificationContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -16,6 +16,7 @@ import {
 import type { ColumnDef } from '../../../components/common';
 import { useModalState } from '../../../utils/hooks';
 import { EmployeeFormModal } from './EmployeeFormModal';
+import { EmployeeRowActions } from './components/EmployeeRowActions';
 
 interface EmployeesTabProps {
   branches: Branch[];
@@ -417,53 +418,14 @@ export function EmployeesTab({
       key: 'actions',
       header: '',
       style: { width: '80px', textAlign: 'right' },
-      render: (emp) => {
-        const canEdit =
-          employeeRole === 'OWNER' || (employeeRole === 'ADMIN' && emp.role === 'STAFF');
-        if (!canEdit) return null;
-        return (
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <button
-              title="Edit Employee"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenEditModal(emp);
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '2px',
-                color: 'var(--text-secondary)',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-            >
-              <Edit2 size={13} />
-            </button>
-            <button
-              title="Delete Employee"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteEmployee(emp.id, emp.name);
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '2px',
-                color: 'var(--text-secondary)',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        );
-      },
+      render: (emp) => (
+        <EmployeeRowActions
+          emp={emp}
+          employeeRole={employeeRole}
+          onEdit={() => handleOpenEditModal(emp)}
+          onDelete={() => handleDeleteEmployee(emp.id, emp.name)}
+        />
+      ),
     },
   ];
 
