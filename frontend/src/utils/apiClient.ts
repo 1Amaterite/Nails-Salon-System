@@ -1,16 +1,26 @@
 import { fetchWithTimeout } from './api';
-import { getApiUrl, getAuthToken } from './getApiUrl';
+import { getApiUrl } from './getApiUrl';
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
+  skipAuth?: boolean;
 }
 
 class ApiClient {
-  private getHeaders(customHeaders: HeadersInit = {}): HeadersInit {
-    const token = getAuthToken();
-    return {
+  private getHeaders(customHeaders: HeadersInit = {}, skipAuth = false): HeadersInit {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+    };
+
+    if (!skipAuth) {
+      const token = sessionStorage.getItem('adminToken') || sessionStorage.getItem('ownerToken');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    return {
+      ...headers,
       ...customHeaders,
     };
   }
@@ -20,15 +30,30 @@ class ApiClient {
     const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
 
     const isJsonBody = options.body && !(options.body instanceof FormData);
+    const headers = this.getHeaders(options.headers, options.skipAuth);
+
+    if (!isJsonBody) {
+      if (headers instanceof Headers) {
+        headers.delete('Content-Type');
+      } else if (typeof headers === 'object' && !Array.isArray(headers)) {
+        delete (headers as Record<string, string>)['Content-Type'];
+      }
+    }
+
     const requestOptions: RequestInit = {
       ...options,
-      headers: this.getHeaders(options.headers),
+      headers,
       body: isJsonBody ? JSON.stringify(options.body) : (options.body as BodyInit),
     };
 
     const response = await fetchWithTimeout(url, requestOptions);
 
     if (!response.ok) {
+      if (response.status === 401) {
+        sessionStorage.removeItem('adminToken');
+        sessionStorage.removeItem('ownerToken');
+        window.dispatchEvent(new Event('unauthorized-api-call'));
+      }
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || `API Request failed with status ${response.status}`);
     }

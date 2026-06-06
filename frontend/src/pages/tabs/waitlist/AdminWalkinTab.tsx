@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Branch } from '../../../types';
-import { PageHeader, ClientAutocomplete } from '../../../components/common';
+import { PageHeader, ClientAutocomplete, LoadingSpinner } from '../../../components/common';
+import { useBranch } from '../../../context/BranchContext';
 
 interface AdminWalkinTabProps {
   branches: Branch[];
@@ -14,6 +15,7 @@ interface AdminWalkinTabProps {
 }
 
 export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: AdminWalkinTabProps) {
+  const { isAddingWalkin } = useBranch();
   const branch = branches.find((b) => b.id === selectedBranch);
   const activeServices = (branch?.services || []).filter((s) => s.isActive);
   const activeEmployees = (branch?.employees || []).filter((e) => e.isActive && e.role !== 'OWNER');
@@ -107,9 +109,24 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
         <button
           type="submit"
           className="btn-secondary"
-          style={{ marginTop: '12px', alignSelf: 'flex-start', padding: '14px 32px' }}
+          disabled={isAddingWalkin}
+          style={{
+            marginTop: '12px',
+            alignSelf: 'flex-start',
+            padding: '14px 32px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
         >
-          Register and Queue Guest
+          {isAddingWalkin ? (
+            <>
+              <LoadingSpinner size="sm" color="currentColor" />
+              Registering...
+            </>
+          ) : (
+            'Register and Queue Guest'
+          )}
         </button>
       </form>
     </div>

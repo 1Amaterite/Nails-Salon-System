@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { Branch, Employee } from '../../../types';
 import { useQuery } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { apiClient } from '../../../utils/apiClient';
 import { UnsavedChangesModal } from '../../../components/common/UnsavedChangesModal';
+import { LoadingSpinner } from '../../../components/common';
 import { ScheduleEditor } from './components/ScheduleEditor';
 
 export { UnsavedChangesModal };
@@ -20,22 +20,9 @@ export function SchedulesTab({ selectedBranch, onScheduleUpdated, setIsDirty }: 
 
   const { data: employeesData, isPending } = useQuery<Employee[]>({
     queryKey: ['schedulableStaff', selectedBranch, employeeRole],
-    queryFn: async () => {
-      const token = getAuthToken();
-      const API_URL = getApiUrl();
-      const res = await fetchWithTimeout(
-        `${API_URL}/api/branches/${selectedBranch}/schedulable-staff`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to fetch schedulable staff');
-      }
-      return res.json();
-    },
+    queryFn: () => apiClient.get<Employee[]>(`/api/branches/${selectedBranch}/schedulable-staff`),
     enabled: !!selectedBranch,
+    staleTime: 30000,
   });
 
   const employees = employeesData || [];
@@ -106,17 +93,7 @@ export function SchedulesTab({ selectedBranch, onScheduleUpdated, setIsDirty }: 
               color: 'var(--accent)',
             }}
           >
-            <div
-              className="spinner"
-              style={{
-                width: '24px',
-                height: '24px',
-                border: '2px solid var(--accent-glow)',
-                borderTop: '2px solid var(--accent)',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-              }}
-            />
+            <LoadingSpinner size="sm" />
             <span style={{ marginLeft: '12px', fontSize: '14px', fontWeight: 500 }}>
               Loading...
             </span>

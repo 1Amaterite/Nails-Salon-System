@@ -7,7 +7,8 @@ import { DashboardLayout } from './pages/DashboardLayout';
 
 function AppContent() {
   const { currentPath, navigateTo, isAdminAuth, isOwnerAuth, login } = useAuth();
-  const { branches, onWalkinSubmit, onBookingSubmit } = useBranch();
+  const { branches, onWalkinSubmit, onBookingSubmit, isAddingWalkin, isBookingAppointment } =
+    useBranch();
 
   // Redirect and route guards
   useEffect(() => {
@@ -98,6 +99,8 @@ function AppContent() {
         navigateTo={navigateTo}
         onPublicWalkinSubmit={onWalkinSubmit}
         onPublicBookingSubmit={onBookingSubmit}
+        isAddingWalkin={isAddingWalkin}
+        isBookingAppointment={isBookingAppointment}
       />
     );
   }

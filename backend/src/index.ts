@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pinoHttp from 'pino-http';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 import { logger } from './utils/logger';
 import { errorHandler } from './middlewares/errorHandler';
@@ -43,6 +45,8 @@ const PORT = process.env.PORT || 5001;
 
 // ─── Global Middlewares ───────────────────────────────────────────────────────
 
+app.use(helmet());
+
 app.use(
     pinoHttp({
         logger,
@@ -78,6 +82,20 @@ app.use(
     })
 );
 app.use(express.json());
+
+// ─── Rate Limiting for Public Endpoints ────────────────────────────────────────
+
+const publicRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: { error: 'Too many requests from this IP, please try again after 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.use('/api/branches/:branchId/waitlist', publicRateLimiter);
+app.use('/api/branches/:branchId/appointments', publicRateLimiter);
+app.use('/api/branches/:branchId/availability', publicRateLimiter);
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 

@@ -41,3 +41,7 @@ export { ClientAutocomplete } from './ClientAutocomplete';
 export { ErrorBoundary } from './ErrorBoundary';
 export { TabSkeleton } from './TabSkeleton';
 export { UnsavedChangesModal } from './UnsavedChangesModal';
+export { LoadingSpinner } from './LoadingSpinner';
+export type { LoadingSpinnerProps } from './LoadingSpinner';
+export { FormModal } from './FormModal';
+export type { FormModalProps } from './FormModal';

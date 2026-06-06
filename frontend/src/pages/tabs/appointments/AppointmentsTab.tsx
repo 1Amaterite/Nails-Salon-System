@@ -4,8 +4,8 @@ import type { Branch, Appointment, AppointmentServiceRelation } from '../../../t
 import { useNotification } from '../../../context/NotificationContext';
 import { CheckoutModal } from './CheckoutModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { apiClient } from '../../../utils/apiClient';
+import { useCheckout } from '../../../hooks/useCheckout';
 import {
   PageWrapper,
   DataTable,
@@ -13,6 +13,7 @@ import {
   SegmentedControl,
   PaginationControls,
   EmptyState,
+  LoadingSpinner,
 } from '../../../components/common';
 import type { ColumnDef } from '../../../components/common';
 
@@ -37,18 +38,11 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
   const { showToast, confirm } = useNotification();
   const queryClient = useQueryClient();
 
-  // Checkout Modal State
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null);
-
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [filterDate, setFilterDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Fetch appointments
-  const API_URL = getApiUrl();
 
   const {
     data: appointmentsData,
@@ -56,46 +50,28 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
     refetch,
   } = useQuery<Appointment[]>({
     queryKey: ['appointments', selectedBranch, filterDate, statusFilter],
-    queryFn: async () => {
-      const token = getAuthToken(); // resolved inside queryFn — errors caught by React Query
-      let url = `${API_URL}/api/branches/${selectedBranch}/appointments`;
+    queryFn: () => {
+      let endpoint = `/api/branches/${selectedBranch}/appointments`;
       const params = new URLSearchParams();
       if (filterDate) params.append('date', filterDate);
       if (statusFilter !== 'ALL') params.append('status', statusFilter);
 
       if (params.toString()) {
-        url += `?${params.toString()}`;
+        endpoint += `?${params.toString()}`;
       }
 
-      const res = await fetchWithTimeout(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch appointments');
-      return res.json();
+      return apiClient.get<Appointment[]>(endpoint);
     },
     enabled: !!selectedBranch,
+    staleTime: 15000,
   });
 
   const appointments = appointmentsData || [];
 
   // Update Status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/appointments/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update status.');
-      }
-      return res.json();
-    },
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      apiClient.put(`/api/appointments/${id}/status`, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
@@ -106,75 +82,18 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
     },
   });
 
-  // Checkout Mutation
-  const checkoutMutation = useMutation({
-    mutationFn: async ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: {
-        paymentMethod: 'CASH' | 'CARD' | 'GCASH';
-        discountAmount: number;
-        employeeId?: string | null;
-      };
-    }) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/appointments/${id}/checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to process checkout.');
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
-      queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
-      queryClient.invalidateQueries({ queryKey: ['financials', selectedBranch] });
-      showToast('Checkout completed and transaction recorded successfully.', 'success');
-      setIsCheckoutOpen(false);
-      setCheckoutAppt(null);
-    },
-    onError: (err: Error) => {
-      showToast(err.message, 'error');
-    },
-  });
-
-  const handleOpenCheckout = (appt: Appointment) => {
-    setCheckoutAppt(appt);
-    setIsCheckoutOpen(true);
-  };
-
-  const handleCheckoutSubmit = (payload: {
-    paymentMethod: 'CASH' | 'CARD' | 'GCASH';
-    discountAmount: number;
-    employeeId?: string | null;
-  }) => {
-    if (!checkoutAppt) return;
-    checkoutMutation.mutate({ id: checkoutAppt.id, payload });
-  };
+  const {
+    isCheckoutOpen,
+    checkoutAppt,
+    isPending: isCheckoutPending,
+    openCheckout,
+    closeCheckout,
+    submitCheckout,
+  } = useCheckout(selectedBranch);
 
   // Delete/Cancel mutation
   const cancelMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/appointments/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to cancel appointment.');
-      }
-      return res.json();
-    },
+    mutationFn: (id: string) => apiClient.delete(`/api/appointments/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
@@ -330,18 +249,30 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
                 <button
                   className="btn-primary"
                   title="Start Session"
+                  disabled={
+                    updateStatusMutation.isPending && updateStatusMutation.variables?.id === appt.id
+                  }
                   onClick={() => handleUpdateStatus(appt.id, 'IN_PROGRESS')}
                   style={{
                     padding: '4px 10px',
                     fontSize: '11px',
                     backgroundColor: 'var(--accent-blue)',
                     borderColor: 'var(--accent-blue)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
                   }}
                 >
-                  Serve
+                  {updateStatusMutation.isPending &&
+                  updateStatusMutation.variables?.id === appt.id ? (
+                    <LoadingSpinner size="sm" color="#fff" />
+                  ) : (
+                    'Serve'
+                  )}
                 </button>
                 <button
                   title="Cancel Booking"
+                  disabled={cancelMutation.isPending && cancelMutation.variables === appt.id}
                   onClick={() => handleCancelAppointment(appt.id, clientName)}
                   style={{
                     background: 'none',
@@ -355,6 +286,7 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
                     justifyContent: 'center',
                   }}
                   onMouseEnter={(e) => {
+                    if (cancelMutation.isPending && cancelMutation.variables === appt.id) return;
                     e.currentTarget.style.color = '#dc2626';
                     e.currentTarget.style.borderColor = '#fca5a5';
                   }}
@@ -363,7 +295,11 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
                     e.currentTarget.style.borderColor = 'var(--border-color)';
                   }}
                 >
-                  <X size={12} />
+                  {cancelMutation.isPending && cancelMutation.variables === appt.id ? (
+                    <LoadingSpinner size="sm" color="var(--accent)" />
+                  ) : (
+                    <X size={12} />
+                  )}
                 </button>
               </>
             )}
@@ -371,7 +307,7 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
               <button
                 className="btn-primary"
                 title="Mark Session Completed"
-                onClick={() => handleOpenCheckout(appt)}
+                onClick={() => openCheckout(appt)}
                 style={{ padding: '4px 10px', fontSize: '11px' }}
               >
                 Complete
@@ -500,14 +436,11 @@ export function AppointmentsTab({ branches, selectedBranch, navigateTo }: Appoin
 
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        onClose={() => {
-          setIsCheckoutOpen(false);
-          setCheckoutAppt(null);
-        }}
-        onSubmit={handleCheckoutSubmit}
+        onClose={closeCheckout}
+        onSubmit={submitCheckout}
         appointment={checkoutAppt}
         employees={branches.find((b) => b.id === selectedBranch)?.employees || []}
-        isPending={checkoutMutation.isPending}
+        isPending={isCheckoutPending}
       />
     </PageWrapper>
   );

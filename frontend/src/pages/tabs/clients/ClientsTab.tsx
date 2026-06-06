@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNotification } from '../../../context/NotificationContext';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { apiClient } from '../../../utils/apiClient';
 import { PageWrapper, SearchBar, PaginationControls } from '../../../components/common';
 import type { Client, ClientPayload } from '../../../types';
 import { ClientTable } from './ClientTable';
@@ -24,6 +23,7 @@ export function ClientsTab() {
 
   // Search & Pagination State
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   // Modal State
@@ -33,7 +33,15 @@ export function ClientsTab() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [historyClientId, setHistoryClientId] = useState<string | null>(null);
 
-  const API_URL = getApiUrl();
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
 
   // Fetch Clients Query
   const {
@@ -41,32 +49,22 @@ export function ClientsTab() {
     isLoading,
     refetch,
   } = useQuery<Client[]>({
-    queryKey: ['clients', searchQuery],
-    queryFn: async () => {
-      const token = getAuthToken();
-      const url = searchQuery
-        ? `${API_URL}/api/clients?search=${encodeURIComponent(searchQuery)}`
-        : `${API_URL}/api/clients`;
-      const res = await fetchWithTimeout(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch clients');
-      return res.json();
+    queryKey: ['clients', debouncedSearchQuery],
+    queryFn: () => {
+      const url = debouncedSearchQuery
+        ? `/api/clients?search=${encodeURIComponent(debouncedSearchQuery)}`
+        : '/api/clients';
+      return apiClient.get<Client[]>(url);
     },
+    staleTime: 30000,
   });
 
   // Fetch single client history
   const { data: activeClientDetails, isLoading: isLoadingDetails } = useQuery<Client>({
     queryKey: ['clientDetails', historyClientId],
-    queryFn: async () => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/clients/${historyClientId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch client history');
-      return res.json();
-    },
+    queryFn: () => apiClient.get<Client>(`/api/clients/${historyClientId}`),
     enabled: !!historyClientId,
+    staleTime: 60000,
   });
 
   // Filtered & Paginated items
@@ -92,20 +90,7 @@ export function ClientsTab() {
 
   // Add Mutation
   const addMutation = useMutation({
-    mutationFn: async (payload: ClientPayload) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/clients`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to add client.');
-      return data;
-    },
+    mutationFn: (payload: ClientPayload) => apiClient.post<Client>('/api/clients', payload),
     onSuccess: () => {
       showToast('Client added successfully.', 'success');
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -118,20 +103,8 @@ export function ClientsTab() {
 
   // Update Mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: ClientPayload }) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/clients/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to update client.');
-      return data;
-    },
+    mutationFn: ({ id, payload }: { id: string; payload: ClientPayload }) =>
+      apiClient.put<Client>(`/api/clients/${id}`, payload),
     onSuccess: () => {
       showToast('Client profile updated.', 'success');
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -145,16 +118,7 @@ export function ClientsTab() {
 
   // Delete Mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/clients/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to delete client.');
-      return data;
-    },
+    mutationFn: (id: string) => apiClient.delete(`/api/clients/${id}`),
     onSuccess: () => {
       showToast('Client profile deleted successfully.', 'success');
       queryClient.invalidateQueries({ queryKey: ['clients'] });

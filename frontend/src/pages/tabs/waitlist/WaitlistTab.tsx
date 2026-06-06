@@ -1,12 +1,9 @@
-import { useState } from 'react';
-import { UserCheck, Plus, RefreshCw } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { WaitlistItem, Branch, Appointment } from '../../../types';
-import { PageHeader, EmptyState } from '../../../components/common';
-import { useNotification } from '../../../context/NotificationContext';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { UserCheck, Plus } from 'lucide-react';
+import type { WaitlistItem, Branch } from '../../../types';
+import { PageHeader, EmptyState, LoadingSpinner } from '../../../components/common';
 import { CheckoutModal } from '../appointments/CheckoutModal';
+import { useCheckout } from '../../../hooks/useCheckout';
+import { useBranch } from '../../../context/BranchContext';
 
 interface WaitlistTabProps {
   waitlist: WaitlistItem[];
@@ -26,83 +23,16 @@ export function WaitlistTab({
   branches,
   selectedBranch,
 }: WaitlistTabProps) {
-  const { showToast } = useNotification();
-  const queryClient = useQueryClient();
-
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null);
-  const [isLoadingAppt, setIsLoadingAppt] = useState(false);
-
-  const API_URL = getApiUrl();
-
-  // Checkout Mutation
-  const checkoutMutation = useMutation({
-    mutationFn: async ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: {
-        paymentMethod: 'CASH' | 'CARD' | 'GCASH';
-        discountAmount: number;
-        employeeId?: string | null;
-      };
-    }) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/appointments/${id}/checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to process checkout.');
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['waitlist', selectedBranch] });
-      queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
-      queryClient.invalidateQueries({ queryKey: ['financials', selectedBranch] });
-      showToast('Checkout completed and transaction recorded successfully.', 'success');
-      setIsCheckoutOpen(false);
-      setCheckoutAppt(null);
-    },
-    onError: (err: Error) => {
-      showToast(err.message, 'error');
-    },
-  });
-
-  const handleCheckoutSubmit = (payload: {
-    paymentMethod: 'CASH' | 'CARD' | 'GCASH';
-    discountAmount: number;
-    employeeId?: string | null;
-  }) => {
-    if (!checkoutAppt) return;
-    checkoutMutation.mutate({ id: checkoutAppt.id, payload });
-  };
-
-  const handleCompleteClick = async (itemId: string) => {
-    setIsLoadingAppt(true);
-    try {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/appointments/${itemId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to retrieve waitlist details.');
-      const data = await res.json();
-      setCheckoutAppt(data);
-      setIsCheckoutOpen(true);
-    } catch (err) {
-      const error = err as Error;
-      showToast(error.message || 'Error occurred while loading checkout details.', 'error');
-    } finally {
-      setIsLoadingAppt(false);
-    }
-  };
+  const {
+    isCheckoutOpen,
+    checkoutAppt,
+    isLoadingAppt,
+    isPending,
+    openCheckoutById,
+    closeCheckout,
+    submitCheckout,
+  } = useCheckout(selectedBranch);
+  const { isUpdatingWaitlistStatus, updatingWaitlistId } = useBranch();
 
   const activeItems = waitlist.filter((item) => item.status !== 'COMPLETED');
 
@@ -168,14 +98,22 @@ export function WaitlistTab({
                 {item.status === 'WAITING' && (
                   <button
                     className="btn-primary"
+                    disabled={isUpdatingWaitlistStatus && updatingWaitlistId === item.id}
                     style={{
                       padding: '6px 12px',
                       fontSize: '12px',
                       backgroundColor: 'var(--accent-blue)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
                     }}
                     onClick={() => handleUpdateWaitlistStatus(item.id, 'IN_PROGRESS')}
                   >
-                    Start Session
+                    {isUpdatingWaitlistStatus && updatingWaitlistId === item.id ? (
+                      <LoadingSpinner size="sm" color="#fff" />
+                    ) : (
+                      'Start Session'
+                    )}
                   </button>
                 )}
                 {item.status === 'IN_PROGRESS' && (
@@ -187,12 +125,11 @@ export function WaitlistTab({
                       fontSize: '12px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '6px',
                     }}
-                    onClick={() => handleCompleteClick(item.id)}
+                    onClick={() => openCheckoutById(item.id)}
                   >
-                    {isLoadingAppt && <RefreshCw size={12} className="spin" />}
-                    Mark Done
+                    {isLoadingAppt ? <LoadingSpinner size="sm" color="#fff" /> : 'Mark Done'}
                   </button>
                 )}
               </div>
@@ -209,14 +146,11 @@ export function WaitlistTab({
 
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        onClose={() => {
-          setIsCheckoutOpen(false);
-          setCheckoutAppt(null);
-        }}
-        onSubmit={handleCheckoutSubmit}
+        onClose={closeCheckout}
+        onSubmit={submitCheckout}
         appointment={checkoutAppt}
         employees={branches.find((b) => b.id === selectedBranch)?.employees || []}
-        isPending={checkoutMutation.isPending}
+        isPending={isPending}
       />
     </div>
   );

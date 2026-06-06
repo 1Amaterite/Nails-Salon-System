@@ -13,10 +13,10 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import { PageHeader, StatCard, LoadingSpinner, DataTable } from '../../../components/common';
+import type { ColumnDef } from '../../../components/common';
 import type { FinancialData } from '../../../types';
-import { PageHeader, StatCard } from '../../../components/common';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { apiClient } from '../../../utils/apiClient';
 
 interface FinancialsTabProps {
   selectedBranch: string;
@@ -26,8 +26,6 @@ interface FinancialsTabProps {
 export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabProps) {
   const isAuthorized = employeeRole === 'OWNER' || employeeRole === 'ADMIN';
 
-  const API_URL = getApiUrl();
-
   const {
     data: financialsData,
     isLoading,
@@ -35,15 +33,9 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
     refetch,
   } = useQuery<FinancialData>({
     queryKey: ['financials', selectedBranch],
-    queryFn: async () => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/financials`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch financials data');
-      return res.json();
-    },
+    queryFn: () => apiClient.get<FinancialData>(`/api/branches/${selectedBranch}/financials`),
     enabled: isAuthorized && !!selectedBranch,
+    staleTime: 60000,
   });
 
   if (!isAuthorized) {
@@ -101,24 +93,15 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
           padding: '80px 40px',
         }}
       >
-        <div
+        <LoadingSpinner size="lg" />
+        <p
           style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid var(--accent)',
-            borderTopColor: 'transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '16px',
+            color: 'var(--text-secondary)',
+            fontSize: '14px',
+            fontWeight: 500,
+            marginTop: '16px',
           }}
-        />
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 500 }}>
+        >
           Analyzing salon ledger database...
         </p>
       </div>
@@ -143,6 +126,85 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
 
   const { kpis, monthlyTrends, categoryDistribution, stylistPerformance, recentLedger } =
     financialsData;
+
+  const stylistColumns: ColumnDef<(typeof stylistPerformance)[0]>[] = [
+    {
+      key: 'employeeName',
+      header: 'Stylist Name',
+      render: (stylist) => stylist.employeeName,
+      style: { fontWeight: 500 },
+    },
+    {
+      key: 'servicesCount',
+      header: 'Services',
+      render: (stylist) => `${stylist.servicesCount} services`,
+    },
+    {
+      key: 'salesAmount',
+      header: 'Sales Value',
+      render: (stylist) => `₱${stylist.salesAmount.toFixed(2)}`,
+      style: { fontWeight: 600 },
+    },
+  ];
+
+  const txColumns: ColumnDef<(typeof recentLedger)[0]>[] = [
+    {
+      key: 'clientName',
+      header: 'Client',
+      render: (tx) => (
+        <>
+          <div style={{ fontWeight: 500 }}>{tx.clientName}</div>
+          <div
+            style={{
+              fontSize: '11px',
+              color: 'var(--text-secondary)',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden',
+              maxWidth: '200px',
+            }}
+            title={tx.services.join(', ')}
+          >
+            {tx.services.join(', ')}
+          </div>
+        </>
+      ),
+    },
+    {
+      key: 'paymentMethod',
+      header: 'Payment',
+      render: (tx) => (
+        <span
+          style={{
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            background: 'rgba(0,0,0,0.04)',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontWeight: 600,
+          }}
+        >
+          {tx.paymentMethod}
+        </span>
+      ),
+    },
+    {
+      key: 'totalAmount',
+      header: 'Amount',
+      render: (tx) => `₱${tx.totalAmount.toFixed(2)}`,
+      style: { fontWeight: 600 },
+    },
+    {
+      key: 'createdAt',
+      header: 'Date',
+      render: (tx) =>
+        new Date(tx.createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
+      style: { fontSize: '12px', color: 'var(--text-secondary)' },
+    },
+  ];
 
   return (
     <div className="glass-panel">
@@ -351,7 +413,7 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
                     }}
                   />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {categoryDistribution.map((_, index) => (
+                    {categoryDistribution.map((_item, index: number) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={index % 2 === 0 ? 'var(--accent)' : 'var(--accent-blue)'}
@@ -408,48 +470,11 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
               No stylist activity recorded yet.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  textAlign: 'left',
-                  fontSize: '14px',
-                }}
-              >
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: '1px solid var(--border-color)',
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
-                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Stylist Name</th>
-                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Services</th>
-                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Sales Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stylistPerformance.map((stylist) => (
-                    <tr
-                      key={stylist.employeeId}
-                      style={{
-                        borderBottom: '1px solid var(--border-color)',
-                        color: 'var(--text-primary)',
-                      }}
-                    >
-                      <td style={{ padding: '14px 8px', fontWeight: 500 }}>
-                        {stylist.employeeName}
-                      </td>
-                      <td style={{ padding: '14px 8px' }}>{stylist.servicesCount} services</td>
-                      <td style={{ padding: '14px 8px', fontWeight: 600 }}>
-                        ₱{stylist.salesAmount.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={stylistColumns}
+              data={stylistPerformance}
+              keyExtractor={(item) => item.employeeId}
+            />
           )}
         </div>
 
@@ -489,87 +514,7 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
               No transactions recorded in this branch yet.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  textAlign: 'left',
-                  fontSize: '14px',
-                }}
-              >
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: '1px solid var(--border-color)',
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
-                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Client</th>
-                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Payment</th>
-                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Amount</th>
-                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentLedger.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      style={{
-                        borderBottom: '1px solid var(--border-color)',
-                        color: 'var(--text-primary)',
-                      }}
-                    >
-                      <td style={{ padding: '14px 8px' }}>
-                        <div style={{ fontWeight: 500 }}>{tx.clientName}</div>
-                        <div
-                          style={{
-                            fontSize: '11px',
-                            color: 'var(--text-secondary)',
-                            whiteSpace: 'nowrap',
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden',
-                            maxWidth: '200px',
-                          }}
-                          title={tx.services.join(', ')}
-                        >
-                          {tx.services.join(', ')}
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 8px' }}>
-                        <span
-                          style={{
-                            fontSize: '11px',
-                            textTransform: 'uppercase',
-                            background: 'rgba(0,0,0,0.04)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {tx.paymentMethod}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 8px', fontWeight: 600 }}>
-                        ₱{tx.totalAmount.toFixed(2)}
-                      </td>
-                      <td
-                        style={{
-                          padding: '14px 8px',
-                          fontSize: '12px',
-                          color: 'var(--text-secondary)',
-                        }}
-                      >
-                        {new Date(tx.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable columns={txColumns} data={recentLedger} keyExtractor={(item) => item.id} />
           )}
         </div>
       </div>

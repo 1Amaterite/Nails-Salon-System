@@ -1,5 +1,6 @@
 import React from 'react';
 import { FormErrorBanner } from './FormErrorBanner';
+import { LoadingSpinner } from './LoadingSpinner';
 
 export interface BaseFormProps {
   /** Submit handler. */
@@ -105,17 +106,7 @@ export function BaseForm({
         <button type="submit" className="btn-primary" disabled={isPending}>
           {isPending ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <span
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderRadius: '50%',
-                  borderTopColor: '#fff',
-                  animation: 'spin 1s linear infinite',
-                  display: 'inline-block',
-                }}
-              ></span>
+              <LoadingSpinner size="sm" color="#fff" />
               Saving...
             </span>
           ) : (

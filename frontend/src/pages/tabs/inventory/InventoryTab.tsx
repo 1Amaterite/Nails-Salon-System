@@ -3,14 +3,14 @@ import { ShoppingBag, Edit2, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { InventoryItem } from '../../../types';
 import { useNotification } from '../../../context/NotificationContext';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { apiClient } from '../../../utils/apiClient';
 import {
   PageWrapper,
   DataTable,
   SearchBar,
   PaginationControls,
   EmptyState,
+  LoadingSpinner,
 } from '../../../components/common';
 import type { ColumnDef } from '../../../components/common';
 import { InventoryFormModal } from './InventoryFormModal';
@@ -34,8 +34,6 @@ export function InventoryTab({ selectedBranch, employeeRole }: InventoryTabProps
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
-  const API_URL = getApiUrl();
-
   // Fetch Inventory Query
   const {
     data: inventoryData,
@@ -43,15 +41,9 @@ export function InventoryTab({ selectedBranch, employeeRole }: InventoryTabProps
     isError,
   } = useQuery<InventoryItem[]>({
     queryKey: ['inventory', selectedBranch],
-    queryFn: async () => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/inventory`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch inventory items');
-      return res.json();
-    },
+    queryFn: () => apiClient.get<InventoryItem[]>(`/api/branches/${selectedBranch}/inventory`),
     enabled: !!selectedBranch,
+    staleTime: 30000,
   });
 
   const items = inventoryData || [];
@@ -80,16 +72,7 @@ export function InventoryTab({ selectedBranch, employeeRole }: InventoryTabProps
 
   // Delete Mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const token = getAuthToken();
-      const res = await fetchWithTimeout(`${API_URL}/api/inventory/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to delete inventory item.');
-      return data;
-    },
+    mutationFn: (id: string) => apiClient.delete(`/api/inventory/${id}`),
     onSuccess: () => {
       showToast('Inventory item deleted successfully.', 'success');
       queryClient.invalidateQueries({ queryKey: ['inventory', selectedBranch] });
@@ -229,16 +212,7 @@ export function InventoryTab({ selectedBranch, employeeRole }: InventoryTabProps
         className="glass-panel"
         style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}
       >
-        <div
-          style={{
-            width: '24px',
-            height: '24px',
-            border: '3px solid var(--accent)',
-            borderTopColor: 'transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-          }}
-        />
+        <LoadingSpinner />
       </div>
     );
   }

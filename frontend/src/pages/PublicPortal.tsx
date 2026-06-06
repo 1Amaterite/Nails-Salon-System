@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Scissors, MapPin, Clock, Globe, Sparkles, Sparkle, Gem, Heart } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
-import { ClientAutocomplete } from '../components/common';
-import { getApiUrl } from '../utils/getApiUrl';
-import { fetchWithTimeout } from '../utils/api';
+import { ClientAutocomplete, LoadingSpinner } from '../components/common';
+import { apiClient } from '../utils/apiClient';
 
 import gelExtensionsImg from '../assets/gel_extensions.webp';
 import gelPolishImg from '../assets/gel_polish.webp';
@@ -52,6 +51,8 @@ interface PublicPortalProps {
     date: string;
     startTime: string;
   }) => void;
+  isAddingWalkin: boolean;
+  isBookingAppointment: boolean;
 }
 
 export function PublicPortal({
@@ -61,6 +62,8 @@ export function PublicPortal({
   navigateTo,
   onPublicWalkinSubmit,
   onPublicBookingSubmit,
+  isAddingWalkin,
+  isBookingAppointment,
 }: PublicPortalProps) {
   const { showToast } = useNotification();
 
@@ -112,21 +115,18 @@ export function PublicPortal({
     const fetchSlots = async () => {
       setIsLoadingSlots(true);
       try {
-        const API_URL = getApiUrl();
         const branchId = branches[0].id;
         const employeeQuery = bookingEmployeeId ? `&employeeId=${bookingEmployeeId}` : '';
-        const url = `${API_URL}/api/branches/${branchId}/availability?date=${bookingDate}&serviceId=${serviceId}${employeeQuery}`;
-        const res = await fetchWithTimeout(url);
-        if (res.ok && active) {
-          const data: string[] = await res.json();
+        const data = await apiClient.get<string[]>(
+          `/api/branches/${branchId}/availability?date=${bookingDate}&serviceId=${serviceId}${employeeQuery}`,
+          { skipAuth: true }
+        );
+        if (active) {
           setAvailableSlots(data);
           setBookingStartTime((prev) => {
             if (data.includes(prev)) return prev;
             return data[0] || '';
           });
-        } else if (active) {
-          setAvailableSlots([]);
-          setBookingStartTime('');
         }
       } catch (err) {
         console.error('Failed to fetch available slots:', err);
@@ -698,9 +698,24 @@ export function PublicPortal({
               <button
                 type="submit"
                 className="btn-primary"
-                style={{ marginTop: '12px', alignSelf: 'flex-start', padding: '14px 32px' }}
+                disabled={isBookingAppointment}
+                style={{
+                  marginTop: '12px',
+                  alignSelf: 'flex-start',
+                  padding: '14px 32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
               >
-                Submit Appointment Request
+                {isBookingAppointment ? (
+                  <>
+                    <LoadingSpinner size="sm" color="currentColor" />
+                    Submitting Request...
+                  </>
+                ) : (
+                  'Submit Appointment Request'
+                )}
               </button>
             </form>
           </div>
@@ -774,9 +789,24 @@ export function PublicPortal({
               <button
                 type="submit"
                 className="btn-primary"
-                style={{ marginTop: '12px', alignSelf: 'flex-start', padding: '14px 32px' }}
+                disabled={isAddingWalkin}
+                style={{
+                  marginTop: '12px',
+                  alignSelf: 'flex-start',
+                  padding: '14px 32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
               >
-                Check In Now
+                {isAddingWalkin ? (
+                  <>
+                    <LoadingSpinner size="sm" color="currentColor" />
+                    Checking In...
+                  </>
+                ) : (
+                  'Check In Now'
+                )}
               </button>
             </form>
           </div>

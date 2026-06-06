@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PageHeader, InlineAlertBanner } from '../../../components/common';
+import { PageHeader, InlineAlertBanner, LoadingSpinner } from '../../../components/common';
 import { useAuth } from '../../../context/AuthContext';
 import { useBranch } from '../../../context/BranchContext';
 import { SettingsForm } from './components/SettingsForm';
@@ -40,6 +40,7 @@ export function SettingsTab({ selectedBranch }: SettingsTabProps) {
     queryKey: ['branchSettings', selectedBranch],
     queryFn: () => apiClient.get<SettingsPayload>(`/api/branches/${selectedBranch}/settings`),
     enabled: !!selectedBranch,
+    staleTime: 60000,
   });
 
   // Update Mutation
@@ -74,24 +75,15 @@ export function SettingsTab({ selectedBranch }: SettingsTabProps) {
           padding: '80px 40px',
         }}
       >
-        <div
+        <LoadingSpinner size="lg" />
+        <p
           style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid var(--accent)',
-            borderTopColor: 'transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '16px',
+            color: 'var(--text-secondary)',
+            fontSize: '14px',
+            fontWeight: 500,
+            marginTop: '16px',
           }}
-        />
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 500 }}>
+        >
           Retrieving branch configuration details...
         </p>
       </div>

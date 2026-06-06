@@ -1,8 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { fetchWithTimeout } from '../../utils/api';
-import { getApiUrl } from '../../utils/getApiUrl';
+import { apiClient } from '../../utils/apiClient';
 import type { Client } from '../../types';
 
 interface ClientAutocompleteProps {
@@ -25,19 +24,13 @@ export function ClientAutocomplete({
   const { token } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const API_URL = getApiUrl();
 
   // Fetch all clients only if logged in
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['clients'],
-    queryFn: async () => {
-      const res = await fetchWithTimeout(`${API_URL}/api/clients`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch clients');
-      return res.json();
-    },
+    queryFn: () => apiClient.get<Client[]>('/api/clients'),
     enabled: !!token,
+    staleTime: 60000,
   });
 
   // Filter clients based on query value

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { fetchWithTimeout } from '../utils/api';
-import { getApiUrl } from '../utils/getApiUrl';
+import { apiClient } from '../utils/apiClient';
 
 interface AuthContextType {
   isAdminAuth: boolean;
@@ -47,18 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (username: string, passcode: string) => {
-      const API_URL = getApiUrl();
       try {
-        const response = await fetchWithTimeout(`${API_URL}/api/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password: passcode }),
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          return { success: false, error: data.error || 'Invalid credentials. Please try again.' };
-        }
+        const data = await apiClient.post<{
+          token: string;
+          employee: { role: string };
+        }>('/api/login', { username, password: passcode }, { skipAuth: true });
 
         const empRole = data.employee.role;
         if (empRole === 'OWNER') {
@@ -95,8 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             error: 'Unauthorized. You do not have permission to access the management portals.',
           };
         }
-      } catch {
-        return { success: false, error: 'Connection error. Is the backend server running?' };
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : 'Connection error. Is the backend server running?';
+        return { success: false, error: msg };
       }
     },
     [queryClient]
@@ -116,6 +110,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     queryClient.clear(); // Purge cache on logout
   }, [queryClient]);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      navigateTo('/login');
+    };
+    window.addEventListener('unauthorized-api-call', handleUnauthorized);
+    return () => {
+      window.removeEventListener('unauthorized-api-call', handleUnauthorized);
+    };
+  }, [logout, navigateTo]);
 
   return (
     <AuthContext.Provider

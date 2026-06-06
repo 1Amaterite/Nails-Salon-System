@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Branch, Service } from '../../../types';
 import { useNotification } from '../../../context/NotificationContext';
-import { fetchWithTimeout } from '../../../utils/api';
-import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { apiClient } from '../../../utils/apiClient';
 import { PageHeader } from '../../../components/common';
 import { ServiceGrid } from './ServiceGrid';
 import { ServiceFormModal } from './ServiceFormModal';
@@ -43,21 +42,7 @@ export function ServicesTab({ branches, selectedBranch, role }: ServicesTabProps
   };
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const token = getAuthToken();
-      const API_URL = getApiUrl();
-
-      const response = await fetchWithTimeout(`${API_URL}/api/services/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete service.');
-      }
-      return data;
-    },
+    mutationFn: (id: string) => apiClient.delete(`/api/services/${id}`),
     onSuccess: () => {
       showToast('Service deleted successfully.', 'success');
       queryClient.invalidateQueries({ queryKey: ['branches'] });
