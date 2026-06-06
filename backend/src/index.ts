@@ -132,6 +132,25 @@ async function cleanupOwnerSchedules(): Promise<void> {
     }
 }
 
+async function initializeSystemSettings(): Promise<void> {
+    try {
+        const setting = await prisma.systemSetting.findUnique({
+            where: { key: 'loyaltyEarnPercentage' },
+        });
+        if (!setting) {
+            await prisma.systemSetting.create({
+                data: {
+                    key: 'loyaltyEarnPercentage',
+                    value: '5',
+                },
+            });
+            logger.info('Seeded default loyaltyEarnPercentage system setting with value: 5');
+        }
+    } catch (err) {
+        logger.error({ err }, 'Failed to seed system settings on startup');
+    }
+}
+
 // ─── Server Start ─────────────────────────────────────────────────────────────
 
 app.listen(PORT, async () => {
@@ -143,4 +162,5 @@ app.listen(PORT, async () => {
         logger.error({ err: dbErr }, 'Failed to pre-warm database connection pool');
     }
     await cleanupOwnerSchedules();
+    await initializeSystemSettings();
 });

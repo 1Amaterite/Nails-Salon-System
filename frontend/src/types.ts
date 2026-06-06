@@ -67,6 +67,15 @@ export interface WaitlistItem {
   status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
 
+export interface LoyaltyTransaction {
+  id: string;
+  clientId: string;
+  amount: number;
+  type: 'EARNED' | 'REDEEMED' | 'ADJUSTED';
+  description: string;
+  createdAt: string;
+}
+
 export interface Client {
   id: string;
   firstName: string;
@@ -76,6 +85,7 @@ export interface Client {
   loyaltyPoints: number;
   notes?: string | null;
   appointments?: Appointment[];
+  loyaltyTransactions?: LoyaltyTransaction[];
 }
 
 export interface ClientPayload {
@@ -128,6 +138,7 @@ export interface AppointmentClient {
   firstName: string;
   lastName: string;
   phoneNumber?: string | null;
+  loyaltyPoints: number;
 }
 
 export interface AppointmentServiceRelation {

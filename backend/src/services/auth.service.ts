@@ -75,7 +75,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
     await prisma.employeeSchedule.deleteMany({});
     await prisma.appointmentService.deleteMany({});
     await prisma.transactionService.deleteMany({});
-    await prisma.loyaltyLedger.deleteMany({});
+    await prisma.loyaltyTransaction.deleteMany({});
     await prisma.transaction.deleteMany({});
     await prisma.appointment.deleteMany({});
     await prisma.inventoryLog.deleteMany({});

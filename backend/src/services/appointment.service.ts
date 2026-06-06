@@ -498,6 +498,7 @@ export async function getAvailableSlots(
 interface CheckoutPayload {
     paymentMethod: 'CASH' | 'CARD' | 'GCASH';
     discountAmount: number;
+    pointsApplied?: number;
     employeeId?: string | null;
 }
 
@@ -555,14 +556,41 @@ export async function checkoutAppointment(
         );
     }
 
+    // Fetch the current loyaltyEarnPercentage from the database
+    const systemSetting = await prisma.systemSetting.findUnique({
+        where: { key: 'loyaltyEarnPercentage' },
+    });
+    const earnPercentage = systemSetting ? parseInt(systemSetting.value, 10) : 5;
+
     // Compute totals
     const subtotal = appointment.services.reduce((sum, relation) => sum + Number(relation.service.price), 0);
+    const pointsApplied = payload.pointsApplied || 0;
     const discount = payload.discountAmount;
     const tax = 0;
-    const total = Math.max(0, subtotal - discount + tax);
+
+    // Total spent is the subtotal minus discount and points applied
+    const total = Math.max(0, subtotal - discount - pointsApplied + tax);
 
     // Execute database operations inside a single transaction to guarantee consistency
     return prisma.$transaction(async (tx) => {
+        // Retrieve client to check/update points
+        const client = await tx.client.findFirst({
+            where: { id: appointment.clientId, deletedAt: null },
+        });
+
+        if (!client) {
+            throw Object.assign(new Error('Client not found or deleted.'), { status: 404 });
+        }
+
+        if (pointsApplied > 0) {
+            if (client.loyaltyPoints < pointsApplied) {
+                throw Object.assign(
+                    new Error(`Insufficient loyalty points. Balance: ${client.loyaltyPoints}, Attempted to redeem: ${pointsApplied}`),
+                    { status: 400 }
+                );
+            }
+        }
+
         // 1. Update appointment status to COMPLETED and save employeeId if it changed/was assigned
         await tx.appointment.update({
             where: { id },
@@ -572,14 +600,14 @@ export async function checkoutAppointment(
             },
         });
 
-        // 2. Create Transaction record
+        // 2. Create Transaction record (discountAmount stores total discount including points)
         const transaction = await tx.transaction.create({
             data: {
                 branchId: appointment.branchId,
                 appointmentId: appointment.id,
                 clientId: appointment.clientId,
                 subtotalAmount: subtotal,
-                discountAmount: discount,
+                discountAmount: discount + pointsApplied,
                 taxAmount: tax,
                 totalAmount: total,
                 paymentMethod: payload.paymentMethod,
@@ -595,6 +623,39 @@ export async function checkoutAppointment(
                     serviceId: apptService.serviceId,
                     employeeId: chosenEmployeeId,
                     priceCharged: apptService.service.price,
+                },
+            });
+        }
+
+        // Calculate points earned from the transaction's final total amount
+        const pointsEarned = Math.floor(total * (earnPercentage / 100));
+        const updatedPoints = client.loyaltyPoints - pointsApplied + pointsEarned;
+
+        // 4. Update Client points
+        await tx.client.update({
+            where: { id: client.id },
+            data: { loyaltyPoints: updatedPoints },
+        });
+
+        // 5. Log Loyalty Transactions
+        if (pointsApplied > 0) {
+            await tx.loyaltyTransaction.create({
+                data: {
+                    clientId: client.id,
+                    amount: -pointsApplied,
+                    type: 'REDEEMED',
+                    description: `Redeemed ${pointsApplied} points (₱${pointsApplied}.00 discount) on checkout for appointment #${appointment.id}`,
+                },
+            });
+        }
+
+        if (pointsEarned > 0) {
+            await tx.loyaltyTransaction.create({
+                data: {
+                    clientId: client.id,
+                    amount: pointsEarned,
+                    type: 'EARNED',
+                    description: `Earned ${pointsEarned} points on payment for appointment #${appointment.id}`,
                 },
             });
         }

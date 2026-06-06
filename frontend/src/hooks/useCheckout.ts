@@ -21,6 +21,7 @@ export function useCheckout(selectedBranch: string) {
       payload: {
         paymentMethod: 'CASH' | 'CARD' | 'GCASH';
         discountAmount: number;
+        pointsApplied?: number;
         employeeId?: string | null;
       };
     }) => apiClient.post(`/api/appointments/${id}/checkout`, payload),
@@ -69,6 +70,7 @@ export function useCheckout(selectedBranch: string) {
     (payload: {
       paymentMethod: 'CASH' | 'CARD' | 'GCASH';
       discountAmount: number;
+      pointsApplied?: number;
       employeeId?: string | null;
     }) => {
       if (!checkoutAppt) return;

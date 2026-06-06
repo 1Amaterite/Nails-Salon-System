@@ -47,6 +47,9 @@ export async function getClientById(id: string) {
                     employee: true
                 },
                 orderBy: { appointmentDate: 'desc' }
+            },
+            loyaltyTransactions: {
+                orderBy: { createdAt: 'desc' }
             }
         }
     });

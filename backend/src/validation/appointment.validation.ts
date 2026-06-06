@@ -8,6 +8,12 @@ export const CheckoutAppointmentSchema = z.object({
     .number()
     .min(0, 'Discount amount must be non-negative.')
     .default(0),
+  pointsApplied: z
+    .number()
+    .int('Points applied must be an integer.')
+    .min(0, 'Points applied must be non-negative.')
+    .optional()
+    .default(0),
   employeeId: z
     .string()
     .uuid('Invalid stylist ID.')

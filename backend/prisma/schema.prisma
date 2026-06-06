@@ -26,11 +26,12 @@ enum AppointmentStatus {
     NO_SHOW
 }
 
-enum LoyaltyPointsActionType {
+enum LoyaltyTransactionType {
     EARNED
     REDEEMED
-    ADJUSTMENT
+    ADJUSTED
 }
+
 
 enum PaymentStatus {
     PAID
@@ -82,7 +83,7 @@ model Client {
     // Relations
     appointments    Appointment[]
     transactions    Transaction[]
-    loyaltyLedger   LoyaltyLedger[]
+    loyaltyTransactions LoyaltyTransaction[]
     
     // Timestamps
     createdAt       DateTime    @default(now())
@@ -214,7 +215,7 @@ model Transaction {
     appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
     client          Client      @relation(fields: [clientId], references: [id], onDelete: SetNull)
     services        TransactionService[]
-    loyaltyLedger   LoyaltyLedger[]
+
 
     // Timestamps
     createdAt       DateTime    @default(now())
@@ -245,24 +246,26 @@ model TransactionService {
     @@index([employeeId])
 }
 
-model LoyaltyLedger {
-    id              String      @id @default(uuid())
-    clientId        String
-    transactionId   String
-    pointsChange    Int
-    actionType      LoyaltyPointsActionType
-    notes           String?
+model LoyaltyTransaction {
+    id          String                 @id @default(uuid())
+    clientId    String
+    amount      Int
+    type        LoyaltyTransactionType
+    description String
+    createdAt   DateTime               @default(now())
 
     // Relations
-    client          Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-    transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: SetNull)
-
-    // Timestamps
-    createdAt       DateTime    @default(now())
+    client      Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
     @@index([clientId])
-    @@index([transactionId])
 }
+
+model SystemSetting {
+    key       String   @id
+    value     String
+    updatedAt DateTime @updatedAt
+}
+
 
 model Item {
     id            String         @id @default(uuid())

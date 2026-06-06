@@ -8,6 +8,7 @@ import serviceRoutes from './service.routes';
 import inventoryRoutes from './inventory.routes';
 import appointmentRoutes from './appointment.routes';
 import clientRoutes from './client.routes';
+import systemSettingRoutes from './systemSetting.routes';
 
 /**
  * Root API router.
@@ -24,5 +25,6 @@ router.use('/services', serviceRoutes);
 router.use('/', inventoryRoutes);       // /inventory and /branches/:id/inventory
 router.use('/', appointmentRoutes);     // /branches/:id/waitlist, /appointments, etc.
 router.use('/', clientRoutes);          // /clients, /clients/:id, etc.
+router.use('/', systemSettingRoutes);
 
 export default router;

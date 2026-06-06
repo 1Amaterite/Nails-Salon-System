@@ -9,6 +9,7 @@ interface CheckoutModalProps {
   onSubmit: (data: {
     paymentMethod: 'CASH' | 'CARD' | 'GCASH';
     discountAmount: number;
+    pointsApplied?: number;
     employeeId?: string | null;
   }) => void;
   appointment: Appointment | null;
@@ -26,6 +27,7 @@ export function CheckoutModal({
 }: CheckoutModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'GCASH'>('CASH');
   const [discountInput, setDiscountInput] = useState('0');
+  const [pointsAppliedInput, setPointsAppliedInput] = useState('0');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(() => appointment?.employeeId || '');
 
   // Filter branch stylists
@@ -42,8 +44,18 @@ export function CheckoutModal({
     );
   }, [appointment]);
 
+  const availablePoints = appointment?.client?.loyaltyPoints || 0;
   const discountAmount = Number(discountInput) || 0;
-  const totalAmount = Math.max(0, subtotal - discountAmount);
+
+  // Enforce that you cannot redeem more than subtotal - discountAmount
+  const maxPointsRedeemable = Math.max(0, Math.floor(subtotal - discountAmount));
+  const pointsApplied = Math.min(
+    availablePoints,
+    maxPointsRedeemable,
+    Number(pointsAppliedInput) || 0
+  );
+
+  const totalAmount = Math.max(0, subtotal - discountAmount - pointsApplied);
 
   if (!isOpen || !appointment) return null;
 
@@ -52,6 +64,7 @@ export function CheckoutModal({
     onSubmit({
       paymentMethod,
       discountAmount,
+      pointsApplied,
       employeeId: selectedEmployeeId || undefined,
     });
   };
@@ -251,8 +264,74 @@ export function CheckoutModal({
                 max={subtotal.toString()}
                 step="0.01"
                 value={discountInput}
-                onChange={(e) => setDiscountInput(e.target.value)}
+                onChange={(e) => {
+                  setDiscountInput(e.target.value);
+                  // Reset points to apply when discount changes to avoid exceeding total
+                  setPointsAppliedInput('0');
+                }}
               />
+            </div>
+
+            {/* Loyalty Points Redemption */}
+            <div
+              style={{
+                padding: '14px 16px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(209, 71, 119, 0.03)',
+                border: '1px solid #fbcfe8',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Redeem Loyalty Points
+                </span>
+                <span
+                  className="micro-badge"
+                  style={{
+                    fontSize: '9.5px',
+                    padding: '3px 8px',
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderColor: 'var(--border-color-hover)',
+                  }}
+                >
+                  Available: {availablePoints} Pts (₱{availablePoints.toFixed(2)})
+                </span>
+              </div>
+
+              <div className="form-group" style={{ gap: '4px' }}>
+                <input
+                  type="number"
+                  min="0"
+                  max={Math.min(availablePoints, maxPointsRedeemable).toString()}
+                  step="1"
+                  placeholder="Enter points to redeem..."
+                  value={pointsAppliedInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const numVal = parseInt(val, 10) || 0;
+                    const maxVal = Math.min(availablePoints, maxPointsRedeemable);
+                    if (numVal > maxVal) {
+                      setPointsAppliedInput(maxVal.toString());
+                    } else if (numVal < 0) {
+                      setPointsAppliedInput('0');
+                    } else {
+                      setPointsAppliedInput(val);
+                    }
+                  }}
+                />
+                {pointsApplied > 0 && (
+                  <span
+                    style={{ fontSize: '11.5px', color: 'var(--success-green)', fontWeight: 500 }}
+                  >
+                    ✓ Applying ₱{pointsApplied.toFixed(2)} discount (1 Pt = ₱1)
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Invoice Breakdown */}
@@ -288,6 +367,19 @@ export function CheckoutModal({
                 >
                   <span>Discount</span>
                   <span>- ₱{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              {pointsApplied > 0 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '13px',
+                    color: 'var(--success-green)',
+                  }}
+                >
+                  <span>Points Applied</span>
+                  <span>- ₱{pointsApplied.toFixed(2)}</span>
                 </div>
               )}
               <div
