@@ -9,7 +9,10 @@ import {
     updateAppointmentStatus,
     deleteAppointment,
     getAvailableSlots,
+    checkoutAppointment as checkoutAppointmentService,
+    getAppointmentById,
 } from '../services/appointment.service';
+import { CheckoutAppointmentSchema } from '../validation/appointment.validation';
 
 const VALID_WAITLIST_STATUSES = ['WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
 const VALID_APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const;
@@ -147,6 +150,36 @@ export async function getAvailability(req: Request, res: Response, next: NextFun
     try {
         const slots = await getAvailableSlots(branchId, date, serviceId, employeeId);
         res.json(slots);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function checkoutAppointment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    const { id } = req.params;
+    const { role, branchId: callerBranchId } = req.user!;
+
+    const parsed = CheckoutAppointmentSchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.issues[0].message });
+        return;
+    }
+
+    try {
+        const transaction = await checkoutAppointmentService(id, parsed.data, role, callerBranchId);
+        res.status(200).json({ message: 'Checkout completed successfully.', transaction });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getAppointment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    const { id } = req.params;
+    const { role, branchId } = req.user!;
+
+    try {
+        const appointment = await getAppointmentById(id, role, branchId);
+        res.json(appointment);
     } catch (error) {
         next(error);
     }

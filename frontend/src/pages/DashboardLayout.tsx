@@ -270,6 +270,8 @@ export function DashboardLayout() {
             waitlist={waitlist}
             handleUpdateWaitlistStatus={handleUpdateWaitlistStatus}
             setActiveTab={setActiveTab}
+            branches={branches}
+            selectedBranch={selectedBranch}
           />
         )}
         {activeTab === 'admin-walkin' && (

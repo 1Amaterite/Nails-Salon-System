@@ -8,6 +8,8 @@ import {
     createAppointment,
     patchAppointmentStatus,
     removeAppointment,
+    checkoutAppointment,
+    getAppointment,
 } from '../controllers/appointment.controller';
 
 const router = Router();
@@ -22,5 +24,7 @@ router.get('/branches/:branchId/appointments', verifyJWT, listAppointments);
 router.post('/branches/:branchId/appointments', createAppointment);      // Public — clients book online
 router.put('/appointments/:id/status', verifyJWT, patchAppointmentStatus);
 router.delete('/appointments/:id', verifyJWT, removeAppointment);
+router.post('/appointments/:id/checkout', verifyJWT, checkoutAppointment);
+router.get('/appointments/:id', verifyJWT, getAppointment);
 
 export default router;

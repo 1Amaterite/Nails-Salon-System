@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Calendar, X, RefreshCw } from 'lucide-react';
 import type { Branch, Appointment, AppointmentServiceRelation } from '../../types';
 import { useNotification } from '../../context/NotificationContext';
+import { CheckoutModal } from './CheckoutModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchWithTimeout } from '../../utils/api';
 import { getApiUrl, getAuthToken } from '../../utils/getApiUrl';
@@ -32,9 +33,13 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'CANCELLED', label: 'Canceled' },
 ];
 
-export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabProps) {
+export function AppointmentsTab({ branches, selectedBranch, navigateTo }: AppointmentsTabProps) {
   const { showToast, confirm } = useNotification();
   const queryClient = useQueryClient();
+
+  // Checkout Modal State
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,6 +105,63 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
       showToast(err.message, 'error');
     },
   });
+
+  // Checkout Mutation
+  const checkoutMutation = useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: {
+        paymentMethod: 'CASH' | 'CARD' | 'GCASH';
+        discountAmount: number;
+        taxAmount: number;
+        employeeId?: string | null;
+      };
+    }) => {
+      const token = getAuthToken();
+      const res = await fetchWithTimeout(`${API_URL}/api/appointments/${id}/checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to process checkout.');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
+      queryClient.invalidateQueries({ queryKey: ['financials', selectedBranch] });
+      showToast('Checkout completed and transaction recorded successfully.', 'success');
+      setIsCheckoutOpen(false);
+      setCheckoutAppt(null);
+    },
+    onError: (err: Error) => {
+      showToast(err.message, 'error');
+    },
+  });
+
+  const handleOpenCheckout = (appt: Appointment) => {
+    setCheckoutAppt(appt);
+    setIsCheckoutOpen(true);
+  };
+
+  const handleCheckoutSubmit = (payload: {
+    paymentMethod: 'CASH' | 'CARD' | 'GCASH';
+    discountAmount: number;
+    taxAmount: number;
+    employeeId?: string | null;
+  }) => {
+    if (!checkoutAppt) return;
+    checkoutMutation.mutate({ id: checkoutAppt.id, payload });
+  };
 
   // Delete/Cancel mutation
   const cancelMutation = useMutation({
@@ -311,7 +373,7 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
               <button
                 className="btn-primary"
                 title="Mark Session Completed"
-                onClick={() => handleUpdateStatus(appt.id, 'COMPLETED')}
+                onClick={() => handleOpenCheckout(appt)}
                 style={{ padding: '4px 10px', fontSize: '11px' }}
               >
                 Complete
@@ -436,6 +498,18 @@ export function AppointmentsTab({ selectedBranch, navigateTo }: AppointmentsTabP
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+      />
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => {
+          setIsCheckoutOpen(false);
+          setCheckoutAppt(null);
+        }}
+        onSubmit={handleCheckoutSubmit}
+        appointment={checkoutAppt}
+        employees={branches.find((b) => b.id === selectedBranch)?.employees || []}
+        isPending={checkoutMutation.isPending}
       />
     </PageWrapper>
   );

@@ -469,3 +469,130 @@ export async function getAvailableSlots(
 
     return availableSlots;
 }
+
+interface CheckoutPayload {
+    paymentMethod: 'CASH' | 'CARD' | 'GCASH';
+    discountAmount: number;
+    taxAmount: number;
+    employeeId?: string | null;
+}
+
+/**
+ * Checks out a completed appointment: calculates subtotal/total, marks appointment
+ * status as COMPLETED, and creates corresponding Transaction and TransactionService records.
+ */
+export async function checkoutAppointment(
+    id: string,
+    payload: CheckoutPayload,
+    callerRole: string,
+    callerBranchId: string
+) {
+    const appointment = await prisma.appointment.findUnique({
+        where: { id },
+        include: {
+            services: { include: { service: true } },
+        },
+    });
+
+    if (!appointment) throw Object.assign(new Error('Appointment not found.'), { status: 404 });
+
+    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+        throw Object.assign(
+            new Error('Access denied. You cannot modify appointments of another branch.'),
+            { status: 403 }
+        );
+    }
+
+    if (appointment.status === 'COMPLETED') {
+        throw Object.assign(new Error('This appointment has already been checked out.'), { status: 400 });
+    }
+
+    // Resolve employeeId to assign to transaction service details
+    const chosenEmployeeId = payload.employeeId || appointment.employeeId;
+    if (!chosenEmployeeId) {
+        throw Object.assign(
+            new Error('A stylist must be assigned to complete checkout.'),
+            { status: 400 }
+        );
+    }
+
+    // Verify the stylist exists and belongs to the same branch
+    const stylist = await prisma.employee.findFirst({
+        where: { id: chosenEmployeeId, branchId: appointment.branchId, isActive: true },
+    });
+    if (!stylist) {
+        throw Object.assign(
+            new Error('Assigned stylist is not active or not found in this branch.'),
+            { status: 400 }
+        );
+    }
+
+    // Compute totals
+    const subtotal = appointment.services.reduce((sum, relation) => sum + Number(relation.service.price), 0);
+    const discount = payload.discountAmount;
+    const tax = payload.taxAmount;
+    const total = Math.max(0, subtotal - discount + tax);
+
+    // Execute database operations inside a single transaction to guarantee consistency
+    return prisma.$transaction(async (tx) => {
+        // 1. Update appointment status to COMPLETED and save employeeId if it changed/was assigned
+        await tx.appointment.update({
+            where: { id },
+            data: {
+                status: 'COMPLETED',
+                employeeId: chosenEmployeeId,
+            },
+        });
+
+        // 2. Create Transaction record
+        const transaction = await tx.transaction.create({
+            data: {
+                branchId: appointment.branchId,
+                appointmentId: appointment.id,
+                clientId: appointment.clientId,
+                subtotalAmount: subtotal,
+                discountAmount: discount,
+                taxAmount: tax,
+                totalAmount: total,
+                paymentMethod: payload.paymentMethod,
+                paymentStatus: 'PAID',
+            },
+        });
+
+        // 3. Create TransactionService records
+        for (const apptService of appointment.services) {
+            await tx.transactionService.create({
+                data: {
+                    transactionId: transaction.id,
+                    serviceId: apptService.serviceId,
+                    employeeId: chosenEmployeeId,
+                    priceCharged: apptService.service.price,
+                },
+            });
+        }
+
+        return transaction;
+    });
+}
+
+/**
+ * Returns a single appointment by ID with full details (services, client, employee).
+ * Enforces branch-scoping logic for ADMINs.
+ */
+export async function getAppointmentById(id: string, callerRole: string, callerBranchId: string) {
+    const appointment = await prisma.appointment.findUnique({
+        where: { id },
+        include: APPOINTMENT_INCLUDE,
+    });
+
+    if (!appointment) throw Object.assign(new Error('Appointment not found.'), { status: 404 });
+
+    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+        throw Object.assign(
+            new Error('Access denied. You cannot view appointments of another branch.'),
+            { status: 403 }
+        );
+    }
+
+    return appointment;
+}
