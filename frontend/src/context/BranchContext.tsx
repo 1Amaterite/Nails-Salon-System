@@ -69,7 +69,9 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      const res = await fetchWithTimeout(`${API_URL}/api/dashboard/${selectedBranch}`, { headers });
+      const res = await fetchWithTimeout(`${API_URL}/api/branches/${selectedBranch}/dashboard`, {
+        headers,
+      });
       if (!res.ok) throw new Error('Failed to fetch dashboard stats');
       return res.json();
     },

@@ -32,19 +32,50 @@ import { FinancialsTab } from './tabs/FinancialsTab';
 import { SettingsTab } from './tabs/SettingsTab';
 
 export function DashboardLayout() {
-  const { employeeRole, token, logout, navigateTo } = useAuth();
+  const { employeeRole, token, logout, navigateTo, currentPath } = useAuth();
   const { branches, selectedBranch, stats, waitlist, handleUpdateWaitlistStatus, onWalkinSubmit } =
     useBranch();
 
-  const [activeTab, setActiveTabState] = useState<string>(() => {
-    const saved = sessionStorage.getItem('activeTab_' + window.location.pathname);
-    return saved || 'dashboard';
-  });
+  const navItems = [
+    { key: 'dashboard', label: 'Main Dashboard', Icon: LayoutDashboard },
+    { key: 'appointments', label: 'Clients Schedule', Icon: Calendar },
+    { key: 'waitlist', label: 'Walk-In Queue', Icon: UserCheck },
+    {
+      key: 'admin-walkin',
+      label: 'Add Walk-In Guest',
+      Icon: PlusCircle,
+      style: { borderLeft: '3px dashed var(--accent)' },
+    },
+    { key: 'employees', label: 'Staff Directory', Icon: Users },
+    { key: 'schedules', label: 'Shift Schedules', Icon: Clock },
+    { key: 'inventory', label: 'Inventory Items', Icon: ShoppingBag },
+    { key: 'clients', label: 'Clients Directory', Icon: Users },
+    { key: 'services', label: 'Services Catalog', Icon: Scissors },
+    ...(employeeRole === 'OWNER'
+      ? [
+          {
+            key: 'analytics',
+            label: 'Owner Financials',
+            Icon: Shield,
+            style: { borderLeft: '3px solid var(--accent)' },
+          },
+        ]
+      : []),
+    { key: 'settings', label: 'Settings Panel', Icon: Settings },
+  ];
 
-  const setActiveTab = useCallback((tab: string) => {
-    setActiveTabState(tab);
-    sessionStorage.setItem('activeTab_' + window.location.pathname, tab);
-  }, []);
+  const activeTab = (() => {
+    const rawTab = currentPath.split('/')[2] || 'dashboard';
+    return navItems.some((item) => item.key === rawTab) ? rawTab : 'dashboard';
+  })();
+
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      const prefix = employeeRole === 'OWNER' ? '/owner' : '/admin';
+      navigateTo(`${prefix}/${tab}`);
+    },
+    [employeeRole, navigateTo]
+  );
 
   const [isScheduleDirty, setIsScheduleDirty] = useState(false);
   const [pendingTabKey, setPendingTabKey] = useState<string | null>(null);
@@ -62,9 +93,12 @@ export function DashboardLayout() {
       queryClient.prefetchQuery({
         queryKey: ['dashboardStats', selectedBranch],
         queryFn: async () => {
-          const res = await fetchWithTimeout(`${API_URL}/api/dashboard/${selectedBranch}`, {
-            headers,
-          });
+          const res = await fetchWithTimeout(
+            `${API_URL}/api/branches/${selectedBranch}/dashboard`,
+            {
+              headers,
+            }
+          );
           if (!res.ok) throw new Error('Failed to fetch dashboard stats');
           return res.json();
         },
@@ -99,34 +133,6 @@ export function DashboardLayout() {
     }
     setPendingTabKey(null);
   };
-
-  const navItems = [
-    { key: 'dashboard', label: 'Main Dashboard', Icon: LayoutDashboard },
-    { key: 'appointments', label: 'Clients Schedule', Icon: Calendar },
-    { key: 'waitlist', label: 'Walk-In Queue', Icon: UserCheck },
-    {
-      key: 'admin-walkin',
-      label: 'Add Walk-In Guest',
-      Icon: PlusCircle,
-      style: { borderLeft: '3px dashed var(--accent)' },
-    },
-    { key: 'employees', label: 'Staff Directory', Icon: Users },
-    { key: 'schedules', label: 'Shift Schedules', Icon: Clock },
-    { key: 'inventory', label: 'Inventory Items', Icon: ShoppingBag },
-    { key: 'clients', label: 'Clients Directory', Icon: Users },
-    { key: 'services', label: 'Services Catalog', Icon: Scissors },
-    ...(employeeRole === 'OWNER'
-      ? [
-          {
-            key: 'analytics',
-            label: 'Owner Financials',
-            Icon: Shield,
-            style: { borderLeft: '3px solid var(--accent)' },
-          },
-        ]
-      : []),
-    { key: 'settings', label: 'Settings Panel', Icon: Settings, soon: true },
-  ];
 
   return (
     <div className="app-container">
@@ -170,7 +176,7 @@ export function DashboardLayout() {
 
           <div className="nav-section-title">Workspace</div>
           <nav className="nav-links">
-            {navItems.map(({ key, label, Icon, style, soon }) => (
+            {navItems.map(({ key, label, Icon, style }) => (
               <div
                 key={key}
                 className={`nav-link ${activeTab === key ? 'active' : ''}`}
@@ -180,24 +186,6 @@ export function DashboardLayout() {
               >
                 <Icon size={18} />
                 {label}
-                {soon && (
-                  <span
-                    style={{
-                      marginLeft: 'auto',
-                      fontSize: '9px',
-                      fontWeight: 700,
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
-                      color: 'var(--text-secondary)',
-                      backgroundColor: 'var(--bg-primary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px',
-                      padding: '1px 5px',
-                    }}
-                  >
-                    Soon
-                  </span>
-                )}
               </div>
             ))}
           </nav>

@@ -25,8 +25,4 @@ router.use('/', inventoryRoutes);       // /inventory and /branches/:id/inventor
 router.use('/', appointmentRoutes);     // /branches/:id/waitlist, /appointments, etc.
 router.use('/', clientRoutes);          // /clients, /clients/:id, etc.
 
-// ─── Legacy route aliases — keep frontend backward-compatible ─────────────────
-// Old: GET /api/dashboard/:branchId  →  New: GET /api/branches/:branchId/dashboard
-router.get('/dashboard/:branchId', verifyJWT, dashboardStats);
-
 export default router;

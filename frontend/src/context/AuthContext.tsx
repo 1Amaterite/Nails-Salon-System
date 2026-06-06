@@ -113,8 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('adminToken');
     sessionStorage.removeItem('ownerToken');
     sessionStorage.removeItem('employeeRole');
-    sessionStorage.removeItem('activeTab_/admin');
-    sessionStorage.removeItem('activeTab_/owner');
 
     queryClient.clear(); // Purge cache on logout
   }, [queryClient]);

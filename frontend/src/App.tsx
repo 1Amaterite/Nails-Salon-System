@@ -11,15 +11,19 @@ function AppContent() {
 
   // Redirect and route guards
   useEffect(() => {
-    if (currentPath === '/admin' && !isAdminAuth) {
+    if (currentPath === '/admin') {
+      navigateTo('/admin/dashboard');
+    } else if (currentPath === '/owner') {
+      navigateTo('/owner/dashboard');
+    } else if (currentPath.startsWith('/admin') && !isAdminAuth) {
       Promise.resolve().then(() => navigateTo('/login'));
-    } else if (currentPath === '/owner' && !isOwnerAuth) {
+    } else if (currentPath.startsWith('/owner') && !isOwnerAuth) {
       Promise.resolve().then(() => navigateTo('/login'));
     } else if (currentPath === '/login') {
       if (isOwnerAuth) {
-        Promise.resolve().then(() => navigateTo('/owner'));
+        Promise.resolve().then(() => navigateTo('/owner/dashboard'));
       } else if (isAdminAuth) {
-        Promise.resolve().then(() => navigateTo('/admin'));
+        Promise.resolve().then(() => navigateTo('/admin/dashboard'));
       }
     }
   }, [currentPath, isAdminAuth, isOwnerAuth, navigateTo]);
@@ -71,16 +75,19 @@ function AppContent() {
     );
   }
 
-  if (currentPath === '/admin' && !isAdminAuth) {
+  if (currentPath.startsWith('/admin') && !isAdminAuth) {
     return null;
   }
 
-  if (currentPath === '/owner' && !isOwnerAuth) {
+  if (currentPath.startsWith('/owner') && !isOwnerAuth) {
     return null;
   }
 
-  const roleMode =
-    currentPath === '/owner' ? 'owner' : currentPath === '/admin' ? 'admin' : 'public';
+  const roleMode = currentPath.startsWith('/owner')
+    ? 'owner'
+    : currentPath.startsWith('/admin')
+      ? 'admin'
+      : 'public';
 
   if (roleMode === 'public') {
     return (
