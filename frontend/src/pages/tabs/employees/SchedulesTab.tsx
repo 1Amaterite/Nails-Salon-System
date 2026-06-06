@@ -345,7 +345,9 @@ function ScheduleEditor({
       const response = await fetchWithTimeout(`${API_URL}/api/employees/${selectedEmp.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ schedules: updatedSchedules }),
+        body: JSON.stringify({
+          schedules: updatedSchedules.map((s) => ({ ...s, branchId: selectedBranch })),
+        }),
       });
 
       const data = await response.json();

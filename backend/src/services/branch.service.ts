@@ -14,7 +14,10 @@ export async function getAllBranches() {
 
     return branches.map((branch) => ({
         ...branch,
-        employees: branch.employees.map(({ passwordHash: _ph, ...safeEmp }) => safeEmp),
+        employees: branch.employees.map(({ passwordHash: _ph, schedules, ...safeEmp }) => ({
+            ...safeEmp,
+            schedules: schedules.filter((s) => s.branchId === branch.id),
+        })),
     }));
 }
 
@@ -23,8 +26,16 @@ export async function getAllBranches() {
  */
 export async function getSchedulableStaff(branchId: string) {
     const employees = await prisma.employee.findMany({
-        where: { branchId, role: { not: 'OWNER' }, isActive: true },
-        include: { schedules: true },
+        where: {
+            branches: { some: { id: branchId } },
+            role: { not: 'OWNER' },
+            isActive: true,
+        },
+        include: {
+            schedules: {
+                where: { branchId },
+            },
+        },
     });
 
     return employees.map(({ passwordHash: _ph, ...safeEmp }) => safeEmp);
@@ -47,7 +58,11 @@ export async function getDashboardStats(branchId: string) {
             },
         }),
         prisma.appointment.count({ where: { branchId, status: 'WAITING' } }),
-        prisma.employee.count({ where: { branchId } }),
+        prisma.employee.count({
+            where: {
+                branches: { some: { id: branchId } },
+            },
+        }),
         prisma.service.count({ where: { branchId } }),
         prisma.appointment.findMany({
             where: {
@@ -187,4 +202,45 @@ export async function updateBranchSettings(
         };
     });
 }
+
+/**
+ * Creates a new branch and initializes it with default settings.
+ */
+export async function createBranch(payload: {
+    name: string;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+}) {
+    const { name, address, phone, email } = payload;
+
+    return prisma.$transaction(async (tx) => {
+        const branch = await tx.branch.create({
+            data: {
+                name,
+                address: address || null,
+                phone: phone || null,
+                email: email || null,
+            },
+        });
+
+        const defaultSettings = [
+            { key: 'loyalty_spend_per_point', value: '10' },
+            { key: 'loyalty_point_value', value: '1' },
+        ];
+
+        for (const s of defaultSettings) {
+            await tx.setting.create({
+                data: {
+                    branchId: branch.id,
+                    key: s.key,
+                    value: s.value,
+                },
+            });
+        }
+
+        return branch;
+    });
+}
+
 

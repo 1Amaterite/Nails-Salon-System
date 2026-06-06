@@ -20,11 +20,13 @@ interface UpdateEmployeePayload {
     phoneNumber?: string;
     specialty?: string;
     isActive?: boolean;
+    branchId?: string;
     schedules?: Array<{
         dayOfWeek: number;
         startTime: string;
         endTime: string;
         isOff: boolean;
+        branchId?: string;
     }>;
 }
 
@@ -60,13 +62,14 @@ export async function createEmployee(payload: CreateEmployeePayload) {
         role,
         phoneNumber,
         specialty,
-        branch: { connect: { id: branchId } },
+        branches: { connect: { id: branchId } },
     };
 
     if (role !== 'OWNER') {
         employeeData.schedules = {
             createMany: {
                 data: Array.from({ length: 7 }, (_, i) => ({
+                    branchId,
                     dayOfWeek: i,
                     startTime: '09:00',
                     endTime: '17:00',
@@ -97,15 +100,19 @@ export async function createEmployee(payload: CreateEmployeePayload) {
  * passwords, clear credentials on demotion to STAFF) and schedule replacement.
  */
 export async function updateEmployee(id: string, payload: UpdateEmployeePayload, editorRole: string, editorBranchId?: string) {
-    const { name, username, password, role, phoneNumber, specialty, isActive, schedules } = payload;
+    const { name, username, password, role, phoneNumber, specialty, isActive, branchId, schedules } = payload;
 
-    const employee = await prisma.employee.findUnique({ where: { id } });
+    const employee = await prisma.employee.findUnique({
+        where: { id },
+        include: { branches: true },
+    });
     if (!employee) {
         throw Object.assign(new Error('Employee not found.'), { status: 404 });
     }
 
     if (editorRole === 'ADMIN') {
-        if (employee.branchId !== editorBranchId) {
+        const hasBranch = employee.branches.some((b) => b.id === editorBranchId);
+        if (!hasBranch) {
             throw Object.assign(new Error('Admins can only edit employees in their own branch.'), { status: 403 });
         }
         if (employee.role !== 'STAFF') {
@@ -116,12 +123,17 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
         }
     }
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name;
     if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
     if (specialty !== undefined) updateData.specialty = specialty;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (role !== undefined) updateData.role = role;
+    if (branchId !== undefined) {
+        updateData.branches = {
+            connect: { id: branchId }
+        };
+    }
 
     const targetRole = role || employee.role;
     if (targetRole === 'ADMIN' || targetRole === 'OWNER') {
@@ -149,10 +161,20 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
         if (effectiveRole === 'OWNER') {
             throw Object.assign(new Error('Owners cannot have shift schedules assigned.'), { status: 400 });
         }
-        await prisma.employeeSchedule.deleteMany({ where: { employeeId: id } });
+
+        const targetSchedBranchId = schedules[0]?.branchId || branchId || editorBranchId || employee.branches[0]?.id;
+        if (!targetSchedBranchId) {
+            throw Object.assign(new Error('Branch ID is required for schedule updates.'), { status: 400 });
+        }
+
+        await prisma.employeeSchedule.deleteMany({
+            where: { employeeId: id, branchId: targetSchedBranchId }
+        });
+
         await prisma.employeeSchedule.createMany({
             data: schedules.map((s) => ({
                 employeeId: id,
+                branchId: targetSchedBranchId,
                 dayOfWeek: s.dayOfWeek,
                 startTime: s.startTime,
                 endTime: s.endTime,
@@ -184,7 +206,10 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
  * Prevents self-deletion.
  */
 export async function deleteEmployee(id: string, requesterId: string, requesterRole: string, requesterBranchId: string) {
-    const employee = await prisma.employee.findUnique({ where: { id } });
+    const employee = await prisma.employee.findUnique({
+        where: { id },
+        include: { branches: true },
+    });
     if (!employee) {
         throw Object.assign(new Error('Employee not found.'), { status: 404 });
     }
@@ -193,7 +218,8 @@ export async function deleteEmployee(id: string, requesterId: string, requesterR
         if (employee.role !== 'STAFF') {
             throw Object.assign(new Error('Admins can only delete employees with STAFF role.'), { status: 403 });
         }
-        if (employee.branchId !== requesterBranchId) {
+        const hasBranch = employee.branches.some((b) => b.id === requesterBranchId);
+        if (!hasBranch) {
             throw Object.assign(new Error('Admins can only delete employees in their own branch.'), { status: 403 });
         }
     }

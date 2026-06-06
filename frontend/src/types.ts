@@ -1,6 +1,7 @@
 export interface EmployeeSchedule {
   id: string;
   employeeId: string;
+  branchId: string;
   dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
   startTime: string | null;
   endTime: string | null;
@@ -15,7 +16,8 @@ export interface Employee {
   phoneNumber: string;
   specialty?: string | null;
   isActive: boolean;
-  branchId: string;
+  branchId?: string;
+  branches?: Branch[];
   schedules?: EmployeeSchedule[];
 }
 

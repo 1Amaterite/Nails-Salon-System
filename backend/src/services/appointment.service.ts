@@ -93,7 +93,13 @@ export async function addToWaitlist(branchId: string, payload: WaitlistEntry) {
     if (!serviceExists) throw Object.assign(new Error('Service not found in this branch.'), { status: 404 });
 
     if (employeeId) {
-        const emp = await prisma.employee.findFirst({ where: { id: employeeId, branchId, isActive: true } });
+        const emp = await prisma.employee.findFirst({
+            where: {
+                id: employeeId,
+                branches: { some: { id: branchId } },
+                isActive: true
+            }
+        });
         if (!emp) throw Object.assign(new Error('Stylist not found or inactive in this branch.'), { status: 404 });
     }
 
@@ -228,8 +234,17 @@ export async function bookAppointment(branchId: string, payload: BookAppointment
     // 3. Stylist validation / auto-assignment
     if (selectedEmployeeId) {
         const stylist = await prisma.employee.findFirst({
-            where: { id: selectedEmployeeId, branchId, isActive: true, role: { not: 'OWNER' } },
-            include: { schedules: { where: { dayOfWeek } } },
+            where: {
+                id: selectedEmployeeId,
+                branches: { some: { id: branchId } },
+                isActive: true,
+                role: { not: 'OWNER' }
+            },
+            include: {
+                schedules: {
+                    where: { dayOfWeek, branchId }
+                }
+            },
         });
         if (!stylist) {
             throw Object.assign(
@@ -266,8 +281,16 @@ export async function bookAppointment(branchId: string, payload: BookAppointment
         // Auto-assign: batch-query all conflicts for the time window,
         // then pick the first candidate with no conflict — avoids N+1 DB hits.
         const candidates = await prisma.employee.findMany({
-            where: { branchId, isActive: true, role: { not: 'OWNER' } },
-            include: { schedules: { where: { dayOfWeek } } },
+            where: {
+                branches: { some: { id: branchId } },
+                isActive: true,
+                role: { not: 'OWNER' }
+            },
+            include: {
+                schedules: {
+                    where: { dayOfWeek, branchId }
+                }
+            },
         });
 
         // Fetch all conflicting appointments for the entire candidate pool at once.
@@ -407,13 +430,15 @@ export async function getAvailableSlots(
     // 2. Fetch candidates (stylists)
     const candidates = await prisma.employee.findMany({
         where: {
-            branchId,
+            branches: { some: { id: branchId } },
             isActive: true,
             role: { not: 'OWNER' },
             ...(employeeId ? { id: employeeId } : {})
         },
         include: {
-            schedules: { where: { dayOfWeek } }
+            schedules: {
+                where: { dayOfWeek, branchId }
+            }
         }
     });
 
@@ -517,7 +542,11 @@ export async function checkoutAppointment(
 
     // Verify the stylist exists and belongs to the same branch
     const stylist = await prisma.employee.findFirst({
-        where: { id: chosenEmployeeId, branchId: appointment.branchId, isActive: true },
+        where: {
+            id: chosenEmployeeId,
+            branches: { some: { id: appointment.branchId } },
+            isActive: true
+        },
     });
     if (!stylist) {
         throw Object.assign(

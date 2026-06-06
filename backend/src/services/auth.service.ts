@@ -21,6 +21,7 @@ interface LoginResult {
 export async function loginEmployee(username: string, password: string): Promise<LoginResult> {
     const employee = await prisma.employee.findUnique({
         where: { username: username.toLowerCase().trim() },
+        include: { branches: true },
     });
 
     if (!employee || !employee.passwordHash) {
@@ -34,12 +35,14 @@ export async function loginEmployee(username: string, password: string): Promise
         throw err;
     }
 
+    const branchId = employee.branches[0]?.id || '';
+
     const token = jwt.sign(
         {
             userId: employee.id,
             username: employee.username,
             role: employee.role,
-            branchId: employee.branchId,
+            branchId,
         },
         process.env.JWT_SECRET!,
         { expiresIn: '1d' }
@@ -52,7 +55,7 @@ export async function loginEmployee(username: string, password: string): Promise
             name: employee.name,
             username: employee.username,
             role: employee.role,
-            branchId: employee.branchId,
+            branchId,
         },
     };
 }
@@ -110,6 +113,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
     });
 
     const defaultSchedule = Array.from({ length: 7 }, (_, i) => ({
+        branchId: branch.id,
         dayOfWeek: i,
         startTime: '09:00',
         endTime: '17:00',
@@ -127,7 +131,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
             role: 'OWNER',
             phoneNumber: '01234567890',
             specialty: 'Owner',
-            branchId: branch.id,
+            branches: { connect: { id: branch.id } },
             schedules: { createMany: { data: defaultSchedule } },
         },
     });
@@ -140,7 +144,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
             role: 'ADMIN',
             phoneNumber: '01234567890',
             specialty: 'Manager',
-            branchId: branch.id,
+            branches: { connect: { id: branch.id } },
             schedules: { createMany: { data: defaultSchedule } },
         },
     });
@@ -151,7 +155,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
             role: 'STAFF',
             phoneNumber: '01234567890',
             specialty: 'Nail Specialist',
-            branchId: branch.id,
+            branches: { connect: { id: branch.id } },
             schedules: { createMany: { data: defaultSchedule } },
         },
     });

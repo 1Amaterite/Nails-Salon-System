@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { Save, RefreshCw } from 'lucide-react';
+import { Save, RefreshCw, X, Plus, Building2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader, InlineAlertBanner } from '../../../components/common';
 import { fetchWithTimeout } from '../../../utils/api';
 import { getApiUrl, getAuthToken } from '../../../utils/getApiUrl';
+import { useAuth } from '../../../context/AuthContext';
+import { useBranch } from '../../../context/BranchContext';
+import { ModalShell } from '../../../components/common/ModalShell';
+import type { Branch } from '../../../types';
 
 interface SettingsTabProps {
   selectedBranch: string;
@@ -23,6 +27,8 @@ interface SettingsPayload {
 export function SettingsTab({ selectedBranch }: SettingsTabProps) {
   const queryClient = useQueryClient();
   const API_URL = getApiUrl();
+  const { employeeRole } = useAuth();
+  const { branches } = useBranch();
 
   const [errorAlert, setErrorAlert] = useState('');
   const [successAlert, setSuccessAlert] = useState('');
@@ -152,6 +158,13 @@ export function SettingsTab({ selectedBranch }: SettingsTabProps) {
         onReset={refetch}
         isPending={updateSettingsMutation.isPending}
       />
+
+      {employeeRole === 'OWNER' && (
+        <BranchManagementSection
+          branches={branches}
+          onBranchCreated={() => queryClient.invalidateQueries({ queryKey: ['branches'] })}
+        />
+      )}
     </div>
   );
 }
@@ -352,5 +365,292 @@ function SettingsForm({ settingsData, onSubmit, onReset, isPending }: SettingsFo
         </button>
       </div>
     </form>
+  );
+}
+
+interface BranchManagementSectionProps {
+  branches: Branch[];
+  onBranchCreated: () => void;
+}
+
+function BranchManagementSection({ branches, onBranchCreated }: BranchManagementSectionProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isPending, setIsPending] = useState(false);
+
+  const API_URL = getApiUrl();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setIsPending(true);
+
+    try {
+      const token = getAuthToken();
+      const res = await fetchWithTimeout(`${API_URL}/api/branches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          address: address.trim() || undefined,
+          phone: phone.trim() || undefined,
+          email: email.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create branch.');
+      }
+
+      setName('');
+      setAddress('');
+      setPhone('');
+      setEmail('');
+      setIsModalOpen(false);
+      onBranchCreated();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error occurred while creating branch.';
+      setErrorMsg(msg);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        marginTop: '32px',
+        borderTop: '1px solid var(--border-color)',
+        paddingTop: '32px',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+        }}
+      >
+        <div>
+          <h3
+            style={{
+              fontFamily: 'var(--font-serif)',
+              color: 'var(--accent)',
+              fontSize: '20px',
+              fontWeight: 600,
+              margin: 0,
+            }}
+          >
+            Salon Branches Directory
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', margin: '4px 0 0 0' }}>
+            Register new locations and manage existing ones in the network.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => setIsModalOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            fontSize: '13px',
+          }}
+        >
+          <Plus size={16} /> Add New Branch
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '16px',
+        }}
+      >
+        {branches.map((b) => (
+          <div
+            key={b.id}
+            style={{
+              background: 'rgba(255, 255, 255, 0.4)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '16px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}
+              >
+                <Building2 size={20} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontWeight: 600, fontSize: '15.5px', color: 'var(--text-primary)' }}>
+                  {b.name}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  fontSize: '13px',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                {b.address && (
+                  <div>
+                    <strong>Address:</strong> {b.address}
+                  </div>
+                )}
+                {b.phone && (
+                  <div>
+                    <strong>Phone:</strong> {b.phone}
+                  </div>
+                )}
+                {b.email && (
+                  <div>
+                    <strong>Email:</strong> {b.email}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {isModalOpen && (
+        <ModalShell maxWidth="550px">
+          <div className="modal-container" style={{ padding: '24px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+              }}
+            >
+              <h3
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  color: 'var(--accent)',
+                  fontSize: '19px',
+                  fontWeight: 600,
+                  margin: 0,
+                }}
+              >
+                Register New Branch
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setErrorMsg('');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {errorMsg && <InlineAlertBanner type="error" message={errorMsg} />}
+
+            <form
+              onSubmit={handleSubmit}
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              <div className="form-group">
+                <label className="form-label">Branch Name *</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="e.g. Nails & Lashes Lane East"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Address</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="e.g. 456 Parkway Ave, Suite B"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">Phone</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. (555) 0210"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. east@nailssalon.com"
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '12px',
+                  justifyContent: 'flex-end',
+                  marginTop: '12px',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setErrorMsg('');
+                  }}
+                  disabled={isPending}
+                  style={{ padding: '10px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={isPending}
+                  style={{ padding: '10px 20px' }}
+                >
+                  {isPending ? 'Creating...' : 'Create Location'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </ModalShell>
+      )}
+    </div>
   );
 }

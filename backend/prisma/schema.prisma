@@ -61,6 +61,7 @@ model Branch {
     transactions    Transaction[]
     items           Item[]
     settings        Setting[]
+    schedules       EmployeeSchedule[]
 
     // Timestamps
     createdAt       DateTime    @default(now())
@@ -99,10 +100,9 @@ model Employee {
     phoneNumber     String
     specialty       String? 
     isActive        Boolean     @default(true)
-    branchId        String
 
     // Relations
-    branch              Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+    branches            Branch[]
     schedules           EmployeeSchedule[]
     appointments        Appointment[]
     transactionServices TransactionService[]
@@ -110,13 +110,12 @@ model Employee {
     // Timestamps
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
-
-    @@index([branchId])
 }
 
 model EmployeeSchedule {
     id              String  @id @default(uuid())
     employeeId      String
+    branchId        String
     dayOfWeek       Int
     startTime       String?
     endTime         String?
@@ -124,12 +123,14 @@ model EmployeeSchedule {
 
     // Relations
     employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+    branch          Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
     // Timestamps
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
 
     @@index([employeeId])
+    @@index([branchId])
 }
 
 model Service {

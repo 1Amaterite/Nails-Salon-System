@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import { getAllBranches, getSchedulableStaff, getDashboardStats, getBranchSettings as getBranchSettingsService, updateBranchSettings as updateBranchSettingsService } from '../services/branch.service';
+import { getAllBranches, getSchedulableStaff, getDashboardStats, getBranchSettings as getBranchSettingsService, updateBranchSettings as updateBranchSettingsService, createBranch } from '../services/branch.service';
 import { getFinancialsData } from '../services/financials.service';
 
 export async function listBranches(_req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -101,3 +101,20 @@ export async function updateBranchSettings(req: AuthenticatedRequest, res: Respo
         next(error);
     }
 }
+
+export async function create(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    const { name, address, phone, email } = req.body;
+
+    if (!name || !name.trim()) {
+        res.status(400).json({ error: 'Branch name is required.' });
+        return;
+    }
+
+    try {
+        const branch = await createBranch({ name, address, phone, email });
+        res.status(201).json({ message: 'Branch created successfully.', branch });
+    } catch (error) {
+        next(error);
+    }
+}
+
