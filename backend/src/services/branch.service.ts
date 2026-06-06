@@ -243,4 +243,20 @@ export async function createBranch(payload: {
     });
 }
 
+/**
+ * Deletes a branch. Prevents deleting the last remaining branch.
+ */
+export async function deleteBranch(id: string) {
+    const branchCount = await prisma.branch.count();
+    if (branchCount <= 1) {
+        throw Object.assign(new Error('Cannot delete the last remaining branch.'), { status: 400 });
+    }
+    const branch = await prisma.branch.findUnique({ where: { id } });
+    if (!branch) {
+        throw Object.assign(new Error('Branch not found.'), { status: 404 });
+    }
+    await prisma.branch.delete({ where: { id } });
+}
+
+
 

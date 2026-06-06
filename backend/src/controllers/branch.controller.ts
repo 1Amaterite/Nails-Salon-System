@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import { getAllBranches, getSchedulableStaff, getDashboardStats, getBranchSettings as getBranchSettingsService, updateBranchSettings as updateBranchSettingsService, createBranch } from '../services/branch.service';
+import { getAllBranches, getSchedulableStaff, getDashboardStats, getBranchSettings as getBranchSettingsService, updateBranchSettings as updateBranchSettingsService, createBranch, deleteBranch } from '../services/branch.service';
 import { getFinancialsData } from '../services/financials.service';
 
 export async function listBranches(_req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -117,4 +117,16 @@ export async function create(req: AuthenticatedRequest, res: Response, next: Nex
         next(error);
     }
 }
+
+export async function remove(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    const { branchId } = req.params;
+
+    try {
+        await deleteBranch(branchId);
+        res.json({ message: 'Branch deleted successfully.' });
+    } catch (error) {
+        next(error);
+    }
+}
+
 

@@ -9,6 +9,7 @@ import {
     getBranchSettings,
     updateBranchSettings,
     create,
+    remove,
 } from '../controllers/branch.controller';
 import { getAvailability } from '../controllers/appointment.controller';
 
@@ -16,6 +17,7 @@ const router = Router();
 
 router.get('/', listBranches);
 router.post('/', verifyJWT, requireRole('OWNER'), create);
+router.delete('/:branchId', verifyJWT, requireRole('OWNER'), remove);
 router.get('/:branchId/schedulable-staff', verifyJWT, listSchedulableStaff);
 router.get('/:branchId/dashboard', verifyJWT, dashboardStats);
 router.get('/:branchId/availability', getAvailability);

@@ -33,8 +33,15 @@ import { SettingsTab } from './tabs/settings/SettingsTab';
 
 export function DashboardLayout() {
   const { employeeRole, token, logout, navigateTo, currentPath } = useAuth();
-  const { branches, selectedBranch, stats, waitlist, handleUpdateWaitlistStatus, onWalkinSubmit } =
-    useBranch();
+  const {
+    branches,
+    selectedBranch,
+    setSelectedBranch,
+    stats,
+    waitlist,
+    handleUpdateWaitlistStatus,
+    onWalkinSubmit,
+  } = useBranch();
 
   const navItems = [
     { key: 'dashboard', label: 'Main Dashboard', Icon: LayoutDashboard },
@@ -242,6 +249,43 @@ export function DashboardLayout() {
               {activeTab.replace('-', ' ')}
             </h1>
           </div>
+
+          {/* Branch Switcher */}
+          {branches.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', zIndex: 50 }}>
+              <span style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                Active Branch:
+              </span>
+              {employeeRole === 'OWNER' ? (
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  style={{
+                    padding: '6px 36px 6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'white',
+                    color: 'var(--text-primary)',
+                    fontSize: '13.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    width: 'auto',
+                    boxShadow: 'var(--shadow-sm)',
+                  }}
+                >
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="branch-static-badge">
+                  {branches.find((b) => b.id === selectedBranch)?.name || 'N/A'}
+                </span>
+              )}
+            </div>
+          )}
         </header>
 
         {activeTab === 'dashboard' && <DashboardTab stats={stats} waitlist={waitlist} />}
