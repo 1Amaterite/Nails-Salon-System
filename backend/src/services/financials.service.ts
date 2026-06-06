@@ -149,13 +149,13 @@ export async function getFinancialsData(branchId: string) {
         }
     }
 
-    const netProfit = totalRevenue - totalTax - totalCommission;
+    const netProfit = totalRevenue;
 
     // Format Monthly Trends
     const monthlyTrends = Object.entries(monthlyMap).map(([month, data]) => ({
         month,
         revenue: Math.round(data.revenue * 100) / 100,
-        profit: Math.round((data.revenue - data.tax - data.commission) * 100) / 100,
+        profit: Math.round(data.revenue * 100) / 100,
     }));
 
     // Format Daily Trends

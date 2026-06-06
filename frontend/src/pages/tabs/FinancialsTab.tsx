@@ -1,13 +1,4 @@
-import {
-  TrendingUp,
-  DollarSign,
-  BarChart3,
-  Users,
-  Percent,
-  CreditCard,
-  Calendar,
-  ShieldAlert,
-} from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, Users, Calendar, ShieldAlert } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AreaChart,
@@ -157,7 +148,7 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
     <div className="glass-panel">
       <PageHeader
         title="Financial Ledger & Performance"
-        subtitle="Track monthly/daily revenue trends, service category rankings, and stylist commissions."
+        subtitle="Track monthly/daily revenue trends and service category rankings."
         action={
           <span
             className="micro-badge"
@@ -180,7 +171,7 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
 
       {/* KPI Cards Grid */}
       <div
-        className="grid-4"
+        className="grid-2"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -197,16 +188,6 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
           label="Net Profit"
           value={`₱${kpis.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={<TrendingUp size={24} />}
-        />
-        <StatCard
-          label="Stylist Commissions"
-          value={`₱${kpis.totalCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<Percent size={24} />}
-        />
-        <StatCard
-          label="Tax Provision (10%)"
-          value={`₱${kpis.totalTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<CreditCard size={24} />}
         />
       </div>
 
@@ -446,7 +427,6 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
                     <th style={{ padding: '12px 8px', fontWeight: 600 }}>Stylist Name</th>
                     <th style={{ padding: '12px 8px', fontWeight: 600 }}>Services</th>
                     <th style={{ padding: '12px 8px', fontWeight: 600 }}>Sales Value</th>
-                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Commissions (30%)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -464,15 +444,6 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
                       <td style={{ padding: '14px 8px' }}>{stylist.servicesCount} services</td>
                       <td style={{ padding: '14px 8px', fontWeight: 600 }}>
                         ₱{stylist.salesAmount.toFixed(2)}
-                      </td>
-                      <td
-                        style={{
-                          padding: '14px 8px',
-                          color: 'var(--success-green)',
-                          fontWeight: 600,
-                        }}
-                      >
-                        ₱{stylist.commissionEarned.toFixed(2)}
                       </td>
                     </tr>
                   ))}
