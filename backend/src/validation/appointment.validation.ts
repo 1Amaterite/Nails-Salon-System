@@ -21,6 +21,17 @@ export const CheckoutAppointmentSchema = z.object({
     .nullable(),
 });
 
+export const CreateWaitlistEntrySchema = z.object({
+  firstName: z.string().trim().min(1, 'First name is required.'),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Phone number is required.')
+    .regex(phoneRegex, 'Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx.'),
+  serviceId: z.string().uuid('Invalid service ID.'),
+  employeeId: z.string().uuid('Invalid stylist ID.').optional().nullable().or(z.literal('')),
+});
+
 export const CreateAppointmentSchema = z.object({
   firstName: z
     .string()

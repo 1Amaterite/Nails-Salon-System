@@ -2,6 +2,9 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import prisma from '../config/prisma';
 
+/** Fallback used when the setting row doesn't exist in the DB yet. */
+const DEFAULT_LOYALTY_EARN_PCT = 5;
+
 /**
  * Retrieves the loyalty earn percentage system setting.
  * Default is 5 if not found.
@@ -16,7 +19,7 @@ export async function getLoyaltyEarnPercentage(
             where: { key: 'loyaltyEarnPercentage' },
         });
 
-        const percentage = setting ? parseInt(setting.value, 10) : 5;
+        const percentage = setting ? parseInt(setting.value, 10) : DEFAULT_LOYALTY_EARN_PCT;
         res.json({ loyaltyEarnPercentage: percentage });
     } catch (error) {
         next(error);
@@ -49,9 +52,10 @@ export async function updateLoyaltyEarnPercentage(
             },
         });
 
+        const savedPercentage = parseInt(updatedSetting.value, 10);
         res.json({
             message: 'Loyalty earn percentage updated successfully.',
-            loyaltyEarnPercentage: parseInt(updatedSetting.value, 10),
+            loyaltyEarnPercentage: savedPercentage,
         });
     } catch (error) {
         next(error);

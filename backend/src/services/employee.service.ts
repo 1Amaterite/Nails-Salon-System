@@ -123,7 +123,7 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
         }
     }
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
     if (specialty !== undefined) updateData.specialty = specialty;
@@ -167,20 +167,24 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
             throw Object.assign(new Error('Branch ID is required for schedule updates.'), { status: 400 });
         }
 
-        await prisma.employeeSchedule.deleteMany({
-            where: { employeeId: id, branchId: targetSchedBranchId }
-        });
-
-        await prisma.employeeSchedule.createMany({
-            data: schedules.map((s) => ({
-                employeeId: id,
-                branchId: targetSchedBranchId,
-                dayOfWeek: s.dayOfWeek,
-                startTime: s.startTime,
-                endTime: s.endTime,
-                isOff: s.isOff,
-            })),
-        });
+        // Atomically replace the schedule: delete old rows then insert new ones.
+        // Wrapping in a transaction ensures we never end up with zero schedules
+        // if the createMany fails.
+        await prisma.$transaction([
+            prisma.employeeSchedule.deleteMany({
+                where: { employeeId: id, branchId: targetSchedBranchId },
+            }),
+            prisma.employeeSchedule.createMany({
+                data: schedules.map((s) => ({
+                    employeeId: id,
+                    branchId: targetSchedBranchId,
+                    dayOfWeek: s.dayOfWeek,
+                    startTime: s.startTime,
+                    endTime: s.endTime,
+                    isOff: s.isOff,
+                })),
+            }),
+        ]);
     }
 
     const updatedEmployee = await prisma.employee.update({

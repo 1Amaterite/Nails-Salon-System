@@ -182,9 +182,9 @@ export function CheckoutModal({
                 <ShoppingBag size={13} /> Selected Treatments
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {appointment.services?.map((relation, idx) => (
+                {appointment.services?.map((relation) => (
                   <div
-                    key={idx}
+                    key={`${relation.appointmentId}-${relation.serviceId}`}
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -299,7 +299,7 @@ export function CheckoutModal({
                     borderColor: 'var(--border-color-hover)',
                   }}
                 >
-                  Available: {availablePoints} Pts (₱{availablePoints.toFixed(2)})
+                  Available: {availablePoints} Pts (₱{availablePoints.toLocaleString()})
                 </span>
               </div>
 

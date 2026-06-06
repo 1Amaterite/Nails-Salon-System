@@ -6,15 +6,13 @@ import {
     updateInventoryItem,
     deleteInventoryItem,
 } from '../services/inventory.service';
+import { assertBranchAccess } from '../utils/assertBranchAccess';
 
 export async function list(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     const { branchId } = req.params;
     const { role, branchId: callerBranchId } = req.user!;
 
-    if (role === 'ADMIN' && branchId !== callerBranchId) {
-        res.status(403).json({ error: "Access denied. You can only access your own branch's inventory." });
-        return;
-    }
+    if (!assertBranchAccess(res, role, callerBranchId, branchId)) return;
 
     try {
         const inventory = await getInventory(branchId);
@@ -39,10 +37,7 @@ export async function create(req: AuthenticatedRequest, res: Response, next: Nex
         return;
     }
 
-    if (role === 'ADMIN' && targetBranchId !== callerBranchId) {
-        res.status(403).json({ error: 'Access denied. You can only add inventory to your own branch.' });
-        return;
-    }
+    if (!assertBranchAccess(res, role, callerBranchId, targetBranchId)) return;
 
     if (!name || quantity === undefined || reorderLevel === undefined || costPrice === undefined) {
         res.status(400).json({ error: 'Name, quantity, reorderLevel, and costPrice are required.' });

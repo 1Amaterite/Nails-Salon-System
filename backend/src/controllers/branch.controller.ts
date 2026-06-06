@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { getAllBranches, getSchedulableStaff, getDashboardStats, getBranchSettings as getBranchSettingsService, updateBranchSettings as updateBranchSettingsService, createBranch, deleteBranch } from '../services/branch.service';
 import { getFinancialsData } from '../services/financials.service';
+import { assertBranchAccess } from '../utils/assertBranchAccess';
 
 export async function listBranches(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -14,11 +15,9 @@ export async function listBranches(_req: Request, res: Response, next: NextFunct
 
 export async function listSchedulableStaff(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     const { branchId } = req.params;
+    const { role, branchId: callerBranchId } = req.user!;
 
-    if (req.user?.role === 'ADMIN' && req.user.branchId !== branchId) {
-        res.status(403).json({ error: "Access denied. You can only access your own branch's staff." });
-        return;
-    }
+    if (!assertBranchAccess(res, role, callerBranchId, branchId)) return;
 
     try {
         const staff = await getSchedulableStaff(branchId);
@@ -30,11 +29,9 @@ export async function listSchedulableStaff(req: AuthenticatedRequest, res: Respo
 
 export async function dashboardStats(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     const { branchId } = req.params;
+    const { role, branchId: callerBranchId } = req.user!;
 
-    if (req.user?.role === 'ADMIN' && req.user.branchId !== branchId) {
-        res.status(403).json({ error: "Access denied. You can only access your own branch's dashboard." });
-        return;
-    }
+    if (!assertBranchAccess(res, role, callerBranchId, branchId)) return;
 
     try {
         const stats = await getDashboardStats(branchId);
@@ -48,17 +45,14 @@ export async function getBranchFinancials(req: AuthenticatedRequest, res: Respon
     const { branchId } = req.params;
     const { role, branchId: callerBranchId } = req.user!;
 
-    // 1. Role validation: Must be OWNER or ADMIN
+    // Role validation: Must be OWNER or ADMIN
     if (role !== 'OWNER' && role !== 'ADMIN') {
         res.status(403).json({ error: 'Access denied. Only owners and administrators can view financial metrics.' });
         return;
     }
 
-    // 2. Scope validation: ADMINs can only access their own branch
-    if (role === 'ADMIN' && branchId !== callerBranchId) {
-        res.status(403).json({ error: "Access denied. You can only view financial metrics for your own branch." });
-        return;
-    }
+    // Scope validation: ADMINs can only access their own branch
+    if (!assertBranchAccess(res, role, callerBranchId, branchId)) return;
 
     try {
         const financials = await getFinancialsData(branchId);
@@ -72,10 +66,7 @@ export async function getBranchSettings(req: AuthenticatedRequest, res: Response
     const { branchId } = req.params;
     const { role, branchId: callerBranchId } = req.user!;
 
-    if (role === 'ADMIN' && branchId !== callerBranchId) {
-        res.status(403).json({ error: "Access denied. You can only access your own branch's settings." });
-        return;
-    }
+    if (!assertBranchAccess(res, role, callerBranchId, branchId)) return;
 
     try {
         const settings = await getBranchSettingsService(branchId);
@@ -89,10 +80,7 @@ export async function updateBranchSettings(req: AuthenticatedRequest, res: Respo
     const { branchId } = req.params;
     const { role, branchId: callerBranchId } = req.user!;
 
-    if (role === 'ADMIN' && branchId !== callerBranchId) {
-        res.status(403).json({ error: "Access denied. You can only modify your own branch's settings." });
-        return;
-    }
+    if (!assertBranchAccess(res, role, callerBranchId, branchId)) return;
 
     try {
         const updated = await updateBranchSettingsService(branchId, req.body);
@@ -128,5 +116,3 @@ export async function remove(req: AuthenticatedRequest, res: Response, next: Nex
         next(error);
     }
 }
-
-

@@ -133,7 +133,7 @@ export function ClientHistoryModal({
                   }}
                 >
                   <Award size={13} />
-                  VIP Member
+                  {(activeClientDetails?.loyaltyPoints ?? 0) > 0 ? 'VIP Member' : 'Loyalty Member'}
                 </div>
               </div>
 

@@ -12,7 +12,12 @@ import {
     checkoutAppointment as checkoutAppointmentService,
     getAppointmentById,
 } from '../services/appointment.service';
-import { CheckoutAppointmentSchema } from '../validation/appointment.validation';
+import {
+    CheckoutAppointmentSchema,
+    CreateAppointmentSchema,
+    CreateWaitlistEntrySchema,
+} from '../validation/appointment.validation';
+import { assertBranchAccess } from '../utils/assertBranchAccess';
 
 const VALID_WAITLIST_STATUSES = ['WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
 const VALID_APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const;
@@ -23,10 +28,7 @@ export async function listWaitlist(req: AuthenticatedRequest, res: Response, nex
     const { branchId } = req.params;
     const { role, branchId: callerBranchId } = req.user!;
 
-    if (role === 'ADMIN' && branchId !== callerBranchId) {
-        res.status(403).json({ error: "Access denied. You can only access your own branch's waitlist." });
-        return;
-    }
+    if (!assertBranchAccess(res, role, callerBranchId, branchId)) return;
 
     try {
         const waitlist = await getWaitlist(branchId);
@@ -38,15 +40,15 @@ export async function listWaitlist(req: AuthenticatedRequest, res: Response, nex
 
 export async function joinWaitlist(req: Request, res: Response, next: NextFunction): Promise<void> {
     const { branchId } = req.params;
-    const { firstName, phone, serviceId, employeeId } = req.body;
 
-    if (!firstName || !phone || !serviceId) {
-        res.status(400).json({ error: 'First name, phone number, and service ID are required.' });
+    const parsed = CreateWaitlistEntrySchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.issues[0].message });
         return;
     }
 
     try {
-        const entry = await addToWaitlist(branchId, { firstName, phone, serviceId, employeeId });
+        const entry = await addToWaitlist(branchId, parsed.data);
         res.status(201).json(entry);
     } catch (error) {
         next(error);
@@ -78,10 +80,7 @@ export async function listAppointments(req: AuthenticatedRequest, res: Response,
     const { date, status } = req.query as { date?: string; status?: string };
     const { role, branchId: callerBranchId } = req.user!;
 
-    if (role === 'ADMIN' && branchId !== callerBranchId) {
-        res.status(403).json({ error: "Access denied. You can only access your own branch's appointments." });
-        return;
-    }
+    if (!assertBranchAccess(res, role, callerBranchId, branchId)) return;
 
     try {
         const appointments = await getAppointments(branchId, date, status);
@@ -93,15 +92,15 @@ export async function listAppointments(req: AuthenticatedRequest, res: Response,
 
 export async function createAppointment(req: Request, res: Response, next: NextFunction): Promise<void> {
     const { branchId } = req.params;
-    const { firstName, phone, serviceId, date, startTime } = req.body;
 
-    if (!firstName || !phone || !serviceId || !date || !startTime) {
-        res.status(400).json({ error: 'First name, phone number, service, date, and start time are required.' });
+    const parsed = CreateAppointmentSchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.issues[0].message });
         return;
     }
 
     try {
-        const appointment = await bookAppointment(branchId, req.body);
+        const appointment = await bookAppointment(branchId, parsed.data);
         res.status(201).json(appointment);
     } catch (error) {
         next(error);
@@ -184,4 +183,3 @@ export async function getAppointment(req: AuthenticatedRequest, res: Response, n
         next(error);
     }
 }
-

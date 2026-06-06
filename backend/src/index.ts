@@ -133,6 +133,7 @@ async function cleanupOwnerSchedules(): Promise<void> {
 }
 
 async function initializeSystemSettings(): Promise<void> {
+    const DEFAULT_LOYALTY_EARN_PCT = '5';
     try {
         const setting = await prisma.systemSetting.findUnique({
             where: { key: 'loyaltyEarnPercentage' },
@@ -141,10 +142,10 @@ async function initializeSystemSettings(): Promise<void> {
             await prisma.systemSetting.create({
                 data: {
                     key: 'loyaltyEarnPercentage',
-                    value: '5',
+                    value: DEFAULT_LOYALTY_EARN_PCT,
                 },
             });
-            logger.info('Seeded default loyaltyEarnPercentage system setting with value: 5');
+            logger.info(`Seeded default loyaltyEarnPercentage system setting with value: ${DEFAULT_LOYALTY_EARN_PCT}`);
         }
     } catch (err) {
         logger.error({ err }, 'Failed to seed system settings on startup');

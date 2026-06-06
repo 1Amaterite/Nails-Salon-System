@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../config/prisma';
 
 interface ClientPayload {
@@ -12,25 +13,20 @@ interface ClientPayload {
  * Returns a list of all clients, optionally filtered by name or phone.
  */
 export async function getClients(search?: string) {
-    const where: any = { deletedAt: null };
+    const where: Prisma.ClientWhereInput = { deletedAt: null };
 
     if (search) {
         const cleanSearch = search.trim();
-        where.AND = [
-            { deletedAt: null },
-            {
-                OR: [
-                    { firstName: { contains: cleanSearch, mode: 'insensitive' } },
-                    { lastName: { contains: cleanSearch, mode: 'insensitive' } },
-                    { phoneNumber: { contains: cleanSearch } }
-                ]
-            }
+        where.OR = [
+            { firstName: { contains: cleanSearch, mode: 'insensitive' } },
+            { lastName: { contains: cleanSearch, mode: 'insensitive' } },
+            { phoneNumber: { contains: cleanSearch } },
         ];
     }
 
     return prisma.client.findMany({
         where,
-        orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }]
+        orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
     });
 }
 

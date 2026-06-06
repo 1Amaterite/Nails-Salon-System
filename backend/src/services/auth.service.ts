@@ -71,20 +71,22 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
         return { seeded: false };
     }
 
-    // Cascade-delete all existing data
-    await prisma.employeeSchedule.deleteMany({});
-    await prisma.appointmentService.deleteMany({});
-    await prisma.transactionService.deleteMany({});
-    await prisma.loyaltyTransaction.deleteMany({});
-    await prisma.transaction.deleteMany({});
-    await prisma.appointment.deleteMany({});
-    await prisma.inventoryLog.deleteMany({});
-    await prisma.item.deleteMany({});
-    await prisma.setting.deleteMany({});
-    await prisma.service.deleteMany({});
-    await prisma.employee.deleteMany({});
-    await prisma.branch.deleteMany({});
-    await prisma.client.deleteMany({});
+    // Cascade-delete all existing data in a single atomic transaction
+    await prisma.$transaction([
+        prisma.employeeSchedule.deleteMany({}),
+        prisma.appointmentService.deleteMany({}),
+        prisma.transactionService.deleteMany({}),
+        prisma.loyaltyTransaction.deleteMany({}),
+        prisma.transaction.deleteMany({}),
+        prisma.appointment.deleteMany({}),
+        prisma.inventoryLog.deleteMany({}),
+        prisma.item.deleteMany({}),
+        prisma.setting.deleteMany({}),
+        prisma.service.deleteMany({}),
+        prisma.employee.deleteMany({}),
+        prisma.branch.deleteMany({}),
+        prisma.client.deleteMany({}),
+    ]);
 
     const branch = await prisma.branch.create({
         data: {

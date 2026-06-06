@@ -1,6 +1,6 @@
 import prisma from '../config/prisma';
 import { addMinutesToTime } from '../utils/time';
-import { AppointmentStatus, Prisma } from '@prisma/client';
+import { AppointmentStatus, LoyaltyTransactionType, Prisma } from '@prisma/client';
 
 // ─── Shared Appointment Include ───────────────────────────────────────────────
 // Reused in all queries to avoid duplicating the deep-include shape.
@@ -16,20 +16,32 @@ interface WaitlistEntry {
     firstName: string;
     phone: string;
     serviceId: string;
-    employeeId?: string;
+    employeeId?: string | null;
 }
 
 interface BookAppointmentPayload {
     firstName: string;
-    lastName?: string;
+    lastName?: string | null;
     phone: string;
     serviceId: string;
-    employeeId?: string;
+    employeeId?: string | null;
     date: string;
     startTime: string;
 }
 
 // ─── Overlap Query Helper ─────────────────────────────────────────────────────
+
+/**
+ * Returns the three-clause OR filter that detects any time-window overlap.
+ * Used in both single-stylist checks and batch conflict queries.
+ */
+function buildOverlapOR(startTime: string, endTime: string): Prisma.AppointmentWhereInput['OR'] {
+    return [
+        { startTime: { lte: startTime }, endTime: { gt: startTime } },
+        { startTime: { lt: endTime }, endTime: { gte: endTime } },
+        { startTime: { gte: startTime }, endTime: { lte: endTime } },
+    ];
+}
 
 function buildOverlapWhere(
     employeeId: string,
@@ -41,11 +53,7 @@ function buildOverlapWhere(
         employeeId,
         appointmentDate,
         status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] as AppointmentStatus[] },
-        OR: [
-            { startTime: { lte: startTime }, endTime: { gt: startTime } },
-            { startTime: { lt: endTime }, endTime: { gte: endTime } },
-            { startTime: { gte: startTime }, endTime: { lte: endTime } },
-        ],
+        OR: buildOverlapOR(startTime, endTime),
     };
 }
 
@@ -299,11 +307,7 @@ export async function bookAppointment(branchId: string, payload: BookAppointment
                 employeeId: { in: candidates.map((e) => e.id) },
                 appointmentDate: parsedDate,
                 status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] as AppointmentStatus[] },
-                OR: [
-                    { startTime: { lte: startTime }, endTime: { gt: startTime } },
-                    { startTime: { lt: endTime }, endTime: { gte: endTime } },
-                    { startTime: { gte: startTime }, endTime: { lte: endTime } },
-                ],
+                OR: buildOverlapOR(startTime, endTime),
             },
             select: { employeeId: true },
         });
@@ -462,7 +466,9 @@ export async function getAvailableSlots(
 
     const availableSlots: string[] = [];
 
-    // Helper check conflict
+    // In-memory overlap check mirroring buildOverlapOR.
+    // String comparison is safe here because HH:MM is zero-padded,
+    // making lexicographic order identical to chronological order.
     const hasConflict = (empId: string, start: string, end: string) => {
         return activeAppointments.some(
             (appt) =>
@@ -615,17 +621,15 @@ export async function checkoutAppointment(
             },
         });
 
-        // 3. Create TransactionService records
-        for (const apptService of appointment.services) {
-            await tx.transactionService.create({
-                data: {
-                    transactionId: transaction.id,
-                    serviceId: apptService.serviceId,
-                    employeeId: chosenEmployeeId,
-                    priceCharged: apptService.service.price,
-                },
-            });
-        }
+        // 3. Create TransactionService records in a single batch write
+        await tx.transactionService.createMany({
+            data: appointment.services.map((apptService) => ({
+                transactionId: transaction.id,
+                serviceId: apptService.serviceId,
+                employeeId: chosenEmployeeId,
+                priceCharged: apptService.service.price,
+            })),
+        });
 
         // Calculate points earned from the transaction's final total amount
         const pointsEarned = Math.floor(total * (earnPercentage / 100));
@@ -637,27 +641,26 @@ export async function checkoutAppointment(
             data: { loyaltyPoints: updatedPoints },
         });
 
-        // 5. Log Loyalty Transactions
+        // 5. Log Loyalty Transactions in a single batch
+        const loyaltyEntries: { clientId: string; amount: number; type: LoyaltyTransactionType; description: string }[] = [];
         if (pointsApplied > 0) {
-            await tx.loyaltyTransaction.create({
-                data: {
-                    clientId: client.id,
-                    amount: -pointsApplied,
-                    type: 'REDEEMED',
-                    description: `Redeemed ${pointsApplied} points (₱${pointsApplied}.00 discount) on checkout for appointment #${appointment.id}`,
-                },
+            loyaltyEntries.push({
+                clientId: client.id,
+                amount: -pointsApplied,
+                type: LoyaltyTransactionType.REDEEMED,
+                description: `Redeemed ${pointsApplied} points (₱${pointsApplied}.00 discount) on checkout for appointment #${appointment.id}`,
             });
         }
-
         if (pointsEarned > 0) {
-            await tx.loyaltyTransaction.create({
-                data: {
-                    clientId: client.id,
-                    amount: pointsEarned,
-                    type: 'EARNED',
-                    description: `Earned ${pointsEarned} points on payment for appointment #${appointment.id}`,
-                },
+            loyaltyEntries.push({
+                clientId: client.id,
+                amount: pointsEarned,
+                type: LoyaltyTransactionType.EARNED,
+                description: `Earned ${pointsEarned} points on payment for appointment #${appointment.id}`,
             });
+        }
+        if (loyaltyEntries.length > 0) {
+            await tx.loyaltyTransaction.createMany({ data: loyaltyEntries });
         }
 
         return transaction;
