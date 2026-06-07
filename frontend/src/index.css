@@ -574,54 +574,371 @@ input[type='radio'] {
   gap: 16px;
 }
 
+/* =========================================================================
+   MOBILE TOPBAR — visible only on mobile, hidden on desktop
+   ========================================================================= */
+.mobile-topbar {
+  display: none; /* hidden by default — shown via media query */
+}
+
+.mobile-menu-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.mobile-menu-btn:hover {
+  background-color: var(--accent-glow);
+  color: var(--accent);
+}
+
+/* =========================================================================
+   MOBILE SIDEBAR DRAWER — slide-in panel
+   ========================================================================= */
+.mobile-sidebar-backdrop {
+  display: none;
+}
+
+.mobile-sidebar-drawer {
+  display: none;
+}
+
+.mobile-sidebar-close {
+  display: none;
+}
+
+/* =========================================================================
+   DESKTOP SIDEBAR — always shown on large screens
+   ========================================================================= */
+.desktop-sidebar {
+  display: flex; /* shown by default */
+}
+
+/* =========================================================================
+   MOBILE BREAKPOINTS  (≤768px)
+   ========================================================================= */
 @media (max-width: 768px) {
+  /* Hide desktop sidebar */
+  .desktop-sidebar {
+    display: none !important;
+  }
+
+  /* App container becomes single-column */
   .app-container {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
-  .sidebar {
-    height: auto;
-    position: relative;
-    padding: 24px;
+
+  /* Mobile topbar — sticky at top */
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background-color: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+    grid-column: 1 / -1;
   }
+
+  /* Dim backdrop when drawer is open */
+  .mobile-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 1100;
+    animation: backdropFadeIn 0.2s ease forwards;
+  }
+
+  @keyframes backdropFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Slide-in sidebar drawer */
+  .mobile-sidebar-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    padding: 24px 20px;
+    z-index: 1200;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 32px rgba(15, 23, 42, 0.08);
+  }
+
+  .mobile-sidebar-drawer.open {
+    transform: translateX(0);
+  }
+
+  /* Close button inside drawer */
+  .mobile-sidebar-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+  }
+
+  .mobile-sidebar-close:hover {
+    background-color: var(--accent-glow);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* Main content — full width with reduced padding */
   .main-content {
-    padding: 24px;
+    padding: 20px 16px;
+    max-width: 100%;
   }
+
+  /* Header row stacks vertically */
+  .header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  /* Page title smaller on mobile */
+  .page-title {
+    font-size: 24px;
+  }
+
+  /* Stat cards stack */
   .grid-3 {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
+
+  /* Stat values smaller */
+  .stat-value {
+    font-size: 28px;
+  }
+
+  /* Form grids stack */
   .form-grid {
     grid-template-columns: 1fr;
   }
-  .public-navbar {
-    padding: 16px 24px;
+
+  /* Glass panel reduced padding */
+  .glass-panel {
+    padding: 20px 16px;
+    border-radius: var(--radius-md);
+  }
+
+  /* Buttons touch-friendly height */
+  .btn-primary,
+  .btn-secondary {
+    min-height: 44px;
+  }
+
+  /* Data table horizontal scroll */
+  .data-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Reduce table font-size */
+  .data-table th,
+  .data-table td {
+    font-size: 12.5px;
+    padding: 10px 12px;
+  }
+
+  /* Schedule items stack actions */
+  .schedule-item {
     flex-direction: column;
-    gap: 16px;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Toast adjustments for mobile — bottom of screen */
+  .toast-container {
+    top: auto;
+    bottom: 16px;
+    right: 12px;
+    left: 12px;
+  }
+
+  .toast-item {
+    min-width: unset;
+    max-width: 100%;
+  }
+
+  /* Inner core reduced padding */
+  .inner-core {
+    padding: 24px 20px;
+  }
+
+  /* Waitlist item meta wraps */
+  .waitlist-item-meta {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Dashboard birthday banner wraps */
+  .dashboard-celebrants-banner {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  /* Services controls bar stacks */
+  .services-controls-bar {
+    flex-direction: column;
     align-items: stretch;
   }
-  .public-navbar-logo {
-    justify-content: center;
+
+  .search-box-wrapper {
+    max-width: 100%;
+    min-width: unset;
   }
-  .public-navbar-actions {
-    flex-direction: column;
-    gap: 14px;
+
+  .services-filters-right {
     width: 100%;
   }
+
+  .services-sort-select {
+    width: 100% !important;
+    min-width: unset;
+  }
+
+  /* Public navbar mobile */
+  .public-navbar {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .public-navbar-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+
   .branch-select-container {
     width: 100%;
   }
+
   .branch-picker-select {
     width: 100%;
+    min-width: unset;
   }
+
   .public-navbar-links {
     justify-content: center;
-    gap: 20px;
+    gap: 16px;
     width: 100%;
-    border-top: 1px solid rgba(226, 232, 240, 0.8);
-    padding-top: 14px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--border-color);
+    padding-top: 10px;
   }
+
   .public-navbar-link {
     font-size: 13.5px;
     padding: 6px 2px;
+  }
+
+  /* Hero card */
+  .hero-center-card {
+    padding: 32px 20px;
+  }
+
+  .hero-center-card h2 {
+    font-size: 28px;
+    line-height: 1.25;
+  }
+
+  .hero-center-card p {
+    font-size: 14px;
+  }
+
+  /* Hide decorative bubbles */
+  .decor-bubble {
+    display: none;
+  }
+
+  /* Services grid — single column */
+  .services-front-grid {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+    padding: 0;
+    gap: 20px;
+  }
+
+  /* Quick info bar stacks */
+  .quick-info-bar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  /* Login page padding */
+  .login-container {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+
+  /* Modals — full-width on mobile */
+  .custom-modal-container {
+    max-width: 100%;
+  }
+
+  .custom-modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  /* Bezel simplified */
+  .outer-bezel {
+    border-radius: 16px;
+    padding: 6px;
+  }
+
+  .inner-core {
+    border-radius: 12px;
+  }
+
+  /* Flex helpers wrap on mobile */
+  .flex-between-center {
+    flex-wrap: wrap;
+    gap: 10px;
   }
 }
 

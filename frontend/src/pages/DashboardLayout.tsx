@@ -13,6 +13,8 @@ import {
   Clock,
   Shield,
   BookOpen,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
@@ -114,6 +116,7 @@ export function DashboardLayout() {
 
   const [isScheduleDirty, setIsScheduleDirty] = useState(false);
   const [pendingTabKey, setPendingTabKey] = useState<string | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handlePrefetch = (key: string) => {
@@ -144,6 +147,7 @@ export function DashboardLayout() {
   };
 
   const handleTabClick = (key: string) => {
+    setIsMobileSidebarOpen(false);
     if (isScheduleDirty) {
       setPendingTabKey(key);
     } else {
@@ -159,6 +163,106 @@ export function DashboardLayout() {
     setPendingTabKey(null);
   };
 
+  const sidebarContent = (
+    <>
+      <div>
+        <div
+          className="brand-title"
+          onClick={() => {
+            navigateTo('/');
+            setIsMobileSidebarOpen(false);
+          }}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+        >
+          <Scissors size={24} style={{ transform: 'rotate(-45deg)', color: 'var(--accent)' }} />
+          <span
+            style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', letterSpacing: '-0.5px' }}
+          >
+            Nails & Lashes Lane
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
+          <span
+            className="micro-badge"
+            style={{
+              backgroundColor: 'var(--accent-glow)',
+              color: 'var(--accent)',
+              border: '1px solid var(--border-color)',
+              fontSize: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              fontWeight: 600,
+            }}
+          >
+            {employeeRole === 'OWNER' ? 'Owner Space' : 'Admin Space'}
+          </span>
+        </div>
+
+        <div className="nav-section-title">Workspace</div>
+        <nav className="nav-links">
+          {navItems.map(({ key, label, Icon, style }) => (
+            <div
+              key={key}
+              className={`nav-link ${activeTab === key ? 'active' : ''}`}
+              onClick={() => handleTabClick(key)}
+              onMouseEnter={() => handlePrefetch(key)}
+              style={style}
+            >
+              <Icon size={18} />
+              {label}
+            </div>
+          ))}
+        </nav>
+      </div>
+
+      <div
+        style={{
+          borderTop: '1px solid var(--border-color)',
+          paddingTop: '20px',
+          marginTop: '20px',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div
+            onClick={logout}
+            style={{
+              color: 'var(--accent)',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              transition: 'var(--transition)',
+            }}
+          >
+            <LogOut size={16} />
+            <span>Sign Out</span>
+          </div>
+          <div
+            onClick={() => {
+              navigateTo('/');
+              setIsMobileSidebarOpen(false);
+            }}
+            style={{
+              color: 'var(--text-secondary)',
+              fontSize: '13.5px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              transition: 'var(--transition)',
+            }}
+          >
+            <Globe size={16} />
+            <span>Public Website</span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="app-container">
       <UnsavedChangesModal
@@ -166,98 +270,53 @@ export function DashboardLayout() {
         onConfirm={handleConfirmDiscard}
         onCancel={() => setPendingTabKey(null)}
       />
-      {/* Navigation Sidebar */}
-      <aside className="sidebar">
-        <div>
-          <div
-            className="brand-title"
-            onClick={() => navigateTo('/')}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
-          >
-            <Scissors size={24} style={{ transform: 'rotate(-45deg)', color: 'var(--accent)' }} />
-            <span
-              style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', letterSpacing: '-0.5px' }}
-            >
-              Nails & Lashes Lane
-            </span>
-          </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
-            <span
-              className="micro-badge"
-              style={{
-                backgroundColor: 'var(--accent-glow)',
-                color: 'var(--accent)',
-                border: '1px solid var(--border-color)',
-                fontSize: '10px',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                fontWeight: 600,
-              }}
-            >
-              {employeeRole === 'OWNER' ? 'Owner Space' : 'Admin Space'}
-            </span>
-          </div>
-
-          <div className="nav-section-title">Workspace</div>
-          <nav className="nav-links">
-            {navItems.map(({ key, label, Icon, style }) => (
-              <div
-                key={key}
-                className={`nav-link ${activeTab === key ? 'active' : ''}`}
-                onClick={() => handleTabClick(key)}
-                onMouseEnter={() => handlePrefetch(key)}
-                style={style}
-              >
-                <Icon size={18} />
-                {label}
-              </div>
-            ))}
-          </nav>
-        </div>
-
+      {/* Mobile Top Bar */}
+      <div className="mobile-topbar">
         <div
+          className="brand-title"
+          onClick={() => navigateTo('/')}
           style={{
-            borderTop: '1px solid var(--border-color)',
-            paddingTop: '20px',
-            marginTop: '20px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: 0,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div
-              onClick={logout}
-              style={{
-                color: 'var(--accent)',
-                fontSize: '13.5px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                transition: 'var(--transition)',
-              }}
-            >
-              <LogOut size={16} />
-              <span>Sign Out</span>
-            </div>
-            <div
-              onClick={() => navigateTo('/')}
-              style={{
-                color: 'var(--text-secondary)',
-                fontSize: '13.5px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                transition: 'var(--transition)',
-              }}
-            >
-              <Globe size={16} />
-              <span>Public Website</span>
-            </div>
-          </div>
+          <Scissors size={20} style={{ transform: 'rotate(-45deg)', color: 'var(--accent)' }} />
+          <span style={{ fontSize: '17px', letterSpacing: '-0.5px' }}>Nails & Lashes Lane</span>
         </div>
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setIsMobileSidebarOpen(true)}
+          aria-label="Open navigation menu"
+        >
+          <Menu size={22} />
+        </button>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="mobile-sidebar-backdrop"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside className={`mobile-sidebar-drawer ${isMobileSidebarOpen ? 'open' : ''}`}>
+        <button
+          className="mobile-sidebar-close"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          aria-label="Close navigation menu"
+        >
+          <X size={20} />
+        </button>
+        {sidebarContent}
       </aside>
+
+      {/* Desktop Navigation Sidebar */}
+      <aside className="sidebar desktop-sidebar">{sidebarContent}</aside>
 
       {/* Main Content */}
       <main className="main-content">
