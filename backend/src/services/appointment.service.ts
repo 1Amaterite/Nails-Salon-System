@@ -222,13 +222,37 @@ export async function getAppointments(branchId: string, date?: string, status?: 
 export async function bookAppointment(branchId: string, payload: BookAppointmentPayload) {
     const { firstName, lastName, phone, serviceId, employeeId, date, startTime } = payload;
 
-    // 1. Date validation
-    const parsedDate = new Date(`${date}T00:00:00.000Z`);
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    if (parsedDate < today) {
+    // 1. Timezone-aware local date and same-day cutoff validation
+    const nowManila = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const nowYear = nowManila.getFullYear();
+    const nowMonth = String(nowManila.getMonth() + 1).padStart(2, '0');
+    const nowDay = String(nowManila.getDate()).padStart(2, '0');
+    const todayLocalDateStr = `${nowYear}-${nowMonth}-${nowDay}`;
+
+    if (date < todayLocalDateStr) {
         throw Object.assign(new Error('Cannot book appointments in the past.'), { status: 400 });
     }
+
+    if (date === todayLocalDateStr) {
+        const currentHour = nowManila.getHours();
+        if (currentHour >= 17) {
+            throw Object.assign(
+                new Error('Same-day online booking is closed after 5:00 PM.'),
+                { status: 400 }
+            );
+        }
+
+        const currentMinute = nowManila.getMinutes();
+        const nowTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+        if (startTime <= nowTimeStr) {
+            throw Object.assign(
+                new Error('Cannot book a time slot in the past.'),
+                { status: 400 }
+            );
+        }
+    }
+
+    const parsedDate = new Date(`${date}T00:00:00.000Z`);
 
     // 2. Fetch service to get total slot duration
     const service = await prisma.service.findFirst({ where: { id: serviceId, branchId } });
@@ -423,6 +447,27 @@ export async function getAvailableSlots(
     serviceId: string,
     employeeId?: string
 ) {
+    // 1. Timezone-aware date and cutoff validation
+    const nowManila = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const nowYear = nowManila.getFullYear();
+    const nowMonth = String(nowManila.getMonth() + 1).padStart(2, '0');
+    const nowDay = String(nowManila.getDate()).padStart(2, '0');
+    const todayLocalDateStr = `${nowYear}-${nowMonth}-${nowDay}`;
+
+    if (date < todayLocalDateStr) {
+        return [];
+    }
+
+    let filterTimeStr: string | null = null;
+    if (date === todayLocalDateStr) {
+        const currentHour = nowManila.getHours();
+        if (currentHour >= 17) {
+            return []; // Same-day booking is closed after 5:00 PM
+        }
+        const currentMinute = nowManila.getMinutes();
+        filterTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+    }
+
     const parsedDate = new Date(`${date}T00:00:00.000Z`);
     const dayOfWeek = parsedDate.getUTCDay();
 
@@ -483,6 +528,8 @@ export async function getAvailableSlots(
 
     // 4. Test each standard time slot
     for (const slotTime of STANDARD_TIME_SLOTS) {
+        if (filterTimeStr && slotTime <= filterTimeStr) continue;
+
         const slotEndTime = addMinutesToTime(slotTime, duration);
 
         const isFree = candidates.some((stylist) => {

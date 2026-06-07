@@ -77,6 +77,9 @@ export function PublicPortal({
 
   const todayStr = React.useMemo(() => {
     const d = new Date();
+    if (d.getHours() >= 17) {
+      d.setDate(d.getDate() + 1);
+    }
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
