@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Scissors, MapPin, Clock, Globe, Sparkles, Sparkle, Gem, Heart } from 'lucide-react';
+import {
+  Scissors,
+  MapPin,
+  Clock,
+  Globe,
+  Sparkles,
+  Sparkle,
+  Gem,
+  Heart,
+  ChevronDown,
+} from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import { ClientAutocomplete, LoadingSpinner } from '../components/common';
 import { apiClient } from '../utils/apiClient';
@@ -243,33 +253,19 @@ export function PublicPortal({
   return (
     <div className="app-container" style={{ display: 'block' }}>
       {/* Top Header Navbar */}
-      <header
-        className="public-navbar"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
-        }}
-      >
-        <div
-          className="public-navbar-logo"
-          onClick={() => navigateTo('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Scissors size={24} style={{ transform: 'rotate(-45deg)', color: 'var(--accent)' }} />
-          <span style={{ fontWeight: 700, fontSize: '18px', fontFamily: 'var(--font-serif)' }}>
-            Nails & Lashes Lane
-          </span>
+      <header className="public-navbar">
+        <div className="public-navbar-logo" onClick={() => navigateTo('/')}>
+          <Scissors size={24} className="logo-icon" style={{ transform: 'rotate(-45deg)' }} />
+          <span>Nails & Lashes Lane</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div className="public-navbar-actions">
           {branches.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Branch:
+            <div className="branch-select-container">
+              <span className="branch-select-icon-left">
+                <MapPin size={15} />
               </span>
               <select
+                className="branch-picker-select"
                 value={currentBranchId}
                 onChange={(e) => {
                   setSelectedBranchId(e.target.value);
@@ -278,18 +274,6 @@ export function PublicPortal({
                   setPublicWalkinServiceId('');
                   setBookingStartTime('');
                 }}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-color)',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  borderColor: 'rgba(190, 24, 93, 0.15)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                }}
               >
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -297,9 +281,12 @@ export function PublicPortal({
                   </option>
                 ))}
               </select>
+              <span className="branch-select-icon-right">
+                <ChevronDown size={14} />
+              </span>
             </div>
           )}
-          <nav className="public-navbar-links" style={{ display: 'flex', gap: '16px' }}>
+          <nav className="public-navbar-links">
             <span
               className={`public-navbar-link ${activeTab === 'public-home' ? 'active' : ''}`}
               onClick={() => setActiveTab('public-home')}

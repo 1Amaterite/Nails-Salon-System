@@ -592,6 +592,37 @@ input[type='radio'] {
   .form-grid {
     grid-template-columns: 1fr;
   }
+  .public-navbar {
+    padding: 16px 24px;
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .public-navbar-logo {
+    justify-content: center;
+  }
+  .public-navbar-actions {
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+  .branch-select-container {
+    width: 100%;
+  }
+  .branch-picker-select {
+    width: 100%;
+  }
+  .public-navbar-links {
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    padding-top: 14px;
+  }
+  .public-navbar-link {
+    font-size: 13.5px;
+    padding: 6px 2px;
+  }
 }
 
 /* Top Navigation Navbar for Guest Portal */
@@ -599,41 +630,138 @@ input[type='radio'] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 60px;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  padding: 16px 48px;
+  background-color: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.02);
+  box-shadow: 0 4px 30px rgba(15, 23, 42, 0.015);
+  transition: var(--transition);
 }
 
 .public-navbar-logo {
-  font-family: var(--font-sans);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--accent);
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.public-navbar-logo span {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent) 0%, #a21caf 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  transition: var(--transition);
+}
+
+.public-navbar-logo:hover span {
+  opacity: 0.9;
+}
+
+.public-navbar-logo .logo-icon {
+  color: var(--accent);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.public-navbar-logo:hover .logo-icon {
+  transform: rotate(-15deg) scale(1.15) !important;
+}
+
+.public-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.branch-select-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.branch-select-icon-left {
+  position: absolute;
+  left: 14px;
+  color: var(--accent);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+
+.branch-select-icon-right {
+  position: absolute;
+  right: 14px;
+  color: var(--text-secondary);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.7;
+}
+
+.branch-picker-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 8px 36px 8px 38px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(209, 71, 119, 0.18);
+  background-color: rgba(209, 71, 119, 0.04);
+  color: var(--accent);
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 180px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.branch-picker-select:hover {
+  border-color: rgba(209, 71, 119, 0.35);
+  background-color: rgba(209, 71, 119, 0.08);
+  box-shadow: 0 4px 12px rgba(209, 71, 119, 0.05);
+}
+
+.branch-picker-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background-color: var(--bg-secondary);
+  box-shadow: 0 0 0 3px rgba(209, 71, 119, 0.15);
+}
+
+.branch-select-container:focus-within .branch-select-icon-right {
+  transform: rotate(180deg);
+  color: var(--accent);
 }
 
 .public-navbar-links {
   display: flex;
   align-items: center;
-  gap: 36px;
+  gap: 28px;
 }
 
 .public-navbar-link {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--text-secondary);
   text-decoration: none;
   cursor: pointer;
   transition: var(--transition);
   position: relative;
-  padding: 6px 0;
+  padding: 8px 4px;
+  letter-spacing: -0.1px;
 }
 
 .public-navbar-link:hover,
@@ -644,7 +772,7 @@ input[type='radio'] {
 .public-navbar-link::after {
   content: '';
   position: absolute;
-  bottom: -4px;
+  bottom: 0;
   left: 0;
   width: 100%;
   height: 2px;
