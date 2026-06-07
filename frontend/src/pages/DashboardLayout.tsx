@@ -12,6 +12,7 @@ import {
   Globe,
   Clock,
   Shield,
+  BookOpen,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +23,9 @@ import { ErrorBoundary, TabSkeleton, UnsavedChangesModal } from '../components/c
 // Dynamic lazy loaded tabs for bundle splitting and faster initial load
 const DashboardTab = lazy(() =>
   import('./tabs/dashboard/DashboardTab').then((m) => ({ default: m.DashboardTab }))
+);
+const CalendarTab = lazy(() =>
+  import('./tabs/appointments/CalendarTab').then((m) => ({ default: m.CalendarTab }))
 );
 const AppointmentsTab = lazy(() =>
   import('./tabs/appointments/AppointmentsTab').then((m) => ({ default: m.AppointmentsTab }))
@@ -68,7 +72,8 @@ export function DashboardLayout() {
 
   const navItems = [
     { key: 'dashboard', label: 'Main Dashboard', Icon: LayoutDashboard },
-    { key: 'appointments', label: 'Clients Schedule', Icon: Calendar },
+    { key: 'calendar', label: 'Unified Calendar', Icon: Calendar },
+    { key: 'appointments', label: 'Bookings Ledger', Icon: BookOpen },
     { key: 'waitlist', label: 'Walk-In Queue', Icon: UserCheck },
     {
       key: 'admin-walkin',
@@ -120,6 +125,19 @@ export function DashboardLayout() {
     } else if (key === 'employees' || key === 'schedules') {
       queryClient.prefetchQuery({
         queryKey: ['schedulableStaff', selectedBranch, employeeRole],
+        queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/schedulable-staff`),
+      });
+    } else if (key === 'calendar') {
+      queryClient.prefetchQuery({
+        queryKey: ['appointments', selectedBranch],
+        queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/appointments`),
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['waitlist', selectedBranch],
+        queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/waitlist`),
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['schedulableStaff', selectedBranch],
         queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/schedulable-staff`),
       });
     }
@@ -291,6 +309,14 @@ export function DashboardLayout() {
         <ErrorBoundary>
           <Suspense fallback={<TabSkeleton />}>
             {activeTab === 'dashboard' && <DashboardTab stats={stats} waitlist={waitlist} />}
+            {activeTab === 'calendar' && (
+              <CalendarTab
+                branches={branches}
+                selectedBranch={selectedBranch}
+                employeeRole={employeeRole}
+                navigateTo={navigateTo}
+              />
+            )}
             {activeTab === 'appointments' && (
               <AppointmentsTab
                 branches={branches}
