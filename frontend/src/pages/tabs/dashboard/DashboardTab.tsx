@@ -14,43 +14,16 @@ export function DashboardTab({ stats, waitlist }: DashboardTabProps) {
   return (
     <div>
       {celebrants.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            padding: '16px 24px',
-            borderRadius: '12px',
-            backgroundColor: 'rgba(209, 71, 119, 0.05)',
-            border: '1px dashed var(--accent)',
-            marginBottom: '28px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--accent-glow)',
-              color: 'var(--accent)',
-            }}
-          >
+        <div className="dashboard-celebrants-banner">
+          <div className="dashboard-celebrants-icon-wrapper">
             <Cake size={20} />
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--accent)' }}>
-              Today's Birthday Celebrants! 🎂
-            </div>
-            <div style={{ fontSize: '13.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            <div className="dashboard-celebrants-title">Today's Birthday Celebrants! 🎂</div>
+            <div className="dashboard-celebrants-names">
               Happy Birthday to:{' '}
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                {celebrants.join(', ')}
-              </span>
-              . Be sure to offer them their loyalty bonus or discount!
+              <span className="dashboard-celebrants-name-bold">{celebrants.join(', ')}</span>. Be
+              sure to offer them their loyalty bonus or discount!
             </div>
           </div>
         </div>
@@ -78,46 +51,20 @@ export function DashboardTab({ stats, waitlist }: DashboardTabProps) {
           title="Active Walk-In Waiting List"
           subtitle="Monitor real-time client arrivals in queue."
           action={
-            <span
-              className="status-badge active"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-            >
-              <span
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  backgroundColor: 'var(--accent)',
-                  borderRadius: '50%',
-                  display: 'inline-block',
-                }}
-              />
+            <span className="status-badge active live-status-badge">
+              <span className="live-status-dot" />
               Live Queue
             </span>
           }
         />
 
         {activeQueue.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="waitlist-items-container">
             {activeQueue.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                }}
-              >
+              <div key={item.id} className="waitlist-item-row">
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
-                    {item.firstName}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    {item.service}
-                  </div>
+                  <div className="waitlist-item-name">{item.firstName}</div>
+                  <div className="waitlist-item-service">{item.service}</div>
                 </div>
                 <span className="micro-badge" style={{ fontSize: '9px', padding: '3px 8px' }}>
                   {item.status === 'IN_PROGRESS' ? 'Serving' : 'Waiting'}

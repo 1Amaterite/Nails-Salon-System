@@ -43,15 +43,8 @@ export function WaitlistTab({
         subtitle="Real-time check-ins waiting for the next available stylist."
         action={
           <button
-            className="btn-secondary"
+            className="btn-secondary btn-action-medium"
             onClick={() => setActiveTab('admin-walkin')}
-            style={{
-              padding: '8px 16px',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
           >
             <Plus size={16} /> Register Walk-In Guest
           </button>
@@ -59,14 +52,12 @@ export function WaitlistTab({
       />
 
       {activeItems.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="waitlist-items-container">
           {activeItems.map((item) => (
             <div key={item.id} className="schedule-item">
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>
-                    {item.firstName}
-                  </span>
+                <div className="waitlist-item-header">
+                  <span className="waitlist-item-name">{item.firstName}</span>
                   {item.status === 'IN_PROGRESS' && (
                     <span
                       className="status-badge active"
@@ -76,37 +67,21 @@ export function WaitlistTab({
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                <div className="waitlist-item-service-info">
                   {item.service} &bull; Preferring{' '}
-                  <span style={{ fontWeight: 500, color: 'var(--accent)' }}>{item.stylist}</span>
+                  <span className="waitlist-item-service-stylist">{item.stylist}</span>
                 </div>
-                <div
-                  style={{
-                    fontSize: '12.5px',
-                    color: 'var(--text-secondary)',
-                    marginTop: '8px',
-                    display: 'flex',
-                    gap: '12px',
-                  }}
-                >
+                <div className="waitlist-item-meta">
                   <span>Arrival: {item.checkInTime}</span>
                   <span>Phone: {item.phone}</span>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div className="flex-align-center" style={{ gap: '8px' }}>
                 {item.status === 'WAITING' && (
                   <button
-                    className="btn-primary"
+                    className="btn-primary btn-action-blue"
                     disabled={isUpdatingWaitlistStatus && updatingWaitlistId === item.id}
-                    style={{
-                      padding: '6px 12px',
-                      fontSize: '12px',
-                      backgroundColor: 'var(--accent-blue)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
                     onClick={() => handleUpdateWaitlistStatus(item.id, 'IN_PROGRESS')}
                   >
                     {isUpdatingWaitlistStatus && updatingWaitlistId === item.id ? (
@@ -118,15 +93,8 @@ export function WaitlistTab({
                 )}
                 {item.status === 'IN_PROGRESS' && (
                   <button
-                    className="btn-primary"
+                    className="btn-primary btn-action-done"
                     disabled={isLoadingAppt}
-                    style={{
-                      padding: '6px 12px',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
                     onClick={() => openCheckoutById(item.id)}
                   >
                     {isLoadingAppt ? <LoadingSpinner size="sm" color="#fff" /> : 'Mark Done'}
