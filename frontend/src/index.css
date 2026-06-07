@@ -655,10 +655,7 @@ input[type='radio'] {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--accent) 0%, #a21caf 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent);
   transition: var(--transition);
 }
 
@@ -714,6 +711,7 @@ input[type='radio'] {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  background-image: none !important;
   padding: 8px 36px 8px 38px;
   font-family: var(--font-sans);
   font-size: 13px;
