@@ -62,9 +62,29 @@ export function DashboardTab({ stats, waitlist }: DashboardTabProps) {
           <div className="waitlist-items-container">
             {activeQueue.map((item) => (
               <div key={item.id} className="waitlist-item-row">
-                <div>
-                  <div className="waitlist-item-name">{item.firstName}</div>
-                  <div className="waitlist-item-service">{item.service}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {item.queueNumber && (
+                    <span
+                      className="micro-badge"
+                      style={{
+                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                        color: 'var(--accent-blue)',
+                        fontWeight: 'bold',
+                        fontSize: '9px',
+                        padding: '1px 5px',
+                        borderColor: 'rgba(59, 130, 246, 0.15)',
+                        height: 'fit-content',
+                      }}
+                    >
+                      {item.queueNumber}
+                    </span>
+                  )}
+                  <div>
+                    <div className="waitlist-item-name">
+                      {item.firstName} {item.lastName}
+                    </div>
+                    <div className="waitlist-item-service">{item.service}</div>
+                  </div>
                 </div>
                 <span className="micro-badge" style={{ fontSize: '9px', padding: '3px 8px' }}>
                   {item.status === 'IN_PROGRESS' ? 'Serving' : 'Waiting'}

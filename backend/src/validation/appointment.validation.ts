@@ -23,6 +23,7 @@ export const CheckoutAppointmentSchema = z.object({
 
 export const CreateWaitlistEntrySchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required.'),
+  lastName: z.string().trim().min(1, 'Last name is required.'),
   phone: z
     .string()
     .trim()

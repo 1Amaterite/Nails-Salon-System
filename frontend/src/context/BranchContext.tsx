@@ -17,9 +17,11 @@ interface BranchContextType {
   handleUpdateWaitlistStatus: (id: string, status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED') => void;
   onWalkinSubmit: (entry: {
     firstName: string;
+    lastName: string;
     phone: string;
     serviceId: string;
     employeeId?: string;
+    branchId?: string;
   }) => void;
   onBookingSubmit: (entry: {
     firstName: string;
@@ -29,6 +31,7 @@ interface BranchContextType {
     employeeId?: string;
     date: string;
     startTime: string;
+    branchId?: string;
   }) => void;
   isUpdatingWaitlistStatus: boolean;
   updatingWaitlistId: string | undefined;
@@ -114,14 +117,28 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   const addWalkinMutation = useMutation({
     mutationFn: (entry: {
       firstName: string;
+      lastName: string;
       phone: string;
       serviceId: string;
       employeeId?: string;
-    }) => apiClient.post<WaitlistItem>(`/api/branches/${selectedBranch}/waitlist`, entry),
+      branchId?: string;
+    }) => {
+      const branchId = entry.branchId || selectedBranch;
+      return apiClient.post<WaitlistItem>(`/api/branches/${branchId}/waitlist`, {
+        firstName: entry.firstName,
+        lastName: entry.lastName,
+        phone: entry.phone,
+        serviceId: entry.serviceId,
+        employeeId: entry.employeeId,
+      });
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['waitlist', selectedBranch] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
-      showToast(`${data.firstName} has been added to the live waiting queue.`, 'success');
+      showToast(
+        `${data.firstName} ${data.lastName} has been added to the live waiting queue.`,
+        'success'
+      );
     },
     onError: (error: Error) => {
       showToast(error.message, 'error');
@@ -129,7 +146,14 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   });
 
   const onWalkinSubmit = useCallback(
-    (entry: { firstName: string; phone: string; serviceId: string; employeeId?: string }) => {
+    (entry: {
+      firstName: string;
+      lastName: string;
+      phone: string;
+      serviceId: string;
+      employeeId?: string;
+      branchId?: string;
+    }) => {
       addWalkinMutation.mutate(entry);
     },
     [addWalkinMutation]
@@ -145,7 +169,19 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       employeeId?: string;
       date: string;
       startTime: string;
-    }) => apiClient.post<Appointment>(`/api/branches/${selectedBranch}/appointments`, entry),
+      branchId?: string;
+    }) => {
+      const branchId = entry.branchId || selectedBranch;
+      return apiClient.post<Appointment>(`/api/branches/${branchId}/appointments`, {
+        firstName: entry.firstName,
+        lastName: entry.lastName,
+        phone: entry.phone,
+        serviceId: entry.serviceId,
+        employeeId: entry.employeeId,
+        date: entry.date,
+        startTime: entry.startTime,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
@@ -165,6 +201,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       employeeId?: string;
       date: string;
       startTime: string;
+      branchId?: string;
     }) => {
       bookAppointmentMutation.mutate(entry);
     },

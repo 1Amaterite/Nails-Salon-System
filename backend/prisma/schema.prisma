@@ -168,6 +168,7 @@ model Appointment {
     endTime         String?
     status          AppointmentStatus
     notes           String?
+    queueNumber     String?
 
     // Relations
     branch  Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)

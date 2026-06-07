@@ -41,7 +41,13 @@ interface PublicPortalProps {
   setActiveTab: (tab: string) => void;
   branches: Branch[];
   navigateTo: (path: string) => void;
-  onPublicWalkinSubmit: (entry: { firstName: string; phone: string; serviceId: string }) => void;
+  onPublicWalkinSubmit: (entry: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    serviceId: string;
+    branchId?: string;
+  }) => void;
   onPublicBookingSubmit: (entry: {
     firstName: string;
     lastName: string;
@@ -50,6 +56,7 @@ interface PublicPortalProps {
     employeeId?: string;
     date: string;
     startTime: string;
+    branchId?: string;
   }) => void;
   isAddingWalkin: boolean;
   isBookingAppointment: boolean;
@@ -67,13 +74,19 @@ export function PublicPortal({
 }: PublicPortalProps) {
   const { showToast } = useNotification();
 
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+
+  const currentBranchId = selectedBranchId || branches[0]?.id || '';
+
   const activeServices = React.useMemo(() => {
-    return (branches[0]?.services || []).filter((s) => s.isActive);
-  }, [branches]);
+    const branch = branches.find((b) => b.id === currentBranchId) || branches[0];
+    return (branch?.services || []).filter((s) => s.isActive);
+  }, [branches, currentBranchId]);
 
   const activeEmployees = React.useMemo(() => {
-    return (branches[0]?.employees || []).filter((e) => e.isActive && e.role !== 'OWNER');
-  }, [branches]);
+    const branch = branches.find((b) => b.id === currentBranchId) || branches[0];
+    return (branch?.employees || []).filter((e) => e.isActive && e.role !== 'OWNER');
+  }, [branches, currentBranchId]);
 
   const todayStr = React.useMemo(() => {
     const d = new Date();
@@ -90,6 +103,7 @@ export function PublicPortal({
 
   // Walk-in form state
   const [publicWalkinName, setPublicWalkinName] = useState('');
+  const [publicWalkinLastName, setPublicWalkinLastName] = useState('');
   const [publicWalkinPhone, setPublicWalkinPhone] = useState('');
   const [publicWalkinServiceId, setPublicWalkinServiceId] = useState('');
 
@@ -107,7 +121,7 @@ export function PublicPortal({
   useEffect(() => {
     let active = true;
     const serviceId = bookingServiceId || activeServices[0]?.id;
-    if (!bookingDate || !serviceId || !branches[0]?.id) {
+    if (!bookingDate || !serviceId || !currentBranchId) {
       Promise.resolve().then(() => {
         if (active) {
           setAvailableSlots([]);
@@ -118,7 +132,7 @@ export function PublicPortal({
     const fetchSlots = async () => {
       setIsLoadingSlots(true);
       try {
-        const branchId = branches[0].id;
+        const branchId = currentBranchId;
         const employeeQuery = bookingEmployeeId ? `&employeeId=${bookingEmployeeId}` : '';
         const data = await apiClient.get<string[]>(
           `/api/branches/${branchId}/availability?date=${bookingDate}&serviceId=${serviceId}${employeeQuery}`,
@@ -148,7 +162,7 @@ export function PublicPortal({
     return () => {
       active = false;
     };
-  }, [bookingDate, bookingServiceId, bookingEmployeeId, branches, activeServices]);
+  }, [bookingDate, bookingServiceId, bookingEmployeeId, currentBranchId, activeServices]);
 
   useEffect(() => {
     // Fallback for browsers that don't support scroll-driven animations
@@ -185,11 +199,14 @@ export function PublicPortal({
 
     onPublicWalkinSubmit({
       firstName: publicWalkinName,
+      lastName: publicWalkinLastName,
       phone: publicWalkinPhone,
       serviceId,
+      branchId: currentBranchId,
     });
 
     setPublicWalkinName('');
+    setPublicWalkinLastName('');
     setPublicWalkinPhone('');
     setPublicWalkinServiceId('');
   };
@@ -212,6 +229,7 @@ export function PublicPortal({
       employeeId: bookingEmployeeId || undefined,
       date: bookingDate,
       startTime,
+      branchId: currentBranchId,
     });
 
     setBookingFirstName('');
@@ -225,37 +243,89 @@ export function PublicPortal({
   return (
     <div className="app-container" style={{ display: 'block' }}>
       {/* Top Header Navbar */}
-      <header className="public-navbar">
-        <div className="public-navbar-logo" onClick={() => navigateTo('/')}>
+      <header
+        className="public-navbar"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
+        <div
+          className="public-navbar-logo"
+          onClick={() => navigateTo('/')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
           <Scissors size={24} style={{ transform: 'rotate(-45deg)', color: 'var(--accent)' }} />
-          <span>Nails & Lashes Lane</span>
+          <span style={{ fontWeight: 700, fontSize: '18px', fontFamily: 'var(--font-serif)' }}>
+            Nails & Lashes Lane
+          </span>
         </div>
-        <nav className="public-navbar-links">
-          <span
-            className={`public-navbar-link ${activeTab === 'public-home' ? 'active' : ''}`}
-            onClick={() => setActiveTab('public-home')}
-          >
-            Home
-          </span>
-          <span
-            className={`public-navbar-link ${activeTab === 'public-services' ? 'active' : ''}`}
-            onClick={() => setActiveTab('public-services')}
-          >
-            Services
-          </span>
-          <span
-            className={`public-navbar-link ${activeTab === 'public-booking' ? 'active' : ''}`}
-            onClick={() => setActiveTab('public-booking')}
-          >
-            Book Now
-          </span>
-          <span
-            className={`public-navbar-link ${activeTab === 'public-walkin' ? 'active' : ''}`}
-            onClick={() => setActiveTab('public-walkin')}
-          >
-            Walk-In
-          </span>
-        </nav>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          {branches.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                Branch:
+              </span>
+              <select
+                value={currentBranchId}
+                onChange={(e) => {
+                  setSelectedBranchId(e.target.value);
+                  setBookingServiceId('');
+                  setBookingEmployeeId('');
+                  setPublicWalkinServiceId('');
+                  setBookingStartTime('');
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-color)',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  borderColor: 'rgba(190, 24, 93, 0.15)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                }}
+              >
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <nav className="public-navbar-links" style={{ display: 'flex', gap: '16px' }}>
+            <span
+              className={`public-navbar-link ${activeTab === 'public-home' ? 'active' : ''}`}
+              onClick={() => setActiveTab('public-home')}
+            >
+              Home
+            </span>
+            <span
+              className={`public-navbar-link ${activeTab === 'public-services' ? 'active' : ''}`}
+              onClick={() => setActiveTab('public-services')}
+            >
+              Services
+            </span>
+            <span
+              className={`public-navbar-link ${activeTab === 'public-booking' ? 'active' : ''}`}
+              onClick={() => setActiveTab('public-booking')}
+            >
+              Book Now
+            </span>
+            <span
+              className={`public-navbar-link ${activeTab === 'public-walkin' ? 'active' : ''}`}
+              onClick={() => setActiveTab('public-walkin')}
+            >
+              Walk-In
+            </span>
+          </nav>
+        </div>
       </header>
 
       {/* Main Landing content */}
@@ -325,6 +395,40 @@ export function PublicPortal({
                       Long-lasting, durable premium nail extensions sculpted custom to your fingers,
                       finished with luxury gel coating and detailing.
                     </p>
+                    <button
+                      className="btn-primary"
+                      onClick={() => {
+                        const matched = activeServices.find(
+                          (s) =>
+                            s.name.toLowerCase().includes('extensions') ||
+                            s.name.toLowerCase().includes('acrylic')
+                        );
+                        if (matched) {
+                          setBookingServiceId(matched.id);
+                        } else if (activeServices.length > 0) {
+                          setBookingServiceId(activeServices[0].id);
+                        }
+                        setActiveTab('public-booking');
+                      }}
+                      style={{
+                        width: '100%',
+                        fontSize: '13px',
+                        padding: '8px 16px',
+                        border: '1px solid var(--accent)',
+                        background: 'transparent',
+                        color: 'var(--accent)',
+                        boxShadow: 'none',
+                        marginTop: 'auto',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--accent-glow)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      Book Treatment
+                    </button>
                   </div>
                 </div>
 
@@ -340,6 +444,41 @@ export function PublicPortal({
                       Chip-resistant, high-shine gel colors cured under UV light for lasting
                       wearability and gorgeous modern gloss.
                     </p>
+                    <button
+                      className="btn-primary"
+                      onClick={() => {
+                        const matched = activeServices.find(
+                          (s) =>
+                            s.name.toLowerCase().includes('polish') ||
+                            s.name.toLowerCase().includes('gellack') ||
+                            s.name.toLowerCase().includes('gel manicure')
+                        );
+                        if (matched) {
+                          setBookingServiceId(matched.id);
+                        } else if (activeServices.length > 0) {
+                          setBookingServiceId(activeServices[0].id);
+                        }
+                        setActiveTab('public-booking');
+                      }}
+                      style={{
+                        width: '100%',
+                        fontSize: '13px',
+                        padding: '8px 16px',
+                        border: '1px solid var(--accent)',
+                        background: 'transparent',
+                        color: 'var(--accent)',
+                        boxShadow: 'none',
+                        marginTop: 'auto',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--accent-glow)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      Book Treatment
+                    </button>
                   </div>
                 </div>
 
@@ -355,53 +494,106 @@ export function PublicPortal({
                       Strengthen and beautify your natural nails with overlays and cuticle therapy
                       for a clean, elegant growth cycle.
                     </p>
+                    <button
+                      className="btn-primary"
+                      onClick={() => {
+                        const matched = activeServices.find(
+                          (s) =>
+                            s.name.toLowerCase().includes('manicure') ||
+                            s.name.toLowerCase().includes('natural') ||
+                            s.name.toLowerCase().includes('gel')
+                        );
+                        if (matched) {
+                          setBookingServiceId(matched.id);
+                        } else if (activeServices.length > 0) {
+                          setBookingServiceId(activeServices[0].id);
+                        }
+                        setActiveTab('public-booking');
+                      }}
+                      style={{
+                        width: '100%',
+                        fontSize: '13px',
+                        padding: '8px 16px',
+                        border: '1px solid var(--accent)',
+                        background: 'transparent',
+                        color: 'var(--accent)',
+                        boxShadow: 'none',
+                        marginTop: 'auto',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--accent-glow)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      Book Treatment
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Footer Quick info bar */}
-            <div className="quick-info-bar">
-              <div className="quick-info-card">
-                <div className="quick-info-icon-wrapper">
-                  <MapPin size={20} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
-                    Find Us
+            {(() => {
+              const currentBranch = branches.find((b) => b.id === currentBranchId) || branches[0];
+              return (
+                <div className="quick-info-bar">
+                  <div className="quick-info-card">
+                    <div className="quick-info-icon-wrapper">
+                      <MapPin size={20} />
+                    </div>
+                    <div>
+                      <div
+                        style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}
+                      >
+                        Find Us ({currentBranch?.name || 'Main'})
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color: 'var(--text-secondary)',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {currentBranch?.address ||
+                          'Citywalk Tarlac, Tarlac City, Philippines, 2300'}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    Citywalk Tarlac, Tarlac City, Philippines, 2300
+                  <div className="quick-info-card">
+                    <div className="quick-info-icon-wrapper">
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <div
+                        style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}
+                      >
+                        Salon Hours
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        Mon - Sun (10:00 AM - 7:00 PM)
+                      </div>
+                    </div>
+                  </div>
+                  <div className="quick-info-card">
+                    <div className="quick-info-icon-wrapper">
+                      <Globe size={20} />
+                    </div>
+                    <div>
+                      <div
+                        style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}
+                      >
+                        Contact Hotline
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        {currentBranch?.phone || '09175659890'}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="quick-info-card">
-                <div className="quick-info-icon-wrapper">
-                  <Clock size={20} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
-                    Salon Hours
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    Mon - Sun (10:00 AM - 7:00 PM)
-                  </div>
-                </div>
-              </div>
-              <div className="quick-info-card">
-                <div className="quick-info-icon-wrapper">
-                  <Globe size={20} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
-                    Contact Hotline
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    09175659890
-                  </div>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         )}
 
@@ -424,21 +616,117 @@ export function PublicPortal({
               </p>
             </div>
 
-            {branches[0]?.services && branches[0].services.length > 0 ? (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                  gap: '20px',
-                  marginTop: '20px',
-                }}
-              >
-                {branches[0].services.map((s: Service, index: number) => (
-                  <div
-                    key={s.id}
-                    className="data-card stagger-card"
-                    style={{ padding: '24px', '--index': index } as React.CSSProperties}
-                  >
+            {(() => {
+              const currentBranch = branches.find((b) => b.id === currentBranchId) || branches[0];
+              const branchServices = (currentBranch?.services || []).filter((s) => s.isActive);
+              return branchServices.length > 0 ? (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                    gap: '20px',
+                    marginTop: '20px',
+                  }}
+                >
+                  {branchServices.map((s: Service, index: number) => (
+                    <div
+                      key={s.id}
+                      className="data-card stagger-card"
+                      style={{ padding: '24px', '--index': index } as React.CSSProperties}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: '12px',
+                        }}
+                      >
+                        <h4
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '16px',
+                            color: 'var(--text-primary)',
+                            margin: 0,
+                            maxWidth: '70%',
+                          }}
+                        >
+                          {s.name}
+                        </h4>
+                        <span
+                          style={{
+                            fontSize: '18px',
+                            fontWeight: 700,
+                            color: 'var(--accent)',
+                            fontFamily: 'var(--font-serif)',
+                          }}
+                        >
+                          ₱{Number(s.price).toFixed(2)}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '8px',
+                          flexWrap: 'wrap',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        <span
+                          className="micro-badge"
+                          style={{ fontSize: '9px', padding: '4px 10px' }}
+                        >
+                          {s.category || 'Nails'}
+                        </span>
+                        <span
+                          className="micro-badge"
+                          style={{
+                            fontSize: '9px',
+                            padding: '4px 10px',
+                            backgroundColor: 'rgba(190, 24, 93, 0.04)',
+                            color: 'var(--text-secondary)',
+                          }}
+                        >
+                          {s.durationMinutes} mins
+                        </span>
+                      </div>
+                      <button
+                        className="btn-primary"
+                        onClick={() => {
+                          setBookingServiceId(s.id);
+                          setActiveTab('public-booking');
+                        }}
+                        style={{
+                          width: '100%',
+                          fontSize: '13px',
+                          padding: '8px 16px',
+                          border: '1px solid var(--accent)',
+                          background: 'transparent',
+                          color: 'var(--accent)',
+                          boxShadow: 'none',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--accent-glow)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        Book Treatment
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gap: '20px',
+                    marginTop: '20px',
+                  }}
+                >
+                  <div className="data-card" style={{ padding: '24px' }}>
                     <div
                       style={{
                         display: 'flex',
@@ -453,10 +741,9 @@ export function PublicPortal({
                           fontSize: '16px',
                           color: 'var(--text-primary)',
                           margin: 0,
-                          maxWidth: '70%',
                         }}
                       >
-                        {s.name}
+                        Classic Gel Manicure
                       </h4>
                       <span
                         style={{
@@ -466,39 +753,29 @@ export function PublicPortal({
                           fontFamily: 'var(--font-serif)',
                         }}
                       >
-                        ₱{Number(s.price).toFixed(2)}
+                        ₱45.00
                       </span>
                     </div>
-                    <div
+                    <p
                       style={{
-                        display: 'flex',
-                        gap: '8px',
-                        flexWrap: 'wrap',
+                        fontSize: '13px',
+                        color: 'var(--text-secondary)',
                         marginBottom: '16px',
+                        lineHeight: '1.4',
                       }}
                     >
-                      <span
-                        className="micro-badge"
-                        style={{ fontSize: '9px', padding: '4px 10px' }}
-                      >
-                        {s.category || 'Nails'}
-                      </span>
-                      <span
-                        className="micro-badge"
-                        style={{
-                          fontSize: '9px',
-                          padding: '4px 10px',
-                          backgroundColor: 'rgba(190, 24, 93, 0.04)',
-                          color: 'var(--text-secondary)',
-                        }}
-                      >
-                        {s.durationMinutes} mins
-                      </span>
-                    </div>
+                      Long-lasting classic gel polish application includes nail shaping and cuticle
+                      care.
+                    </p>
                     <button
                       className="btn-primary"
                       onClick={() => {
-                        setBookingServiceId(s.id);
+                        const matched = activeServices.find((s) =>
+                          s.name.toLowerCase().includes('classic gel manicure')
+                        );
+                        if (matched) {
+                          setBookingServiceId(matched.id);
+                        }
                         setActiveTab('public-booking');
                       }}
                       style={{
@@ -520,90 +797,9 @@ export function PublicPortal({
                       Book Treatment
                     </button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                  gap: '20px',
-                  marginTop: '20px',
-                }}
-              >
-                <div className="data-card" style={{ padding: '24px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    <h4
-                      style={{
-                        fontWeight: 600,
-                        fontSize: '16px',
-                        color: 'var(--text-primary)',
-                        margin: 0,
-                      }}
-                    >
-                      Classic Gel Manicure
-                    </h4>
-                    <span
-                      style={{
-                        fontSize: '18px',
-                        fontWeight: 700,
-                        color: 'var(--accent)',
-                        fontFamily: 'var(--font-serif)',
-                      }}
-                    >
-                      ₱45.00
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      fontSize: '13px',
-                      color: 'var(--text-secondary)',
-                      marginBottom: '16px',
-                      lineHeight: '1.4',
-                    }}
-                  >
-                    Long-lasting classic gel polish application includes nail shaping and cuticle
-                    care.
-                  </p>
-                  <button
-                    className="btn-primary"
-                    onClick={() => {
-                      const matched = activeServices.find((s) =>
-                        s.name.toLowerCase().includes('classic gel manicure')
-                      );
-                      if (matched) {
-                        setBookingServiceId(matched.id);
-                      }
-                      setActiveTab('public-booking');
-                    }}
-                    style={{
-                      width: '100%',
-                      fontSize: '13px',
-                      padding: '8px 16px',
-                      border: '1px solid var(--accent)',
-                      background: 'transparent',
-                      color: 'var(--accent)',
-                      boxShadow: 'none',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--accent-glow)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    Book Treatment
-                  </button>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
 
@@ -658,9 +854,9 @@ export function PublicPortal({
                 <label className="form-label">Phone Number *</label>
                 <input
                   type="tel"
-                  placeholder="(555) 000-0000"
-                  pattern="[0-9+\-\s().]{7,20}"
-                  title="Please enter a valid phone number (digits, spaces, +, -, parentheses)"
+                  placeholder="e.g. 0917 565 9890 or 09175659890"
+                  pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
+                  title="Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx"
                   value={bookingPhone}
                   onChange={(e) => setBookingPhone(e.target.value)}
                   required
@@ -790,26 +986,39 @@ export function PublicPortal({
               onSubmit={handleWalkinSubmit}
               style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}
             >
-              <div className="form-group">
-                <label className="form-label">First Name *</label>
-                <ClientAutocomplete
-                  value={publicWalkinName}
-                  onChange={setPublicWalkinName}
-                  onSelect={(client) => {
-                    setPublicWalkinName(client.firstName);
-                    setPublicWalkinPhone(client.phoneNumber || '');
-                  }}
-                  placeholder="Enter your first name"
-                  required
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">First Name *</label>
+                  <ClientAutocomplete
+                    value={publicWalkinName}
+                    onChange={setPublicWalkinName}
+                    onSelect={(client) => {
+                      setPublicWalkinName(client.firstName);
+                      setPublicWalkinLastName(client.lastName || '');
+                      setPublicWalkinPhone(client.phoneNumber || '');
+                    }}
+                    placeholder="Enter your first name"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Last Name *</label>
+                  <input
+                    type="text"
+                    placeholder="Enter your last name"
+                    value={publicWalkinLastName}
+                    onChange={(e) => setPublicWalkinLastName(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Phone Number</label>
+                <label className="form-label">Phone Number *</label>
                 <input
                   type="tel"
-                  placeholder="(555) 000-0000"
-                  pattern="[0-9+\-\s().]{7,20}"
-                  title="Please enter a valid phone number (digits, spaces, +, -, parentheses)"
+                  placeholder="e.g. 0917 565 9890 or 09175659890"
+                  pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
+                  title="Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx"
                   value={publicWalkinPhone}
                   onChange={(e) => setPublicWalkinPhone(e.target.value)}
                   required
@@ -859,17 +1068,23 @@ export function PublicPortal({
         )}
 
         {/* Public Footer */}
-        <footer className="public-footer">
-          <div>Nails & Lashes Lane &copy; 2014. All rights reserved.</div>
-          <div style={{ marginTop: '10px', fontSize: '12.5px' }}>
-            Contacts: 09175659890 | Open Monday - Sunday: 10:00 AM - 7:00 PM
-          </div>
-          <div className="portal-links-row">
-            <span className="portal-link" onClick={() => navigateTo('/login')}>
-              Management Portal
-            </span>
-          </div>
-        </footer>
+        {(() => {
+          const currentBranch = branches.find((b) => b.id === currentBranchId) || branches[0];
+          return (
+            <footer className="public-footer">
+              <div>Nails & Lashes Lane &copy; 2014. All rights reserved.</div>
+              <div style={{ marginTop: '10px', fontSize: '12.5px' }}>
+                Contact ({currentBranch?.name || 'Main'}): {currentBranch?.phone || '09175659890'} |
+                Open Monday - Sunday: 10:00 AM - 7:00 PM
+              </div>
+              <div className="portal-links-row">
+                <span className="portal-link" onClick={() => navigateTo('/login')}>
+                  Management Portal
+                </span>
+              </div>
+            </footer>
+          );
+        })()}
       </main>
     </div>
   );

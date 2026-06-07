@@ -20,7 +20,7 @@ import {
 import { assertBranchAccess } from '../utils/assertBranchAccess';
 
 const VALID_WAITLIST_STATUSES = ['WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
-const VALID_APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const;
+const VALID_APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED', 'WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const;
 
 // ─── Waitlist ─────────────────────────────────────────────────────────────────
 

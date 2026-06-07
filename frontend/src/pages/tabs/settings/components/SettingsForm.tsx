@@ -69,10 +69,12 @@ export function SettingsForm({ settingsData, onSubmit, onReset, isPending }: Set
           <div className="form-group">
             <label className="form-label">Contact Phone</label>
             <input
-              type="text"
+              type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="e.g. (555) 0199"
+              placeholder="e.g. 0917 565 9890"
+              pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
+              title="Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx"
             />
           </div>
         </div>

@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react';
 import { CreditCard, ShoppingBag, X } from 'lucide-react';
 import { ModalShell } from '../../../components/common';
 import type { Appointment, Employee } from '../../../types';
+import { useAuth } from '../../../context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../../utils/apiClient';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -25,6 +28,19 @@ export function CheckoutModal({
   employees,
   isPending,
 }: CheckoutModalProps) {
+  const { employeeRole } = useAuth();
+
+  // Fetch global loyalty earn percentage
+  const { data: loyaltyData } = useQuery<{ loyaltyEarnPercentage: number }>({
+    queryKey: ['systemSettingsLoyalty'],
+    queryFn: () =>
+      apiClient.get<{ loyaltyEarnPercentage: number }>(
+        '/api/system-settings/loyalty-earn-percentage'
+      ),
+    staleTime: 60000,
+    enabled: isOpen && !!appointment,
+  });
+
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'GCASH'>('CASH');
   const [discountInput, setDiscountInput] = useState('0');
   const [pointsAppliedInput, setPointsAppliedInput] = useState('0');
@@ -45,7 +61,9 @@ export function CheckoutModal({
   }, [appointment]);
 
   const availablePoints = appointment?.client?.loyaltyPoints || 0;
-  const discountAmount = Number(discountInput) || 0;
+
+  // Only OWNER role can apply discounts; force 0 for ADMIN or other roles
+  const discountAmount = employeeRole === 'OWNER' ? Number(discountInput) || 0 : 0;
 
   // Enforce that you cannot redeem more than subtotal - discountAmount
   const maxPointsRedeemable = Math.max(0, Math.floor(subtotal - discountAmount));
@@ -56,6 +74,9 @@ export function CheckoutModal({
   );
 
   const totalAmount = Math.max(0, subtotal - discountAmount - pointsApplied);
+
+  const earnPercentage = loyaltyData?.loyaltyEarnPercentage ?? 5;
+  const pointsToEarn = Math.floor(totalAmount * (earnPercentage / 100));
 
   if (!isOpen || !appointment) return null;
 
@@ -257,19 +278,42 @@ export function CheckoutModal({
 
             {/* Adjustments: Discount */}
             <div className="form-group">
-              <label className="form-label">Discount Amount (₱)</label>
+              <label
+                className="form-label"
+                style={{ color: employeeRole !== 'OWNER' ? 'var(--text-secondary)' : undefined }}
+              >
+                Discount Amount (₱)
+              </label>
               <input
                 type="number"
                 min="0"
                 max={subtotal.toString()}
                 step="0.01"
-                value={discountInput}
+                value={employeeRole === 'OWNER' ? discountInput : '0'}
+                disabled={employeeRole !== 'OWNER'}
                 onChange={(e) => {
                   setDiscountInput(e.target.value);
                   // Reset points to apply when discount changes to avoid exceeding total
                   setPointsAppliedInput('0');
                 }}
+                style={{
+                  backgroundColor: employeeRole !== 'OWNER' ? 'var(--bg-secondary)' : undefined,
+                  cursor: employeeRole !== 'OWNER' ? 'not-allowed' : undefined,
+                  opacity: employeeRole !== 'OWNER' ? 0.7 : 1,
+                }}
               />
+              {employeeRole !== 'OWNER' && (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                    marginTop: '2px',
+                    display: 'block',
+                  }}
+                >
+                  Only Owners can apply custom discount amounts.
+                </span>
+              )}
             </div>
 
             {/* Loyalty Points Redemption */}
@@ -397,6 +441,21 @@ export function CheckoutModal({
                 <span>Total Due</span>
                 <span style={{ fontSize: '18px', fontFamily: 'monospace' }}>
                   ₱{totalAmount.toFixed(2)}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '12.5px',
+                  color: 'var(--text-secondary)',
+                  marginTop: '4px',
+                  fontWeight: 500,
+                }}
+              >
+                <span>Points to Earn</span>
+                <span style={{ color: 'var(--success-green)', fontWeight: 600 }}>
+                  + {pointsToEarn} Pts
                 </span>
               </div>
             </div>

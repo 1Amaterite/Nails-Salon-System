@@ -14,6 +14,7 @@ const APPOINTMENT_INCLUDE = {
 
 interface WaitlistEntry {
     firstName: string;
+    lastName: string;
     phone: string;
     serviceId: string;
     employeeId?: string | null;
@@ -59,6 +60,22 @@ function buildOverlapWhere(
 
 // ─── Waitlist ─────────────────────────────────────────────────────────────────
 
+async function generateQueueNumber(branchId: string, prefix: 'W' | 'A'): Promise<string> {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const count = await prisma.appointment.count({
+        where: {
+            branchId,
+            appointmentDate: { gte: today },
+            queueNumber: { startsWith: prefix },
+        },
+    });
+
+    const nextNum = String(count + 1).padStart(2, '0');
+    return `${prefix}${nextNum}`;
+}
+
 /**
  * Returns today's WAITING and IN_PROGRESS queue entries for a branch.
  */
@@ -79,11 +96,13 @@ export async function getWaitlist(branchId: string) {
     return waitlist.map((appt) => ({
         id: appt.id,
         firstName: appt.client?.firstName ?? 'Walk-in',
+        lastName: appt.client?.lastName ?? '',
         phone: appt.client?.phoneNumber ?? '',
         service: appt.services.map((s) => s.service.name).join(', ') || 'N/A',
         stylist: appt.employee?.name ?? 'First Available Stylist',
         checkInTime: appt.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         status: appt.status,
+        queueNumber: appt.queueNumber ?? '',
     }));
 }
 
@@ -92,7 +111,7 @@ export async function getWaitlist(branchId: string) {
  * and optionally stylist before creating the appointment record.
  */
 export async function addToWaitlist(branchId: string, payload: WaitlistEntry) {
-    const { firstName, phone, serviceId, employeeId } = payload;
+    const { firstName, lastName, phone, serviceId, employeeId } = payload;
 
     const branchExists = await prisma.branch.findUnique({ where: { id: branchId } });
     if (!branchExists) throw Object.assign(new Error('Branch not found.'), { status: 404 });
@@ -111,12 +130,14 @@ export async function addToWaitlist(branchId: string, payload: WaitlistEntry) {
         if (!emp) throw Object.assign(new Error('Stylist not found or inactive in this branch.'), { status: 404 });
     }
 
+    const queueNumber = await generateQueueNumber(branchId, 'W');
+
     return prisma.$transaction(async (tx) => {
         const cleanPhone = phone.trim();
         const client = await tx.client.upsert({
             where: { phoneNumber: cleanPhone },
-            update: { firstName: firstName.trim() },
-            create: { firstName: firstName.trim(), lastName: '', phoneNumber: cleanPhone },
+            update: { firstName: firstName.trim(), lastName: lastName.trim() },
+            create: { firstName: firstName.trim(), lastName: lastName.trim(), phoneNumber: cleanPhone },
         });
 
         const appointment = await tx.appointment.create({
@@ -126,6 +147,7 @@ export async function addToWaitlist(branchId: string, payload: WaitlistEntry) {
                 employeeId: employeeId ?? null,
                 appointmentDate: new Date(),
                 status: 'WAITING',
+                queueNumber,
                 services: { create: { serviceId } },
             },
             include: APPOINTMENT_INCLUDE,
@@ -134,11 +156,13 @@ export async function addToWaitlist(branchId: string, payload: WaitlistEntry) {
         return {
             id: appointment.id,
             firstName: appointment.client.firstName,
+            lastName: appointment.client.lastName,
             phone: appointment.client.phoneNumber ?? '',
             service: appointment.services.map((s) => s.service.name).join(', ') || 'N/A',
             stylist: appointment.employee?.name ?? 'First Available Stylist',
             checkInTime: appointment.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             status: appointment.status,
+            queueNumber: appointment.queueNumber ?? '',
         };
     });
 }
@@ -263,100 +287,91 @@ export async function bookAppointment(branchId: string, payload: BookAppointment
     const dayOfWeek = parsedDate.getUTCDay();
     let selectedEmployeeId = employeeId ?? null;
 
-    // 3. Stylist validation / auto-assignment
-    if (selectedEmployeeId) {
-        const stylist = await prisma.employee.findFirst({
-            where: {
-                id: selectedEmployeeId,
-                branches: { some: { id: branchId } },
-                isActive: true,
-                role: { not: 'OWNER' }
-            },
-            include: {
-                schedules: {
-                    where: { dayOfWeek, branchId }
-                }
-            },
-        });
+    // 3. Fetch all active stylists for capacity calculation (x-1 rule)
+    const allActiveStylists = await prisma.employee.findMany({
+        where: {
+            branches: { some: { id: branchId } },
+            isActive: true,
+            role: { not: 'OWNER' }
+        },
+        include: {
+            schedules: {
+                where: { dayOfWeek, branchId }
+            }
+        }
+    });
+
+    const activeAppointments = await prisma.appointment.findMany({
+        where: {
+            employeeId: { in: allActiveStylists.map((c) => c.id) },
+            appointmentDate: parsedDate,
+            status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] as AppointmentStatus[] }
+        },
+        select: {
+            employeeId: true,
+            startTime: true,
+            endTime: true
+        }
+    });
+
+    const hasConflict = (empId: string, start: string, end: string) => {
+        return activeAppointments.some(
+            (appt) =>
+                appt.employeeId === empId &&
+                appt.startTime &&
+                appt.endTime &&
+                ((appt.startTime <= start && appt.endTime > start) ||
+                    (appt.startTime < end && appt.endTime >= end) ||
+                    (appt.startTime >= start && appt.endTime <= end))
+        );
+    };
+
+    const workingStylists = allActiveStylists.filter((stylist) => {
+        const schedule = stylist.schedules[0];
+        if (!schedule || schedule.isOff || !schedule.startTime || !schedule.endTime) return false;
+        return startTime >= schedule.startTime && endTime <= schedule.endTime;
+    });
+
+    const W = workingStylists.length;
+    const busyStylists = workingStylists.filter((stylist) =>
+        hasConflict(stylist.id, startTime, endTime)
+    );
+    const busyCount = busyStylists.length;
+
+    // x-1 factor validation (if W > 1, max bookings is W - 1; if W <= 1, max bookings is W)
+    const maxBookings = W > 1 ? W - 1 : W;
+    if (busyCount >= maxBookings) {
+        throw Object.assign(
+            new Error('This time slot is fully booked for online appointments to keep stylists available for walk-in guests.'),
+            { status: 400 }
+        );
+    }
+
+    if (employeeId) {
+        const stylist = workingStylists.find((s) => s.id === employeeId);
         if (!stylist) {
             throw Object.assign(
-                new Error('Preferred stylist is not active or not found in this branch.'),
+                new Error('Preferred stylist is not scheduled or active during this time slot.'),
                 { status: 400 }
             );
         }
-
-        const schedule = stylist.schedules[0];
-        if (!schedule || schedule.isOff || !schedule.startTime || !schedule.endTime) {
-            throw Object.assign(
-                new Error('Preferred stylist is not scheduled to work on this day.'),
-                { status: 400 }
-            );
-        }
-
-        if (startTime < schedule.startTime || endTime > schedule.endTime) {
-            throw Object.assign(
-                new Error(`Preferred stylist is only available from ${schedule.startTime} to ${schedule.endTime}.`),
-                { status: 400 }
-            );
-        }
-
-        const overlap = await prisma.appointment.findFirst({
-            where: buildOverlapWhere(selectedEmployeeId, parsedDate, startTime, endTime),
-        });
-        if (overlap) {
+        const isBusy = busyStylists.some((s) => s.id === employeeId);
+        if (isBusy) {
             throw Object.assign(
                 new Error('The preferred stylist has a scheduling conflict during this time slot.'),
                 { status: 400 }
             );
         }
+        selectedEmployeeId = employeeId;
     } else {
-        // Auto-assign: batch-query all conflicts for the time window,
-        // then pick the first candidate with no conflict — avoids N+1 DB hits.
-        const candidates = await prisma.employee.findMany({
-            where: {
-                branches: { some: { id: branchId } },
-                isActive: true,
-                role: { not: 'OWNER' }
-            },
-            include: {
-                schedules: {
-                    where: { dayOfWeek, branchId }
-                }
-            },
-        });
-
-        // Fetch all conflicting appointments for the entire candidate pool at once.
-        const conflictingAppointments = await prisma.appointment.findMany({
-            where: {
-                employeeId: { in: candidates.map((e) => e.id) },
-                appointmentDate: parsedDate,
-                status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] as AppointmentStatus[] },
-                OR: buildOverlapOR(startTime, endTime),
-            },
-            select: { employeeId: true },
-        });
-        const busyEmployeeIds = new Set(
-            conflictingAppointments.map((a) => a.employeeId).filter(Boolean)
-        );
-
-        let assignedEmp: (typeof candidates)[number] | null = null;
-        for (const emp of candidates) {
-            const schedule = emp.schedules[0];
-            if (!schedule || schedule.isOff || !schedule.startTime || !schedule.endTime) continue;
-            if (startTime < schedule.startTime || endTime > schedule.endTime) continue;
-            if (!busyEmployeeIds.has(emp.id)) {
-                assignedEmp = emp;
-                break;
-            }
-        }
-
-        if (!assignedEmp) {
+        const freeStylist = workingStylists.find((s) => !busyStylists.some((bs) => bs.id === s.id));
+        if (!freeStylist) {
             throw Object.assign(
                 new Error('No stylists are available during this time slot.'),
                 { status: 400 }
             );
         }
-        selectedEmployeeId = assignedEmp.id;
+        selectedEmployeeId = freeStylist.id;
     }
 
     // 4 & 5. Upsert client + create appointment in a transaction
@@ -376,7 +391,7 @@ export async function bookAppointment(branchId: string, payload: BookAppointment
             data: {
                 branchId,
                 clientId: client.id,
-                employeeId: selectedEmployeeId,
+                employeeId: selectedEmployeeId!,
                 appointmentDate: parsedDate,
                 startTime,
                 endTime,
@@ -408,9 +423,17 @@ export async function updateAppointmentStatus(
         );
     }
 
+    const updateData: Prisma.AppointmentUpdateInput = {
+        status: status as AppointmentStatus,
+    };
+
+    if (status === 'WAITING' && !appointment.queueNumber) {
+        updateData.queueNumber = await generateQueueNumber(appointment.branchId, 'A');
+    }
+
     return prisma.appointment.update({
         where: { id },
-        data: { status: status as AppointmentStatus },
+        data: updateData,
         include: APPOINTMENT_INCLUDE,
     });
 }
@@ -476,13 +499,12 @@ export async function getAvailableSlots(
     if (!service) throw Object.assign(new Error('Service not found in this branch.'), { status: 404 });
     const duration = service.durationMinutes + service.bufferTime;
 
-    // 2. Fetch candidates (stylists)
-    const candidates = await prisma.employee.findMany({
+    // 2. Fetch all active stylists (except owners) for capacity check
+    const allActiveStylists = await prisma.employee.findMany({
         where: {
             branches: { some: { id: branchId } },
             isActive: true,
-            role: { not: 'OWNER' },
-            ...(employeeId ? { id: employeeId } : {})
+            role: { not: 'OWNER' }
         },
         include: {
             schedules: {
@@ -491,14 +513,14 @@ export async function getAvailableSlots(
         }
     });
 
-    if (candidates.length === 0) {
+    if (allActiveStylists.length === 0) {
         return [];
     }
 
     // 3. Fetch all active appointments for these candidates on this date to check overlaps
     const activeAppointments = await prisma.appointment.findMany({
         where: {
-            employeeId: { in: candidates.map((c) => c.id) },
+            employeeId: { in: allActiveStylists.map((c) => c.id) },
             appointmentDate: parsedDate,
             status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] as AppointmentStatus[] }
         },
@@ -511,9 +533,6 @@ export async function getAvailableSlots(
 
     const availableSlots: string[] = [];
 
-    // In-memory overlap check mirroring buildOverlapOR.
-    // String comparison is safe here because HH:MM is zero-padded,
-    // making lexicographic order identical to chronological order.
     const hasConflict = (empId: string, start: string, end: string) => {
         return activeAppointments.some(
             (appt) =>
@@ -532,12 +551,27 @@ export async function getAvailableSlots(
 
         const slotEndTime = addMinutesToTime(slotTime, duration);
 
-        const isFree = candidates.some((stylist) => {
+        const workingStylists = allActiveStylists.filter((stylist) => {
             const schedule = stylist.schedules[0];
             if (!schedule || schedule.isOff || !schedule.startTime || !schedule.endTime) return false;
-            if (slotTime < schedule.startTime || slotEndTime > schedule.endTime) return false;
+            return slotTime >= schedule.startTime && slotEndTime <= schedule.endTime;
+        });
 
-            return !hasConflict(stylist.id, slotTime, slotEndTime);
+        const W = workingStylists.length;
+        const busyStylists = workingStylists.filter((stylist) =>
+            hasConflict(stylist.id, slotTime, slotEndTime)
+        );
+        const busyCount = busyStylists.length;
+
+        // Capacity check: if W > 1, max is W - 1; if W <= 1, max is W
+        const maxBookings = W > 1 ? W - 1 : W;
+        if (busyCount >= maxBookings) {
+            continue;
+        }
+
+        const isFree = workingStylists.some((stylist) => {
+            if (employeeId && stylist.id !== employeeId) return false;
+            return !busyStylists.some((bs) => bs.id === stylist.id);
         });
 
         if (isFree) {
@@ -577,6 +611,13 @@ export async function checkoutAppointment(
     if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
         throw Object.assign(
             new Error('Access denied. You cannot modify appointments of another branch.'),
+            { status: 403 }
+        );
+    }
+
+    if (callerRole !== 'OWNER' && payload.discountAmount > 0) {
+        throw Object.assign(
+            new Error('Access denied. Only owners can apply custom discounts.'),
             { status: 403 }
         );
     }

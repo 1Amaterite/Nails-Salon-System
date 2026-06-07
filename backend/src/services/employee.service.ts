@@ -37,6 +37,20 @@ interface UpdateEmployeePayload {
 export async function createEmployee(payload: CreateEmployeePayload) {
     const { name, username, password, role, phoneNumber, specialty, branchId } = payload;
 
+    const phoneExists = await prisma.employee.findFirst({
+        where: { phoneNumber }
+    });
+    if (phoneExists) {
+        throw Object.assign(new Error('An employee with this phone number already exists.'), { status: 400 });
+    }
+
+    const nameExists = await prisma.employee.findFirst({
+        where: { name: { equals: name, mode: 'insensitive' } }
+    });
+    if (nameExists) {
+        throw Object.assign(new Error('An employee with this name already exists.'), { status: 400 });
+    }
+
     let passwordHash: string | null = null;
     let finalUsername: string | null = null;
 
@@ -124,8 +138,30 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
     }
 
     const updateData: Record<string, unknown> = {};
-    if (name !== undefined) updateData.name = name;
-    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+    if (name !== undefined) {
+        const nameExists = await prisma.employee.findFirst({
+            where: {
+                name: { equals: name, mode: 'insensitive' },
+                id: { not: id }
+            }
+        });
+        if (nameExists) {
+            throw Object.assign(new Error('An employee with this name already exists.'), { status: 400 });
+        }
+        updateData.name = name;
+    }
+    if (phoneNumber !== undefined) {
+        const phoneExists = await prisma.employee.findFirst({
+            where: {
+                phoneNumber,
+                id: { not: id }
+            }
+        });
+        if (phoneExists) {
+            throw Object.assign(new Error('An employee with this phone number already exists.'), { status: 400 });
+        }
+        updateData.phoneNumber = phoneNumber;
+    }
     if (specialty !== undefined) updateData.specialty = specialty;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (role !== undefined) updateData.role = role;

@@ -140,12 +140,14 @@ export function EmployeeFormModal({
       </div>
 
       <div className="form-group">
-        <label className="form-label">Phone Number</label>
+        <label className="form-label">Phone Number *</label>
         <input
           type="tel"
-          placeholder="e.g. 01234567890"
+          placeholder="e.g. 0917 565 9890 or 09175659890"
           value={formData.phoneNumber}
           onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+          pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
+          title="Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx"
           required
         />
       </div>
@@ -158,6 +160,44 @@ export function EmployeeFormModal({
           value={formData.specialty}
           onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
         />
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+          {['Nail Specialist', 'Eyelash Tech', 'Manicurist', 'Pedicurist', 'Generalist'].map(
+            (spec) => (
+              <button
+                key={spec}
+                type="button"
+                onClick={() => setFormData({ ...formData, specialty: spec })}
+                style={{
+                  fontSize: '11px',
+                  padding: '4px 10px',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor:
+                    formData.specialty === spec ? 'rgba(209, 71, 119, 0.08)' : 'transparent',
+                  color: formData.specialty === spec ? 'var(--accent)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  borderColor:
+                    formData.specialty === spec ? 'var(--accent)' : 'var(--border-color)',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (formData.specialty !== spec) {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.color = 'var(--accent)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (formData.specialty !== spec) {
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }
+                }}
+              >
+                {spec}
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       {(formData.role === 'ADMIN' || formData.role === 'OWNER') && (

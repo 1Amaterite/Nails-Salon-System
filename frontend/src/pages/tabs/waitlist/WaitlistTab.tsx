@@ -56,8 +56,28 @@ export function WaitlistTab({
           {activeItems.map((item) => (
             <div key={item.id} className="schedule-item">
               <div>
-                <div className="waitlist-item-header">
-                  <span className="waitlist-item-name">{item.firstName}</span>
+                <div
+                  className="waitlist-item-header"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  {item.queueNumber && (
+                    <span
+                      className="micro-badge"
+                      style={{
+                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                        color: 'var(--accent-blue)',
+                        fontWeight: 'bold',
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderColor: 'rgba(59, 130, 246, 0.15)',
+                      }}
+                    >
+                      {item.queueNumber}
+                    </span>
+                  )}
+                  <span className="waitlist-item-name">
+                    {item.firstName} {item.lastName}
+                  </span>
                   {item.status === 'IN_PROGRESS' && (
                     <span
                       className="status-badge active"

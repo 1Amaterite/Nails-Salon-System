@@ -92,7 +92,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
         data: {
             name: 'Nails Salon System',
             address: '123 Luxury Way, Suite 100',
-            phone: '(555) 0199',
+            phone: '0900 000 0000',
             email: 'nailsandlasheslane.2014@gmail.com',
         },
     });
@@ -131,7 +131,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
             username: 'owner',
             passwordHash: ownerPasswordHash,
             role: 'OWNER',
-            phoneNumber: '01234567890',
+            phoneNumber: '09000000000',
             specialty: 'Owner',
             branches: { connect: { id: branch.id } },
             schedules: { createMany: { data: defaultSchedule } },
@@ -144,7 +144,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
             username: 'admin',
             passwordHash: adminPasswordHash,
             role: 'ADMIN',
-            phoneNumber: '01234567890',
+            phoneNumber: '09000000000',
             specialty: 'Manager',
             branches: { connect: { id: branch.id } },
             schedules: { createMany: { data: defaultSchedule } },
@@ -155,7 +155,7 @@ export async function seedInitialData(forceReset: boolean): Promise<{ seeded: bo
         data: {
             name: 'Sara Technician',
             role: 'STAFF',
-            phoneNumber: '01234567890',
+            phoneNumber: '09000000000',
             specialty: 'Nail Specialist',
             branches: { connect: { id: branch.id } },
             schedules: { createMany: { data: defaultSchedule } },

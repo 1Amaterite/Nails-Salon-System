@@ -8,6 +8,7 @@ interface AdminWalkinTabProps {
   selectedBranch: string;
   onWalkinSubmit: (entry: {
     firstName: string;
+    lastName: string;
     phone: string;
     serviceId: string;
     employeeId?: string;
@@ -26,6 +27,24 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
   const [walkinEmployeeId, setWalkinEmployeeId] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  const validateName = (name: string): boolean => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setNameError('Client name is required.');
+      return false;
+    }
+    if (!selectedClient) {
+      const parts = trimmed.split(/\s+/);
+      if (parts.length < 2) {
+        setNameError('Please enter both first and last name (e.g. John Doe).');
+        return false;
+      }
+    }
+    setNameError(null);
+    return true;
+  };
 
   const validatePhone = (phone: string): boolean => {
     const trimmed = phone.trim();
@@ -47,6 +66,7 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
     setWalkinName('');
     setWalkinPhone('');
     setPhoneError(null);
+    setNameError(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -54,11 +74,24 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
     const serviceId = walkinServiceId || activeServices[0]?.id;
     if (!serviceId) return;
 
+    const isNameValid = validateName(walkinName);
     const isPhoneValid = validatePhone(walkinPhone);
-    if (!isPhoneValid) return;
+    if (!isNameValid || !isPhoneValid) return;
+
+    let firstName: string;
+    let lastName: string;
+    if (selectedClient) {
+      firstName = selectedClient.firstName;
+      lastName = selectedClient.lastName;
+    } else {
+      const nameParts = walkinName.trim().split(/\s+/);
+      firstName = nameParts[0] || '';
+      lastName = nameParts.slice(1).join(' ') || '';
+    }
 
     onWalkinSubmit({
-      firstName: selectedClient ? selectedClient.firstName : walkinName.trim(),
+      firstName,
+      lastName,
       phone: walkinPhone.trim(),
       serviceId,
       employeeId: walkinEmployeeId || undefined,
@@ -71,6 +104,7 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
     setWalkinServiceId('');
     setSelectedClient(null);
     setPhoneError(null);
+    setNameError(null);
   };
 
   return (
@@ -87,7 +121,7 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
         <div className="form-group">
           <div className="flex-align-center" style={{ gap: '8px', marginBottom: '6px' }}>
             <label className="form-label" style={{ marginBottom: 0 }}>
-              Client's Name
+              Client's Name *
             </label>
             {selectedClient ? (
               <span className="micro-badge micro-badge-returning">Returning Client</span>
@@ -106,18 +140,25 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
               if (selectedClient) {
                 setSelectedClient(null);
               }
+              if (nameError) validateName(val);
             }}
             onSelect={(client) => {
               setSelectedClient(client);
               setWalkinName(`${client.firstName} ${client.lastName}`.trim());
               setWalkinPhone(client.phoneNumber || '');
               setPhoneError(null);
+              setNameError(null);
             }}
             isLocked={!!selectedClient}
             onClear={handleClearSelection}
             placeholder="Type client's name or phone to autofill..."
             required
           />
+          {nameError && (
+            <span className="form-error-text" style={{ marginTop: '4px', display: 'block' }}>
+              {nameError}
+            </span>
+          )}
         </div>
         <div className="form-group">
           <div className="flex-align-center" style={{ gap: '8px', marginBottom: '6px' }}>

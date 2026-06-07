@@ -60,11 +60,13 @@ export interface Branch {
 export interface WaitlistItem {
   id: string;
   firstName: string;
+  lastName: string;
   phone: string;
   service: string;
   stylist: string;
   checkInTime: string;
   status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  queueNumber?: string | null;
 }
 
 export interface LoyaltyTransaction {
@@ -160,6 +162,7 @@ export interface Appointment {
   client?: AppointmentClient | null;
   employee?: Employee | null;
   services?: AppointmentServiceRelation[];
+  queueNumber?: string | null;
 }
 
 export interface RevenueTrendItem {
