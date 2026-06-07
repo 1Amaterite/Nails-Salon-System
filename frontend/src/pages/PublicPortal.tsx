@@ -494,7 +494,10 @@ export function PublicPortal({
                     </div>
                     <button
                       className="btn-primary"
-                      onClick={() => setActiveTab('public-booking')}
+                      onClick={() => {
+                        setBookingServiceId(s.id);
+                        setActiveTab('public-booking');
+                      }}
                       style={{
                         width: '100%',
                         fontSize: '13px',
@@ -568,7 +571,15 @@ export function PublicPortal({
                   </p>
                   <button
                     className="btn-primary"
-                    onClick={() => setActiveTab('public-booking')}
+                    onClick={() => {
+                      const matched = activeServices.find((s) =>
+                        s.name.toLowerCase().includes('classic gel manicure')
+                      );
+                      if (matched) {
+                        setBookingServiceId(matched.id);
+                      }
+                      setActiveTab('public-booking');
+                    }}
                     style={{
                       width: '100%',
                       fontSize: '13px',
