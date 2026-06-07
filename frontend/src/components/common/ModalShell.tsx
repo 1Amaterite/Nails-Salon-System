@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './ModalShell.module.css';
 
 export interface ModalShellProps {
   /**
@@ -20,8 +21,8 @@ export interface ModalShellProps {
  */
 export function ModalShell({ maxWidth = '500px', children }: ModalShellProps) {
   return (
-    <div className="modal-backdrop">
-      <div className="outer-bezel modal-shell-bezel" style={{ maxWidth }}>
+    <div className={styles.backdrop}>
+      <div className={`outer-bezel ${styles.shellBezel}`} style={{ maxWidth }}>
         {children}
       </div>
     </div>

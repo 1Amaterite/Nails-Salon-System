@@ -1,0 +1,44 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.navBtn {
+  padding: 6px 12px;
+  font-size: 13px;
+  background-color: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+
+.navBtn:disabled {
+  background-color: var(--border-color);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pageBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all 0.2s ease;
+}
+
+.pageBtn.active {
+  background: rgba(209, 71, 119, 0.15);
+  color: var(--accent);
+}

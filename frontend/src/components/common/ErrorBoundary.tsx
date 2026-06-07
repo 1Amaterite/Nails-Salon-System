@@ -1,6 +1,7 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { AlertOctagon, RefreshCw } from 'lucide-react';
+import styles from './ErrorBoundary.module.css';
 
 interface Props {
   children?: ReactNode;
@@ -38,14 +39,14 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="glass-panel error-boundary-panel">
-          <AlertOctagon size={48} className="error-boundary-icon" />
-          <h2 className="error-boundary-title">Something went wrong</h2>
-          <p className="error-boundary-text">
+        <div className={`glass-panel ${styles.panel}`}>
+          <AlertOctagon size={48} className={styles.icon} />
+          <h2 className={styles.title}>Something went wrong</h2>
+          <p className={styles.text}>
             An unexpected error occurred in this section of the application.
           </p>
-          {this.state.error && <pre className="error-boundary-pre">{this.state.error.message}</pre>}
-          <button onClick={this.handleReset} className="btn-primary btn-error">
+          {this.state.error && <pre className={styles.pre}>{this.state.error.message}</pre>}
+          <button onClick={this.handleReset} className={`btn-primary ${styles.btnError}`}>
             <RefreshCw size={16} /> Reload Page
           </button>
         </div>

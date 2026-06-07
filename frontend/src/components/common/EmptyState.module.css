@@ -1,0 +1,10 @@
+.iconWrapper {
+  background-color: var(--accent-glow);
+  padding: 16px;
+  border-radius: 50%;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

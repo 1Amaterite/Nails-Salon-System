@@ -1,0 +1,58 @@
+.contentCentered {
+  padding: 28px;
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-serif);
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+}
+
+.text {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+}
+
+.actionsCenter {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btnOutlineCancel {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  box-shadow: none;
+  padding: 8px 16px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btnOutlineCancel:hover {
+  background-color: var(--border-color-hover);
+  color: var(--text-primary);
+}
+
+.btnActionSmall {
+  padding: 8px 16px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+}

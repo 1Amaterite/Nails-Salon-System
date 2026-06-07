@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { apiClient } from '../../utils/apiClient';
 import type { Client } from '../../types';
+import styles from './ClientAutocomplete.module.css';
 
 interface ClientAutocompleteProps {
   value: string;
@@ -23,7 +24,7 @@ const highlightMatch = (text: string, term: string) => {
     <span>
       {parts.map((part, index) =>
         part.toLowerCase() === term.trim().toLowerCase() ? (
-          <mark key={index} className="autocomplete-match-highlight">
+          <mark key={index} className={styles.matchHighlight}>
             {part}
           </mark>
         ) : (
@@ -87,7 +88,7 @@ export function ClientAutocomplete({
   if (isLocked) {
     return (
       <div ref={containerRef} className="flex-align-center" style={{ gap: '8px', width: '100%' }}>
-        <div className="autocomplete-locked-badge">
+        <div className={styles.lockedBadge}>
           <span style={{ fontSize: '16px' }}>👤</span>
           <span style={{ fontWeight: 600 }}>{value}</span>
         </div>
@@ -101,7 +102,7 @@ export function ClientAutocomplete({
   }
 
   return (
-    <div ref={containerRef} className="autocomplete-container">
+    <div ref={containerRef} className={styles.container}>
       <input
         type="text"
         placeholder={placeholder}
@@ -116,20 +117,20 @@ export function ClientAutocomplete({
         autoComplete="off"
       />
       {isOpen && (suggestions.length > 0 || value.trim().length > 1) && (
-        <div className="autocomplete-dropdown">
+        <div className={styles.dropdown}>
           {suggestions.length > 0 ? (
             suggestions.map((client) => (
               <div
                 key={client.id}
                 onClick={() => handleSuggestionClick(client)}
-                className="autocomplete-row"
+                className={styles.row}
               >
                 <div>
                   <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                     {highlightMatch(`${client.firstName} ${client.lastName}`, value)}
                   </span>
                   {client.phoneNumber && (
-                    <span className="autocomplete-phone-secondary">
+                    <span className={styles.phoneSecondary}>
                       ({highlightMatch(client.phoneNumber, value)})
                     </span>
                   )}
@@ -142,7 +143,7 @@ export function ClientAutocomplete({
               </div>
             ))
           ) : (
-            <div className="autocomplete-empty-text">
+            <div className={styles.emptyText}>
               No existing clients found — will register as new guest
             </div>
           )}

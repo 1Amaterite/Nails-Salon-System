@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './StatCard.module.css';
 
 export interface StatCardProps {
   /** Short text label above the value (e.g. "Today's Bookings"). */
@@ -22,12 +23,12 @@ export interface StatCardProps {
  */
 export function StatCard({ label, value, icon }: StatCardProps) {
   return (
-    <div className="stat-card flex-layout">
+    <div className={`stat-card ${styles.cardLayout}`}>
       <div>
-        <div className="stat-label">{label}</div>
+        <div className={styles.label}>{label}</div>
         <div className="stat-value">{value}</div>
       </div>
-      <div className="stat-icon-wrapper">{icon}</div>
+      <div className={styles.iconWrapper}>{icon}</div>
     </div>
   );
 }

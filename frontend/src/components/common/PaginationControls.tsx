@@ -1,4 +1,4 @@
-import React from 'react';
+import styles from './PaginationControls.module.css';
 
 export interface PaginationControlsProps {
   /** 1-indexed current page number. */
@@ -25,11 +25,11 @@ export function PaginationControls({
   const isLast = currentPage === totalPages;
 
   return (
-    <div className="pagination-container">
+    <div className={styles.container}>
       <button
         onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
         disabled={isFirst}
-        className="pagination-nav-btn"
+        className={styles.navBtn}
       >
         Previous
       </button>
@@ -38,7 +38,7 @@ export function PaginationControls({
         <button
           key={page}
           onClick={() => onPageChange(page)}
-          className={`pagination-page-btn ${currentPage === page ? 'active' : ''}`}
+          className={`${styles.pageBtn} ${currentPage === page ? styles.active : ''}`}
         >
           {page}
         </button>
@@ -47,7 +47,7 @@ export function PaginationControls({
       <button
         onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
         disabled={isLast}
-        className="pagination-nav-btn"
+        className={styles.navBtn}
       >
         Next
       </button>

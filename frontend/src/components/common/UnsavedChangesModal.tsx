@@ -1,4 +1,5 @@
 import { ModalShell } from './ModalShell';
+import styles from './UnsavedChangesModal.module.css';
 
 interface UnsavedChangesModalProps {
   isOpen: boolean;
@@ -10,18 +11,22 @@ export function UnsavedChangesModal({ isOpen, onConfirm, onCancel }: UnsavedChan
   if (!isOpen) return null;
   return (
     <ModalShell maxWidth="400px">
-      <div className="inner-core modal-content-centered">
-        <h3 className="modal-title">Unsaved Changes</h3>
-        <p className="modal-text">
+      <div className={`inner-core ${styles.contentCentered}`}>
+        <h3 className={styles.title}>Unsaved Changes</h3>
+        <p className={styles.text}>
           You have unsaved changes. If you leave this page, your edits to the schedule will be lost.
           Are you sure you want to discard them?
         </p>
 
-        <div className="modal-actions-center">
-          <button type="button" className="btn-primary btn-outline-cancel" onClick={onCancel}>
+        <div className={styles.actionsCenter}>
+          <button type="button" className={styles.btnOutlineCancel} onClick={onCancel}>
             Keep Editing
           </button>
-          <button type="button" className="btn-primary btn-action-small" onClick={onConfirm}>
+          <button
+            type="button"
+            className={`btn-primary ${styles.btnActionSmall}`}
+            onClick={onConfirm}
+          >
             Discard Changes
           </button>
         </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './PageHeader.module.css';
 
 export interface PageHeaderProps {
   /** The main panel title rendered in accent serif font. */
@@ -21,13 +22,13 @@ export interface PageHeaderProps {
  */
 export function PageHeader({ title, subtitle, action, marginBottom = '24px' }: PageHeaderProps) {
   return (
-    <div className="page-header-container" style={{ marginBottom }}>
+    <div className={styles.container} style={{ marginBottom }}>
       <div>
-        <h3 className="page-header-title">{title}</h3>
-        {subtitle && <p className="page-header-subtitle">{subtitle}</p>}
+        <h3 className={styles.title}>{title}</h3>
+        {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
       </div>
 
-      {action && <div className="page-header-action">{action}</div>}
+      {action && <div className={styles.action}>{action}</div>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './EmptyState.module.css';
 
 export interface EmptyStateProps {
   /**
@@ -20,7 +21,7 @@ export interface EmptyStateProps {
 export function EmptyState({ icon, title, description }: EmptyStateProps) {
   return (
     <div className="empty-state-card">
-      <div className="empty-state-icon-wrapper">{icon}</div>
+      <div className={styles.iconWrapper}>{icon}</div>
       <div className="empty-state-title">{title}</div>
       <div className="empty-state-desc">{description}</div>
     </div>

@@ -1,0 +1,21 @@
+.cardLayout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.iconWrapper {
+  background-color: var(--accent-glow);
+  padding: 12px;
+  border-radius: 12px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
