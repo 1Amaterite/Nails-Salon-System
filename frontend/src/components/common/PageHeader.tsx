@@ -19,51 +19,15 @@ export interface PageHeaderProps {
  * Renders the title + optional subtitle on the left and an optional
  * action element (button, badge, etc.) on the right.
  */
-export function PageHeader({
-  title,
-  subtitle,
-  action,
-  marginBottom = '24px',
-}: PageHeaderProps) {
+export function PageHeader({ title, subtitle, action, marginBottom = '24px' }: PageHeaderProps) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom,
-        flexWrap: 'wrap',
-        gap: '12px',
-      }}
-    >
+    <div className="page-header-container" style={{ marginBottom }}>
       <div>
-        <h3
-          style={{
-            color: 'var(--accent)',
-            marginTop: 0,
-            marginBottom: 0,
-            fontFamily: 'var(--font-serif)',
-            fontSize: '20px',
-            fontWeight: 600,
-          }}
-        >
-          {title}
-        </h3>
-        {subtitle && (
-          <p
-            style={{
-              color: 'var(--text-secondary)',
-              fontSize: '14px',
-              marginTop: '4px',
-              marginBottom: 0,
-            }}
-          >
-            {subtitle}
-          </p>
-        )}
+        <h3 className="page-header-title">{title}</h3>
+        {subtitle && <p className="page-header-subtitle">{subtitle}</p>}
       </div>
 
-      {action && <div style={{ flexShrink: 0 }}>{action}</div>}
+      {action && <div className="page-header-action">{action}</div>}
     </div>
   );
 }

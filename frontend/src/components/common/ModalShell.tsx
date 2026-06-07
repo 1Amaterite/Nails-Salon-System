@@ -20,30 +20,8 @@ export interface ModalShellProps {
  */
 export function ModalShell({ maxWidth = '500px', children }: ModalShellProps) {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(255, 244, 246, 0.4)',
-        backdropFilter: 'blur(12px) saturate(160%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '20px',
-      }}
-    >
-      <div
-        className="outer-bezel"
-        style={{
-          maxWidth,
-          width: '100%',
-          animation: 'modalFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-        }}
-      >
+    <div className="modal-backdrop">
+      <div className="outer-bezel modal-shell-bezel" style={{ maxWidth }}>
         {children}
       </div>
     </div>

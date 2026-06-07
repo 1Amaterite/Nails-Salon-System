@@ -30,7 +30,6 @@ export function SearchBar({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{ paddingLeft: '38px', height: '40px' }}
       />
     </div>
   );

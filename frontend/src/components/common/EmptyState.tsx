@@ -20,17 +20,7 @@ export interface EmptyStateProps {
 export function EmptyState({ icon, title, description }: EmptyStateProps) {
   return (
     <div className="empty-state-card">
-      <div
-        style={{
-          backgroundColor: 'var(--accent-glow)',
-          padding: '16px',
-          borderRadius: '50%',
-          color: 'var(--accent)',
-          marginBottom: '8px',
-        }}
-      >
-        {icon}
-      </div>
+      <div className="empty-state-icon-wrapper">{icon}</div>
       <div className="empty-state-title">{title}</div>
       <div className="empty-state-desc">{description}</div>
     </div>
