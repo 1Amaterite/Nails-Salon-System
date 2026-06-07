@@ -11,7 +11,36 @@ interface ClientAutocompleteProps {
   placeholder?: string;
   required?: boolean;
   inputClassName?: string;
+  isLocked?: boolean;
+  onClear?: () => void;
 }
+
+const highlightMatch = (text: string, term: string) => {
+  if (!term.trim()) return <span>{text}</span>;
+  const safeTerm = term.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${safeTerm})`, 'gi'));
+  return (
+    <span>
+      {parts.map((part, index) =>
+        part.toLowerCase() === term.trim().toLowerCase() ? (
+          <mark
+            key={index}
+            style={{
+              backgroundColor: 'rgba(59, 130, 246, 0.35)',
+              color: 'var(--text-primary)',
+              borderRadius: '2px',
+              padding: '0 1px',
+            }}
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+};
 
 export function ClientAutocomplete({
   value,
@@ -20,6 +49,8 @@ export function ClientAutocomplete({
   placeholder = 'Type client first name...',
   required = false,
   inputClassName = '',
+  isLocked = false,
+  onClear,
 }: ClientAutocompleteProps) {
   const { token } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -38,12 +69,11 @@ export function ClientAutocomplete({
     const term = value.trim().toLowerCase();
     if (!term || !token) return [];
 
-    return clients.filter(
-      (c) =>
-        c.firstName.toLowerCase().includes(term) ||
-        c.lastName.toLowerCase().includes(term) ||
-        (c.phoneNumber && c.phoneNumber.includes(term))
-    );
+    return clients.filter((c) => {
+      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+      const phone = c.phoneNumber || '';
+      return fullName.includes(term) || phone.includes(term);
+    });
   }, [clients, value, token]);
 
   // Close suggestions dropdown when clicking outside
@@ -62,6 +92,53 @@ export function ClientAutocomplete({
     setIsOpen(false);
   };
 
+  if (isLocked) {
+    return (
+      <div
+        ref={containerRef}
+        style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}
+      >
+        <div
+          style={{
+            flex: 1,
+            padding: '10px 14px',
+            backgroundColor: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            color: 'var(--text-primary)',
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            opacity: 0.85,
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>👤</span>
+          <span style={{ fontWeight: 600 }}>{value}</span>
+        </div>
+        {onClear && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="btn-secondary"
+            style={{
+              padding: '10px 16px',
+              fontSize: '13px',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Change
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
       <input
@@ -77,7 +154,7 @@ export function ClientAutocomplete({
         className={inputClassName}
         autoComplete="off"
       />
-      {isOpen && suggestions.length > 0 && (
+      {isOpen && (suggestions.length > 0 || value.trim().length > 1) && (
         <div
           style={{
             position: 'absolute',
@@ -95,46 +172,63 @@ export function ClientAutocomplete({
             backdropFilter: 'blur(8px)',
           }}
         >
-          {suggestions.map((client) => (
-            <div
-              key={client.id}
-              onClick={() => handleSuggestionClick(client)}
-              style={{
-                padding: '10px 16px',
-                cursor: 'pointer',
-                borderBottom: '1px solid var(--border-color)',
-                fontSize: '13.5px',
-                transition: 'background-color 0.2s',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--accent-glow)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <div>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {client.firstName} {client.lastName}
-                </span>
-                {client.phoneNumber && (
-                  <span
-                    style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}
-                  >
-                    ({client.phoneNumber})
+          {suggestions.length > 0 ? (
+            suggestions.map((client) => (
+              <div
+                key={client.id}
+                onClick={() => handleSuggestionClick(client)}
+                style={{
+                  padding: '10px 16px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid var(--border-color)',
+                  fontSize: '13.5px',
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent-glow)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <div>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {highlightMatch(`${client.firstName} ${client.lastName}`, value)}
+                  </span>
+                  {client.phoneNumber && (
+                    <span
+                      style={{
+                        marginLeft: '8px',
+                        fontSize: '11px',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      ({highlightMatch(client.phoneNumber, value)})
+                    </span>
+                  )}
+                </div>
+                {client.loyaltyPoints > 0 && (
+                  <span className="micro-badge" style={{ padding: '2px 8px', fontSize: '8px' }}>
+                    {client.loyaltyPoints} Pts
                   </span>
                 )}
               </div>
-              {client.loyaltyPoints > 0 && (
-                <span className="micro-badge" style={{ padding: '2px 8px', fontSize: '8px' }}>
-                  {client.loyaltyPoints} Pts
-                </span>
-              )}
+            ))
+          ) : (
+            <div
+              style={{
+                padding: '12px 16px',
+                color: 'var(--text-secondary)',
+                fontSize: '13px',
+                fontStyle: 'italic',
+              }}
+            >
+              No existing clients found — will register as new guest
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

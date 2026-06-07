@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Branch } from '../../../types';
+import type { Branch, Client } from '../../../types';
 import { PageHeader, ClientAutocomplete, LoadingSpinner } from '../../../components/common';
 import { useBranch } from '../../../context/BranchContext';
 
@@ -24,15 +24,42 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
   const [walkinPhone, setWalkinPhone] = useState('');
   const [walkinServiceId, setWalkinServiceId] = useState('');
   const [walkinEmployeeId, setWalkinEmployeeId] = useState('');
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const validatePhone = (phone: string): boolean => {
+    const trimmed = phone.trim();
+    if (!trimmed) {
+      setPhoneError('Phone number is required.');
+      return false;
+    }
+    const phoneRegex = /^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$/;
+    if (!phoneRegex.test(trimmed)) {
+      setPhoneError('Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx.');
+      return false;
+    }
+    setPhoneError(null);
+    return true;
+  };
+
+  const handleClearSelection = () => {
+    setSelectedClient(null);
+    setWalkinName('');
+    setWalkinPhone('');
+    setPhoneError(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const serviceId = walkinServiceId || activeServices[0]?.id;
     if (!serviceId) return;
 
+    const isPhoneValid = validatePhone(walkinPhone);
+    if (!isPhoneValid) return;
+
     onWalkinSubmit({
-      firstName: walkinName,
-      phone: walkinPhone,
+      firstName: selectedClient ? selectedClient.firstName : walkinName.trim(),
+      phone: walkinPhone.trim(),
       serviceId,
       employeeId: walkinEmployeeId || undefined,
     });
@@ -42,6 +69,8 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
     setWalkinPhone('');
     setWalkinEmployeeId('');
     setWalkinServiceId('');
+    setSelectedClient(null);
+    setPhoneError(null);
   };
 
   return (
@@ -56,27 +85,130 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
         style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}
       >
         <div className="form-group">
-          <label className="form-label">Client's First Name</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <label className="form-label" style={{ marginBottom: 0 }}>
+              Client's Name
+            </label>
+            {selectedClient ? (
+              <span
+                className="micro-badge"
+                style={{
+                  backgroundColor: '#10B981',
+                  color: '#fff',
+                  fontSize: '10px',
+                  padding: '2px 8px',
+                }}
+              >
+                Returning Client
+              </span>
+            ) : walkinName.trim() ? (
+              <span
+                className="micro-badge"
+                style={{
+                  backgroundColor: 'var(--border-color)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '10px',
+                  padding: '2px 8px',
+                }}
+              >
+                New Guest
+              </span>
+            ) : null}
+          </div>
           <ClientAutocomplete
-            value={walkinName}
-            onChange={setWalkinName}
-            onSelect={(client) => {
-              setWalkinName(client.firstName);
-              setWalkinPhone(client.phoneNumber || '');
+            value={
+              selectedClient
+                ? `${selectedClient.firstName} ${selectedClient.lastName}`.trim()
+                : walkinName
+            }
+            onChange={(val) => {
+              setWalkinName(val);
+              if (selectedClient) {
+                setSelectedClient(null);
+              }
             }}
-            placeholder="Type client's first name to autofill..."
+            onSelect={(client) => {
+              setSelectedClient(client);
+              setWalkinName(`${client.firstName} ${client.lastName}`.trim());
+              setWalkinPhone(client.phoneNumber || '');
+              setPhoneError(null);
+            }}
+            isLocked={!!selectedClient}
+            onClear={handleClearSelection}
+            placeholder="Type client's name or phone to autofill..."
             required
           />
         </div>
         <div className="form-group">
-          <label className="form-label">Client's Phone Number</label>
-          <input
-            type="tel"
-            placeholder="(555) 000-0000"
-            value={walkinPhone}
-            onChange={(e) => setWalkinPhone(e.target.value)}
-            required
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <label className="form-label" style={{ marginBottom: 0 }}>
+              Client's Phone Number
+            </label>
+            {selectedClient && (
+              <span
+                className="micro-badge"
+                style={{
+                  backgroundColor: '#3B82F6',
+                  color: '#fff',
+                  fontSize: '10px',
+                  padding: '2px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                ✓ Verified
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              type="tel"
+              placeholder="09xxxxxxxxx or 09xx xxx xxxx"
+              value={walkinPhone}
+              onChange={(e) => {
+                const val = e.target.value;
+                setWalkinPhone(val);
+                if (phoneError) validatePhone(val);
+              }}
+              onBlur={() => validatePhone(walkinPhone)}
+              disabled={!!selectedClient}
+              required
+              style={{
+                flex: 1,
+                backgroundColor: selectedClient ? 'var(--bg-secondary)' : undefined,
+                cursor: selectedClient ? 'not-allowed' : undefined,
+                opacity: selectedClient ? 0.8 : 1,
+                borderColor: phoneError ? '#EF4444' : undefined,
+              }}
+            />
+            {selectedClient && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleClearSelection}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: '13px',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {phoneError && (
+            <span
+              style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px', display: 'block' }}
+            >
+              {phoneError}
+            </span>
+          )}
         </div>
         <div className="form-group">
           <label className="form-label">Stylist Preference</label>
