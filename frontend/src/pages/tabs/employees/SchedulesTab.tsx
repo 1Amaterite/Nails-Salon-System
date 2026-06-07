@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Branch, Employee } from '../../../types';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../utils/apiClient';
-import { UnsavedChangesModal } from '../../../components/common/UnsavedChangesModal';
-import { LoadingSpinner } from '../../../components/common';
+import { UnsavedChangesModal, LoadingSpinner } from '../../../components/common';
 import { ScheduleEditor } from './components/ScheduleEditor';
 
 export { UnsavedChangesModal };

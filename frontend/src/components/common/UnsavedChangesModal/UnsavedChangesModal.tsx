@@ -1,4 +1,4 @@
-import { ModalShell } from './ModalShell';
+import { ModalShell } from '../ModalShell/ModalShell';
 import styles from './UnsavedChangesModal.module.css';
 
 interface UnsavedChangesModalProps {

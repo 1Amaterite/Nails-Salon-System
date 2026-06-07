@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '../../context/AuthContext';
-import { apiClient } from '../../utils/apiClient';
-import type { Client } from '../../types';
+import { useAuth } from '../../../context/AuthContext';
+import { apiClient } from '../../../utils/apiClient';
+import type { Client } from '../../../types';
 import styles from './ClientAutocomplete.module.css';
 
 interface ClientAutocompleteProps {

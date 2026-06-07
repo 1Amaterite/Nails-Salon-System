@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageHeader } from './PageHeader';
+import { PageHeader } from './PageHeader/PageHeader';
 
 export interface PageWrapperProps {
   /** The main panel title rendered in accent serif font. */

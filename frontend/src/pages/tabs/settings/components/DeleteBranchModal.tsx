@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { ModalShell } from '../../../../components/common/ModalShell';
-import { InlineAlertBanner } from '../../../../components/common';
+import { ModalShell, InlineAlertBanner } from '../../../../components/common';
 import { apiClient } from '../../../../utils/apiClient';
 import type { Branch } from '../../../../types';
 
