@@ -9,6 +9,7 @@ import {
   Gem,
   Heart,
   ChevronDown,
+  Search,
 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import { ClientAutocomplete, LoadingSpinner } from '../components/common';
@@ -127,6 +128,61 @@ export function PublicPortal({
   const [bookingStartTime, setBookingStartTime] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+
+  // Service search & filter states
+  const [servicesSearch, setServicesSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [servicesSortBy, setServicesSortBy] = useState('default');
+
+  // Reset search and filters when active branch changes using render-time state check (avoids useEffect cascading renders)
+  const [prevBranchId, setPrevBranchId] = useState(currentBranchId);
+  if (currentBranchId !== prevBranchId) {
+    setPrevBranchId(currentBranchId);
+    setServicesSearch('');
+    setSelectedCategory('All');
+    setServicesSortBy('default');
+  }
+
+  // Compute dynamic categories based on active services
+  const serviceCategories = React.useMemo(() => {
+    const set = new Set<string>();
+    activeServices.forEach((s) => {
+      if (s.category) set.add(s.category);
+    });
+    return ['All', ...Array.from(set)];
+  }, [activeServices]);
+
+  // Filter and sort active services catalog
+  const filteredServices = React.useMemo(() => {
+    let result = [...activeServices];
+
+    // Search filter
+    if (servicesSearch.trim()) {
+      const q = servicesSearch.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) || (s.category && s.category.toLowerCase().includes(q))
+      );
+    }
+
+    // Category filter
+    if (selectedCategory !== 'All') {
+      result = result.filter((s) => s.category === selectedCategory);
+    }
+
+    // Sorting
+    if (servicesSortBy === 'price-asc') {
+      result.sort((a, b) => Number(a.price) - Number(b.price));
+    } else if (servicesSortBy === 'price-desc') {
+      result.sort((a, b) => Number(b.price) - Number(a.price));
+    } else if (servicesSortBy === 'duration-asc') {
+      result.sort((a, b) => a.durationMinutes - b.durationMinutes);
+    } else if (servicesSortBy === 'duration-desc') {
+      result.sort((a, b) => b.durationMinutes - a.durationMinutes);
+    }
+
+    return result;
+  }, [activeServices, servicesSearch, selectedCategory, servicesSortBy]);
 
   useEffect(() => {
     let active = true;
@@ -603,190 +659,262 @@ export function PublicPortal({
               </p>
             </div>
 
-            {(() => {
-              const currentBranch = branches.find((b) => b.id === currentBranchId) || branches[0];
-              const branchServices = (currentBranch?.services || []).filter((s) => s.isActive);
-              return branchServices.length > 0 ? (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                    gap: '20px',
-                    marginTop: '20px',
-                  }}
-                >
-                  {branchServices.map((s: Service, index: number) => (
-                    <div
-                      key={s.id}
-                      className="data-card stagger-card"
-                      style={{ padding: '24px', '--index': index } as React.CSSProperties}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          marginBottom: '12px',
-                        }}
-                      >
-                        <h4
-                          style={{
-                            fontWeight: 600,
-                            fontSize: '16px',
-                            color: 'var(--text-primary)',
-                            margin: 0,
-                            maxWidth: '70%',
-                          }}
-                        >
-                          {s.name}
-                        </h4>
-                        <span
-                          style={{
-                            fontSize: '18px',
-                            fontWeight: 700,
-                            color: 'var(--accent)',
-                            fontFamily: 'var(--font-serif)',
-                          }}
-                        >
-                          ₱{Number(s.price).toFixed(2)}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '8px',
-                          flexWrap: 'wrap',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <span
-                          className="micro-badge"
-                          style={{ fontSize: '9px', padding: '4px 10px' }}
-                        >
-                          {s.category || 'Nails'}
-                        </span>
-                        <span
-                          className="micro-badge"
-                          style={{
-                            fontSize: '9px',
-                            padding: '4px 10px',
-                            backgroundColor: 'rgba(190, 24, 93, 0.04)',
-                            color: 'var(--text-secondary)',
-                          }}
-                        >
-                          {s.durationMinutes} mins
-                        </span>
-                      </div>
+            {activeServices.length > 0 ? (
+              <>
+                {/* Search and Filters Controls Bar */}
+                <div className="services-controls-bar">
+                  <div className="search-box-wrapper">
+                    <Search size={16} className="search-box-icon" />
+                    <input
+                      type="text"
+                      placeholder="Search treatments..."
+                      value={servicesSearch}
+                      onChange={(e) => setServicesSearch(e.target.value)}
+                      className="services-search-input"
+                    />
+                    {servicesSearch && (
                       <button
-                        className="btn-primary"
-                        onClick={() => {
-                          setBookingServiceId(s.id);
-                          setActiveTab('public-booking');
-                        }}
-                        style={{
-                          width: '100%',
-                          fontSize: '13px',
-                          padding: '8px 16px',
-                          border: '1px solid var(--accent)',
-                          background: 'transparent',
-                          color: 'var(--accent)',
-                          boxShadow: 'none',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'var(--accent-glow)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                        onClick={() => setServicesSearch('')}
+                        className="services-search-clear"
+                        type="button"
                       >
-                        Book Treatment
+                        ×
                       </button>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+
+                  <div className="services-filters-right">
+                    <select
+                      value={servicesSortBy}
+                      onChange={(e) => setServicesSortBy(e.target.value)}
+                      className="services-sort-select"
+                    >
+                      <option value="default">Sort: Default</option>
+                      <option value="price-asc">Price: Low to High</option>
+                      <option value="price-desc">Price: High to Low</option>
+                      <option value="duration-asc">Duration: Shortest</option>
+                      <option value="duration-desc">Duration: Longest</option>
+                    </select>
+                  </div>
                 </div>
-              ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                    gap: '20px',
-                    marginTop: '20px',
-                  }}
-                >
-                  <div className="data-card" style={{ padding: '24px' }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '12px',
-                      }}
-                    >
-                      <h4
-                        style={{
-                          fontWeight: 600,
-                          fontSize: '16px',
-                          color: 'var(--text-primary)',
-                          margin: 0,
-                        }}
+
+                {/* Category Navigation Capsule Tabs */}
+                {serviceCategories.length > 1 && (
+                  <div className="services-category-tabs">
+                    {serviceCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        className={`services-category-tab ${selectedCategory === cat ? 'active' : ''}`}
+                        onClick={() => setSelectedCategory(cat)}
                       >
-                        Classic Gel Manicure
-                      </h4>
-                      <span
-                        style={{
-                          fontSize: '18px',
-                          fontWeight: 700,
-                          color: 'var(--accent)',
-                          fontFamily: 'var(--font-serif)',
-                        }}
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {filteredServices.length > 0 ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                      gap: '20px',
+                      marginTop: '20px',
+                    }}
+                  >
+                    {filteredServices.map((s: Service, index: number) => (
+                      <div
+                        key={s.id}
+                        className="data-card stagger-card"
+                        style={{ padding: '24px', '--index': index } as React.CSSProperties}
                       >
-                        ₱45.00
-                      </span>
-                    </div>
-                    <p
-                      style={{
-                        fontSize: '13px',
-                        color: 'var(--text-secondary)',
-                        marginBottom: '16px',
-                        lineHeight: '1.4',
-                      }}
-                    >
-                      Long-lasting classic gel polish application includes nail shaping and cuticle
-                      care.
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '12px',
+                          }}
+                        >
+                          <h4
+                            style={{
+                              fontWeight: 600,
+                              fontSize: '16px',
+                              color: 'var(--text-primary)',
+                              margin: 0,
+                              maxWidth: '70%',
+                            }}
+                          >
+                            {s.name}
+                          </h4>
+                          <span
+                            style={{
+                              fontSize: '18px',
+                              fontWeight: 700,
+                              color: 'var(--accent)',
+                              fontFamily: 'var(--font-serif)',
+                            }}
+                          >
+                            ₱{Number(s.price).toFixed(2)}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: '8px',
+                            flexWrap: 'wrap',
+                            marginBottom: '16px',
+                          }}
+                        >
+                          <span
+                            className="micro-badge"
+                            style={{ fontSize: '9px', padding: '4px 10px' }}
+                          >
+                            {s.category || 'Nails'}
+                          </span>
+                          <span
+                            className="micro-badge"
+                            style={{
+                              fontSize: '9px',
+                              padding: '4px 10px',
+                              backgroundColor: 'rgba(190, 24, 93, 0.04)',
+                              color: 'var(--text-secondary)',
+                            }}
+                          >
+                            {s.durationMinutes} mins
+                          </span>
+                        </div>
+                        <button
+                          className="btn-primary"
+                          onClick={() => {
+                            setBookingServiceId(s.id);
+                            setActiveTab('public-booking');
+                          }}
+                          style={{
+                            width: '100%',
+                            fontSize: '13px',
+                            padding: '8px 16px',
+                            border: '1px solid var(--accent)',
+                            background: 'transparent',
+                            color: 'var(--accent)',
+                            boxShadow: 'none',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--accent-glow)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          Book Treatment
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="services-empty-state">
+                    <Search size={40} className="empty-icon" />
+                    <h4>No services found</h4>
+                    <p>
+                      We couldn't find any services matching "{servicesSearch}" under category "
+                      {selectedCategory}".
                     </p>
                     <button
                       className="btn-primary"
                       onClick={() => {
-                        const matched = activeServices.find((s) =>
-                          s.name.toLowerCase().includes('classic gel manicure')
-                        );
-                        if (matched) {
-                          setBookingServiceId(matched.id);
-                        }
-                        setActiveTab('public-booking');
+                        setServicesSearch('');
+                        setSelectedCategory('All');
+                        setServicesSortBy('default');
                       }}
-                      style={{
-                        width: '100%',
-                        fontSize: '13px',
-                        padding: '8px 16px',
-                        border: '1px solid var(--accent)',
-                        background: 'transparent',
-                        color: 'var(--accent)',
-                        boxShadow: 'none',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--accent-glow)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
+                      style={{ padding: '8px 20px', fontSize: '13px', marginTop: '12px' }}
                     >
-                      Book Treatment
+                      Reset Filters
                     </button>
                   </div>
+                )}
+              </>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  gap: '20px',
+                  marginTop: '20px',
+                }}
+              >
+                <div className="data-card" style={{ padding: '24px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <h4
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '16px',
+                        color: 'var(--text-primary)',
+                        margin: 0,
+                      }}
+                    >
+                      Classic Gel Manicure
+                    </h4>
+                    <span
+                      style={{
+                        fontSize: '18px',
+                        fontWeight: 700,
+                        color: 'var(--accent)',
+                        fontFamily: 'var(--font-serif)',
+                      }}
+                    >
+                      ₱45.00
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '16px',
+                      lineHeight: '1.4',
+                    }}
+                  >
+                    Long-lasting classic gel polish application includes nail shaping and cuticle
+                    care.
+                  </p>
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      const matched = activeServices.find((s) =>
+                        s.name.toLowerCase().includes('classic gel manicure')
+                      );
+                      if (matched) {
+                        setBookingServiceId(matched.id);
+                      }
+                      setActiveTab('public-booking');
+                    }}
+                    style={{
+                      width: '100%',
+                      fontSize: '13px',
+                      padding: '8px 16px',
+                      border: '1px solid var(--accent)',
+                      background: 'transparent',
+                      color: 'var(--accent)',
+                      boxShadow: 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--accent-glow)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    Book Treatment
+                  </button>
                 </div>
-              );
-            })()}
+              </div>
+            )}
           </div>
         )}
 
