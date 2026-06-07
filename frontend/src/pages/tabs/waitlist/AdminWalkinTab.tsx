@@ -85,34 +85,14 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
         style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}
       >
         <div className="form-group">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <div className="flex-align-center" style={{ gap: '8px', marginBottom: '6px' }}>
             <label className="form-label" style={{ marginBottom: 0 }}>
               Client's Name
             </label>
             {selectedClient ? (
-              <span
-                className="micro-badge"
-                style={{
-                  backgroundColor: '#10B981',
-                  color: '#fff',
-                  fontSize: '10px',
-                  padding: '2px 8px',
-                }}
-              >
-                Returning Client
-              </span>
+              <span className="micro-badge micro-badge-returning">Returning Client</span>
             ) : walkinName.trim() ? (
-              <span
-                className="micro-badge"
-                style={{
-                  backgroundColor: 'var(--border-color)',
-                  color: 'var(--text-secondary)',
-                  fontSize: '10px',
-                  padding: '2px 8px',
-                }}
-              >
-                New Guest
-              </span>
+              <span className="micro-badge micro-badge-new">New Guest</span>
             ) : null}
           </div>
           <ClientAutocomplete
@@ -140,28 +120,13 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
           />
         </div>
         <div className="form-group">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <div className="flex-align-center" style={{ gap: '8px', marginBottom: '6px' }}>
             <label className="form-label" style={{ marginBottom: 0 }}>
               Client's Phone Number
             </label>
-            {selectedClient && (
-              <span
-                className="micro-badge"
-                style={{
-                  backgroundColor: '#3B82F6',
-                  color: '#fff',
-                  fontSize: '10px',
-                  padding: '2px 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                ✓ Verified
-              </span>
-            )}
+            {selectedClient && <span className="micro-badge micro-badge-verified">✓ Verified</span>}
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="flex-align-center" style={{ gap: '8px' }}>
             <input
               type="tel"
               placeholder="09xxxxxxxxx or 09xx xxx xxxx"
@@ -202,13 +167,7 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
               </button>
             )}
           </div>
-          {phoneError && (
-            <span
-              style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px', display: 'block' }}
-            >
-              {phoneError}
-            </span>
-          )}
+          {phoneError && <span className="form-error-text">{phoneError}</span>}
         </div>
         <div className="form-group">
           <label className="form-label">Stylist Preference</label>

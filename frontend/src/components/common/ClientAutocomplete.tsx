@@ -23,15 +23,7 @@ const highlightMatch = (text: string, term: string) => {
     <span>
       {parts.map((part, index) =>
         part.toLowerCase() === term.trim().toLowerCase() ? (
-          <mark
-            key={index}
-            style={{
-              backgroundColor: 'rgba(59, 130, 246, 0.35)',
-              color: 'var(--text-primary)',
-              borderRadius: '2px',
-              padding: '0 1px',
-            }}
-          >
+          <mark key={index} className="autocomplete-match-highlight">
             {part}
           </mark>
         ) : (
@@ -94,44 +86,13 @@ export function ClientAutocomplete({
 
   if (isLocked) {
     return (
-      <div
-        ref={containerRef}
-        style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}
-      >
-        <div
-          style={{
-            flex: 1,
-            padding: '10px 14px',
-            backgroundColor: 'var(--bg-secondary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '8px',
-            color: 'var(--text-primary)',
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            opacity: 0.85,
-          }}
-        >
+      <div ref={containerRef} className="flex-align-center" style={{ gap: '8px', width: '100%' }}>
+        <div className="autocomplete-locked-badge">
           <span style={{ fontSize: '16px' }}>👤</span>
           <span style={{ fontWeight: 600 }}>{value}</span>
         </div>
         {onClear && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="btn-secondary"
-            style={{
-              padding: '10px 16px',
-              fontSize: '13px',
-              backgroundColor: 'var(--bg-secondary)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-primary)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <button type="button" onClick={onClear} className="btn-secondary">
             Change
           </button>
         )}
@@ -140,7 +101,7 @@ export function ClientAutocomplete({
   }
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+    <div ref={containerRef} className="autocomplete-container">
       <input
         type="text"
         placeholder={placeholder}
@@ -155,57 +116,20 @@ export function ClientAutocomplete({
         autoComplete="off"
       />
       {isOpen && (suggestions.length > 0 || value.trim().length > 1) && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            backgroundColor: 'var(--bg-secondary)',
-            border: '1px solid var(--border-color-hover)',
-            borderRadius: '8px',
-            marginTop: '4px',
-            maxHeight: '200px',
-            overflowY: 'auto',
-            zIndex: 1000,
-            boxShadow: 'var(--shadow-lg)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
+        <div className="autocomplete-dropdown">
           {suggestions.length > 0 ? (
             suggestions.map((client) => (
               <div
                 key={client.id}
                 onClick={() => handleSuggestionClick(client)}
-                style={{
-                  padding: '10px 16px',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid var(--border-color)',
-                  fontSize: '13.5px',
-                  transition: 'background-color 0.2s',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--accent-glow)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                className="autocomplete-row"
               >
                 <div>
                   <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                     {highlightMatch(`${client.firstName} ${client.lastName}`, value)}
                   </span>
                   {client.phoneNumber && (
-                    <span
-                      style={{
-                        marginLeft: '8px',
-                        fontSize: '11px',
-                        color: 'var(--text-secondary)',
-                      }}
-                    >
+                    <span className="autocomplete-phone-secondary">
                       ({highlightMatch(client.phoneNumber, value)})
                     </span>
                   )}
@@ -218,14 +142,7 @@ export function ClientAutocomplete({
               </div>
             ))
           ) : (
-            <div
-              style={{
-                padding: '12px 16px',
-                color: 'var(--text-secondary)',
-                fontSize: '13px',
-                fontStyle: 'italic',
-              }}
-            >
+            <div className="autocomplete-empty-text">
               No existing clients found — will register as new guest
             </div>
           )}
