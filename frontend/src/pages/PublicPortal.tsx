@@ -147,6 +147,34 @@ export function PublicPortal({
     };
   }, [bookingDate, bookingServiceId, bookingEmployeeId, branches, activeServices]);
 
+  useEffect(() => {
+    // Fallback for browsers that don't support scroll-driven animations
+    if (
+      !CSS.supports ||
+      !CSS.supports('(animation-timeline: view()) and (animation-range: entry)')
+    ) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+            }
+          });
+        },
+        { threshold: 0.1 }
+      );
+
+      const targets = document.querySelectorAll(
+        '.service-front-card, .services-section-title, .quick-info-card'
+      );
+      targets.forEach((el) => observer.observe(el));
+
+      return () => {
+        targets.forEach((el) => observer.unobserve(el));
+      };
+    }
+  }, [activeTab]);
+
   const handleWalkinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const serviceId = publicWalkinServiceId || activeServices[0]?.id;
@@ -233,20 +261,23 @@ export function PublicPortal({
         style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}
       >
         {activeTab === 'public-home' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+          <div
+            className="tab-pane"
+            style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}
+          >
             <div className="hero-center-container">
               {/* Floating bubbles in the background */}
               <div className="decor-bubble bubble-1">
-                <Sparkles size={28} strokeWidth={1.5} style={{ color: 'var(--accent)' }} />
+                <Sparkles size={28} strokeWidth={1.5} />
               </div>
               <div className="decor-bubble bubble-2">
-                <Sparkle size={28} strokeWidth={1.5} style={{ color: 'var(--accent-blue)' }} />
+                <Sparkle size={28} strokeWidth={1.5} />
               </div>
               <div className="decor-bubble bubble-3">
-                <Gem size={28} strokeWidth={1.5} style={{ color: 'var(--accent-blue)' }} />
+                <Gem size={28} strokeWidth={1.5} />
               </div>
               <div className="decor-bubble bubble-4">
-                <Heart size={28} strokeWidth={1.5} style={{ color: 'var(--accent)' }} />
+                <Heart size={28} strokeWidth={1.5} />
               </div>
 
               {/* Centered White Card */}
@@ -327,18 +358,11 @@ export function PublicPortal({
             </div>
 
             {/* Footer Quick info bar */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '20px',
-                borderTop: '1px solid var(--border-color)',
-                paddingTop: '3px',
-                marginBottom: '20px',
-              }}
-            >
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <MapPin size={20} style={{ color: 'var(--accent)' }} />
+            <div className="quick-info-bar">
+              <div className="quick-info-card">
+                <div className="quick-info-icon-wrapper">
+                  <MapPin size={20} />
+                </div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
                     Find Us
@@ -348,8 +372,10 @@ export function PublicPortal({
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <Clock size={20} style={{ color: 'var(--accent)' }} />
+              <div className="quick-info-card">
+                <div className="quick-info-icon-wrapper">
+                  <Clock size={20} />
+                </div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
                     Salon Hours
@@ -359,8 +385,10 @@ export function PublicPortal({
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <Globe size={20} style={{ color: 'var(--accent)' }} />
+              <div className="quick-info-card">
+                <div className="quick-info-icon-wrapper">
+                  <Globe size={20} />
+                </div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
                     Contact Hotline
@@ -375,7 +403,7 @@ export function PublicPortal({
         )}
 
         {activeTab === 'public-services' && (
-          <div className="glass-panel">
+          <div className="glass-panel tab-pane">
             <div style={{ marginBottom: '24px' }}>
               <h3
                 style={{
@@ -402,8 +430,12 @@ export function PublicPortal({
                   marginTop: '20px',
                 }}
               >
-                {branches[0].services.map((s: Service) => (
-                  <div key={s.id} className="data-card" style={{ padding: '24px' }}>
+                {branches[0].services.map((s: Service, index: number) => (
+                  <div
+                    key={s.id}
+                    className="data-card stagger-card"
+                    style={{ padding: '24px', '--index': index } as React.CSSProperties}
+                  >
                     <div
                       style={{
                         display: 'flex',
@@ -562,7 +594,7 @@ export function PublicPortal({
         )}
 
         {activeTab === 'public-booking' && (
-          <div className="glass-panel">
+          <div className="glass-panel tab-pane">
             <div style={{ marginBottom: '24px' }}>
               <h3
                 style={{
@@ -722,7 +754,7 @@ export function PublicPortal({
         )}
 
         {activeTab === 'public-walkin' && (
-          <div className="glass-panel">
+          <div className="glass-panel tab-pane">
             <div style={{ marginBottom: '24px' }}>
               <h3
                 style={{

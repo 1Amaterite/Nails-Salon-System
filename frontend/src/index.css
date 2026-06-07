@@ -641,7 +641,7 @@ input[type='radio'] {
   color: var(--accent);
 }
 
-.public-navbar-link.active::after {
+.public-navbar-link::after {
   content: '';
   position: absolute;
   bottom: -4px;
@@ -650,6 +650,15 @@ input[type='radio'] {
   height: 2px;
   background-color: var(--accent);
   border-radius: var(--radius-full);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.public-navbar-link:hover::after,
+.public-navbar-link.active::after {
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 /* Centered Hero Card Layout */
@@ -1233,4 +1242,284 @@ input[type='radio'] {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ==========================================================================
+   PREMIUM VISUAL ANIMATIONS & GUEST PORTAL MOTIONS
+   ========================================================================== */
+
+/* Keyframe Definitions */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bubblePopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Floating Animations for Hero Decorations */
+@keyframes floatOrganic1 {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-14px) rotate(8deg) scale(1.05);
+  }
+}
+
+@keyframes floatOrganic2 {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(12px) rotate(-6deg) scale(0.95);
+  }
+}
+
+@keyframes floatOrganic3 {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-16px) rotate(-10deg) scale(1.03);
+  }
+}
+
+@keyframes floatOrganic4 {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(14px) rotate(8deg) scale(0.97);
+  }
+}
+
+/* Active Page Tab Entrance Transition */
+.tab-pane {
+  animation: tabFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hero Center Card Staggered Elements */
+.hero-center-card > * {
+  opacity: 0;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-center-card > *:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.hero-center-card > *:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.hero-center-card > *:nth-child(3) {
+  animation-delay: 0.25s;
+}
+
+.hero-center-card > *:nth-child(4) {
+  animation-delay: 0.35s;
+}
+
+/* Background Bubble Pop-in + Continuous Floating */
+.decor-bubble {
+  animation: bubblePopIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+}
+
+.decor-bubble.bubble-1 {
+  animation-delay: 0.1s;
+}
+
+.decor-bubble.bubble-2 {
+  animation-delay: 0.22s;
+}
+
+.decor-bubble.bubble-3 {
+  animation-delay: 0.16s;
+}
+
+.decor-bubble.bubble-4 {
+  animation-delay: 0.28s;
+}
+
+.decor-bubble > svg {
+  display: block;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.decor-bubble.bubble-1 > svg {
+  animation-name: floatOrganic1;
+  animation-duration: 8s;
+}
+
+.decor-bubble.bubble-2 > svg {
+  animation-name: floatOrganic2;
+  animation-duration: 9.5s;
+}
+
+.decor-bubble.bubble-3 > svg {
+  animation-name: floatOrganic3;
+  animation-duration: 8.5s;
+}
+
+.decor-bubble.bubble-4 > svg {
+  animation-name: floatOrganic4;
+  animation-duration: 11s;
+}
+
+/* Services and Catalog Item Staggering */
+.stagger-card {
+  opacity: 0;
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--index, 0) * 0.05s);
+}
+
+/* Restructured Quick Info Component Styling */
+.quick-info-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 32px;
+  margin-bottom: 20px;
+  margin-top: 40px;
+}
+
+.quick-info-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.quick-info-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-color-hover);
+}
+
+.quick-info-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--accent-glow);
+  color: var(--accent);
+  transition: var(--transition);
+}
+
+.quick-info-card:hover .quick-info-icon-wrapper {
+  background-color: var(--accent);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+@media (max-width: 1024px) {
+  .quick-info-bar {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* Native CSS Scroll-Driven Animations */
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    @keyframes revealCard {
+      from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    @keyframes revealTitle {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .services-section-title {
+      animation: revealTitle auto linear forwards;
+      animation-timeline: view();
+      animation-range: entry 5% entry 30%;
+    }
+
+    .service-front-card {
+      animation: revealCard auto linear forwards;
+      animation-timeline: view();
+      animation-range: entry 10% entry 35%;
+    }
+
+    .quick-info-card {
+      animation: revealCard auto linear forwards;
+      animation-timeline: view();
+      animation-range: entry 5% entry 30%;
+    }
+  }
+}
+
+/* JS Fallback styles for browsers without scroll-driven animation support */
+@supports not ((animation-timeline: view()) and (animation-range: entry)) {
+  .services-section-title,
+  .service-front-card,
+  .quick-info-card {
+    opacity: 0;
+    transform: translateY(30px);
+    transition:
+      opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .services-section-title.in-view,
+  .service-front-card.in-view,
+  .quick-info-card.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
