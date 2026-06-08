@@ -82,7 +82,7 @@ export function ClientTable({
         const bFormatted = bDate.toLocaleDateString([], {
           month: 'long',
           day: 'numeric',
-          timeZone: 'UTC',
+          timeZone: 'Asia/Manila',
         });
         return (
           <span

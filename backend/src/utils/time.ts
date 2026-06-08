@@ -15,3 +15,17 @@ export function addMinutesToTime(timeStr: string, minutes: number): string {
     const newMins = totalMins % 60;
     return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
 }
+
+export function getStartOfTodayInPH(): Date {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+    const parts = formatter.formatToParts(new Date());
+    const month = parts.find((p) => p.type === 'month')!.value;
+    const day = parts.find((p) => p.type === 'day')!.value;
+    const year = parts.find((p) => p.type === 'year')!.value;
+    return new Date(`${year}-${month}-${day}T00:00:00.000+08:00`);
+}

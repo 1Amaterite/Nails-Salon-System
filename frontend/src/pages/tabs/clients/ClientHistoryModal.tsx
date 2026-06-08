@@ -189,7 +189,7 @@ export function ClientHistoryModal({
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
-                        timeZone: 'UTC',
+                        timeZone: 'Asia/Manila',
                       });
                       const serviceNames =
                         appt.services?.map((rel) => rel.service?.name).join(', ') || 'N/A';
@@ -292,6 +292,7 @@ export function ClientHistoryModal({
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
+                      timeZone: 'Asia/Manila',
                     });
                     const isPositive = tx.amount > 0;
                     return (

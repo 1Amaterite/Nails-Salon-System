@@ -1065,7 +1065,7 @@ export function PublicPortal({
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
-                    timeZone: 'UTC',
+                    timeZone: 'Asia/Manila',
                   })}
                 </span>
               </div>
@@ -1589,7 +1589,7 @@ export function PublicPortal({
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
-                          timeZone: 'UTC',
+                          timeZone: 'Asia/Manila',
                         })}
                       </span>
                     </div>

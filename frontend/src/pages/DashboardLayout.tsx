@@ -6,8 +6,6 @@ import {
   Calendar,
   Settings,
   ShoppingBag,
-  PlusCircle,
-  UserCheck,
   LogOut,
   Globe,
   Clock,
@@ -29,14 +27,8 @@ const DashboardTab = lazy(() =>
 const CalendarTab = lazy(() =>
   import('./tabs/appointments/CalendarTab').then((m) => ({ default: m.CalendarTab }))
 );
-const AppointmentsTab = lazy(() =>
-  import('./tabs/appointments/AppointmentsTab').then((m) => ({ default: m.AppointmentsTab }))
-);
-const WaitlistTab = lazy(() =>
-  import('./tabs/waitlist/WaitlistTab').then((m) => ({ default: m.WaitlistTab }))
-);
-const AdminWalkinTab = lazy(() =>
-  import('./tabs/waitlist/AdminWalkinTab').then((m) => ({ default: m.AdminWalkinTab }))
+const ReceptionTab = lazy(() =>
+  import('./tabs/appointments/ReceptionTab').then((m) => ({ default: m.ReceptionTab }))
 );
 const EmployeesTab = lazy(() =>
   import('./tabs/employees/EmployeesTab').then((m) => ({ default: m.EmployeesTab }))
@@ -62,26 +54,12 @@ const SettingsTab = lazy(() =>
 
 export function DashboardLayout() {
   const { employeeRole, logout, navigateTo, currentPath } = useAuth();
-  const {
-    branches,
-    selectedBranch,
-    setSelectedBranch,
-    stats,
-    waitlist,
-    handleUpdateWaitlistStatus,
-    onWalkinSubmit,
-  } = useBranch();
+  const { branches, selectedBranch, setSelectedBranch, stats, waitlist } = useBranch();
 
   const navItems = [
     { key: 'dashboard', label: 'Main Dashboard', Icon: LayoutDashboard },
-    { key: 'calendar', label: 'Unified Calendar', Icon: Calendar },
-    { key: 'appointments', label: 'Bookings Ledger', Icon: BookOpen },
-    { key: 'waitlist', label: 'Walk-In Queue', Icon: UserCheck },
-    {
-      key: 'admin-walkin',
-      label: 'Add Walk-In Guest',
-      Icon: PlusCircle,
-    },
+    { key: 'calendar', label: 'Calendar', Icon: Calendar },
+    { key: 'reception', label: 'Reception Desk', Icon: BookOpen },
     { key: 'employees', label: 'Staff Directory', Icon: Users },
     { key: 'schedules', label: 'Shift Schedules', Icon: Clock },
     { key: 'inventory', label: 'Inventory Items', Icon: ShoppingBag },
@@ -140,6 +118,15 @@ export function DashboardLayout() {
       queryClient.prefetchQuery({
         queryKey: ['schedulableStaff', selectedBranch],
         queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/schedulable-staff`),
+      });
+    } else if (key === 'reception') {
+      queryClient.prefetchQuery({
+        queryKey: ['appointments', selectedBranch],
+        queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/appointments`),
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['waitlist', selectedBranch],
+        queryFn: () => apiClient.get(`/api/branches/${selectedBranch}/waitlist`),
       });
     }
   };
@@ -373,28 +360,15 @@ export function DashboardLayout() {
                 navigateTo={navigateTo}
               />
             )}
-            {activeTab === 'appointments' && (
-              <AppointmentsTab
+            {(activeTab === 'reception' ||
+              activeTab === 'appointments' ||
+              activeTab === 'waitlist' ||
+              activeTab === 'admin-walkin') && (
+              <ReceptionTab
                 branches={branches}
                 selectedBranch={selectedBranch}
                 employeeRole={employeeRole}
                 navigateTo={navigateTo}
-              />
-            )}
-            {activeTab === 'waitlist' && (
-              <WaitlistTab
-                waitlist={waitlist}
-                handleUpdateWaitlistStatus={handleUpdateWaitlistStatus}
-                setActiveTab={setActiveTab}
-                branches={branches}
-                selectedBranch={selectedBranch}
-              />
-            )}
-            {activeTab === 'admin-walkin' && (
-              <AdminWalkinTab
-                branches={branches}
-                selectedBranch={selectedBranch}
-                onWalkinSubmit={onWalkinSubmit}
               />
             )}
             {activeTab === 'employees' && (

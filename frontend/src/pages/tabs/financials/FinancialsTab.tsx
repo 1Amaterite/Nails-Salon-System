@@ -201,6 +201,7 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
         new Date(tx.createdAt).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
+          timeZone: 'Asia/Manila',
         }),
       style: { fontSize: '12px', color: 'var(--text-secondary)' },
     },

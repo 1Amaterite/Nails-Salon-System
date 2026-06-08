@@ -65,6 +65,7 @@ export interface WaitlistItem {
   service: string;
   stylist: string;
   checkInTime: string;
+  checkInDate: string;
   status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   queueNumber?: string | null;
 }

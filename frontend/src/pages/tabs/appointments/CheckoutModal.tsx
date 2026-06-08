@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { CreditCard, ShoppingBag, X } from 'lucide-react';
 import { ModalShell } from '../../../components/common';
 import type { Appointment, Employee } from '../../../types';
@@ -45,6 +45,18 @@ export function CheckoutModal({
   const [discountInput, setDiscountInput] = useState('0');
   const [pointsAppliedInput, setPointsAppliedInput] = useState('0');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(() => appointment?.employeeId || '');
+
+  // Reset form states when modal opens or appointment changes
+  useEffect(() => {
+    if (isOpen && appointment) {
+      Promise.resolve().then(() => {
+        setPaymentMethod('CASH');
+        setDiscountInput('0');
+        setPointsAppliedInput('0');
+        setSelectedEmployeeId(appointment.employeeId || '');
+      });
+    }
+  }, [isOpen, appointment]);
 
   // Filter branch stylists
   const stylists = useMemo(() => {

@@ -104,21 +104,37 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
     setCurrentDate(new Date());
   };
 
-  // Format YYYY-MM-DD from UTC DateTime (used for Appointments)
+  // Format YYYY-MM-DD in Asia/Manila timezone from DateTime/Date
   const getUTCLocalDateString = (dateInput: string | Date) => {
     const d = new Date(dateInput);
-    const year = d.getUTCFullYear();
-    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
+    if (isNaN(d.getTime())) return '';
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(d);
+    const month = parts.find((p) => p.type === 'month')!.value;
+    const day = parts.find((p) => p.type === 'day')!.value;
+    const year = parts.find((p) => p.type === 'year')!.value;
     return `${year}-${month}-${day}`;
   };
 
-  // Format YYYY-MM-DD from Local ISO (used for Waitlist check-in)
+  // Format YYYY-MM-DD in Asia/Manila timezone from ISO string
   const getCheckInLocalDateString = (dateInput: string) => {
     const d = new Date(dateInput);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    if (isNaN(d.getTime())) return '';
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(d);
+    const month = parts.find((p) => p.type === 'month')!.value;
+    const day = parts.find((p) => p.type === 'day')!.value;
+    const year = parts.find((p) => p.type === 'year')!.value;
     return `${year}-${month}-${day}`;
   };
 
@@ -174,8 +190,8 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
 
   return (
     <PageWrapper
-      title="Unified Scheduling Calendar"
-      subtitle="Overlay appointed bookings, walk-ins, and shift schedules in one unified calendar view."
+      title="Scheduling Calendar"
+      subtitle="Overlay appointed bookings, walk-ins, and shift schedules in one calendar view."
       action={
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
@@ -435,7 +451,7 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
 
               // Filter walk-ins for this date
               const dayWalkins = waitlist.filter(
-                (w) => getCheckInLocalDateString(w.checkInTime) === dayKey
+                (w) => getCheckInLocalDateString(w.checkInDate) === dayKey
               );
 
               // Filter working staff for this day of week
@@ -948,7 +964,7 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
                       selectedDay.getDate()
                     );
                     const dayWalkins = waitlist.filter(
-                      (w) => getCheckInLocalDateString(w.checkInTime) === dayKey
+                      (w) => getCheckInLocalDateString(w.checkInDate) === dayKey
                     );
 
                     if (dayWalkins.length === 0) {
@@ -966,10 +982,7 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
                     }
 
                     return dayWalkins.map((w) => {
-                      const timeStr = new Date(w.checkInTime).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      });
+                      const timeStr = w.checkInTime;
                       return (
                         <div
                           key={w.id}

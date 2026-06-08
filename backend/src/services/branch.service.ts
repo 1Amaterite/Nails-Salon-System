@@ -1,4 +1,5 @@
 import prisma from '../config/prisma';
+import { getStartOfTodayInPH } from '../utils/time';
 
 /**
  * Returns all branches with their employees (passwords stripped)
@@ -45,16 +46,14 @@ export async function getSchedulableStaff(branchId: string) {
  * Returns aggregated dashboard stats for a given branch.
  */
 export async function getDashboardStats(branchId: string) {
-    const todayUtc = new Date();
-    todayUtc.setUTCHours(0, 0, 0, 0);
-    const tomorrowUtc = new Date(todayUtc);
-    tomorrowUtc.setUTCDate(todayUtc.getUTCDate() + 1);
+    const todayPh = getStartOfTodayInPH();
+    const tomorrowPh = new Date(todayPh.getTime() + 24 * 60 * 60 * 1000);
 
     const [totalAppointments, waitingQueue, employeeCount, serviceCount, todayAppointments, activeWaitlist] = await Promise.all([
         prisma.appointment.count({
             where: {
                 branchId,
-                appointmentDate: { gte: todayUtc, lt: tomorrowUtc },
+                appointmentDate: { gte: todayPh, lt: tomorrowPh },
             },
         }),
         prisma.appointment.count({ where: { branchId, status: 'WAITING' } }),
@@ -67,7 +66,7 @@ export async function getDashboardStats(branchId: string) {
         prisma.appointment.findMany({
             where: {
                 branchId,
-                appointmentDate: { gte: todayUtc, lt: tomorrowUtc },
+                appointmentDate: { gte: todayPh, lt: tomorrowPh },
             },
             include: {
                 client: true,
@@ -77,7 +76,7 @@ export async function getDashboardStats(branchId: string) {
             where: {
                 branchId,
                 status: { in: ['WAITING', 'IN_PROGRESS'] },
-                appointmentDate: { gte: todayUtc },
+                appointmentDate: { gte: todayPh },
             },
             include: {
                 client: true,
@@ -93,9 +92,9 @@ export async function getDashboardStats(branchId: string) {
         }
     }
 
-    const now = new Date();
-    const todayMonth = now.getMonth(); // 0-11
-    const todayDay = now.getDate();    // 1-31
+    const nowManila = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const todayMonth = nowManila.getMonth(); // 0-11
+    const todayDay = nowManila.getDate();    // 1-31
 
     const birthdayCelebrants: string[] = [];
     for (const client of clientsTodayMap.values()) {

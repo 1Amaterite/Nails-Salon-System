@@ -1,5 +1,5 @@
 import prisma from '../config/prisma';
-import { addMinutesToTime } from '../utils/time';
+import { addMinutesToTime, getStartOfTodayInPH } from '../utils/time';
 import { AppointmentStatus, LoyaltyTransactionType, Prisma } from '@prisma/client';
 
 // ─── Shared Appointment Include ───────────────────────────────────────────────
@@ -61,8 +61,7 @@ function buildOverlapWhere(
 // ─── Waitlist ─────────────────────────────────────────────────────────────────
 
 async function generateQueueNumber(branchId: string, prefix: 'W' | 'A'): Promise<string> {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    const today = getStartOfTodayInPH();
 
     const count = await prisma.appointment.count({
         where: {
@@ -80,8 +79,7 @@ async function generateQueueNumber(branchId: string, prefix: 'W' | 'A'): Promise
  * Returns today's WAITING and IN_PROGRESS queue entries for a branch.
  */
 export async function getWaitlist(branchId: string) {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0); // Use UTC consistently with the rest of the service
+    const today = getStartOfTodayInPH();
 
     const waitlist = await prisma.appointment.findMany({
         where: {
@@ -100,7 +98,8 @@ export async function getWaitlist(branchId: string) {
         phone: appt.client?.phoneNumber ?? '',
         service: appt.services.map((s) => s.service.name).join(', ') || 'N/A',
         stylist: appt.employee?.name ?? 'First Available Stylist',
-        checkInTime: appt.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        checkInTime: appt.createdAt.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' }),
+        checkInDate: appt.createdAt.toISOString(),
         status: appt.status,
         queueNumber: appt.queueNumber ?? '',
     }));
@@ -160,7 +159,8 @@ export async function addToWaitlist(branchId: string, payload: WaitlistEntry) {
             phone: appointment.client.phoneNumber ?? '',
             service: appointment.services.map((s) => s.service.name).join(', ') || 'N/A',
             stylist: appointment.employee?.name ?? 'First Available Stylist',
-            checkInTime: appointment.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            checkInTime: appointment.createdAt.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' }),
+            checkInDate: appointment.createdAt.toISOString(),
             status: appointment.status,
             queueNumber: appointment.queueNumber ?? '',
         };
@@ -203,7 +203,8 @@ export async function updateWaitlistStatus(
         phone: updated.client.phoneNumber ?? '',
         service: updated.services.map((s) => s.service.name).join(', ') || 'N/A',
         stylist: updated.employee?.name ?? 'First Available Stylist',
-        checkInTime: updated.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        checkInTime: updated.createdAt.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' }),
+        checkInDate: updated.createdAt.toISOString(),
         status: updated.status,
     };
 }

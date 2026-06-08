@@ -53,6 +53,14 @@ export async function getFinancialsData(branchId: string) {
     let totalRevenue = 0;
     let totalExpenses = 0;
     const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: 'numeric',
+    });
+    const parts = formatter.formatToParts(now);
+    const manilaYear = parseInt(parts.find((p) => p.type === 'year')!.value, 10);
+    const manilaMonth = parseInt(parts.find((p) => p.type === 'month')!.value, 10) - 1; // 0-indexed
 
     // Daily maps
     const dailyMap: { [dateStr: string]: number } = {};
@@ -60,7 +68,7 @@ export async function getFinancialsData(branchId: string) {
     for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);
-        const dayKey = d.toLocaleDateString('en-US', { weekday: 'short' }); // e.g. "Mon", "Tue"
+        const dayKey = d.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', weekday: 'short' }); // e.g. "Mon", "Tue"
         dailyMap[dayKey] = 0;
         dailyExpensesMap[dayKey] = 0;
     }
@@ -69,8 +77,8 @@ export async function getFinancialsData(branchId: string) {
     const monthlyMap: { [monthStr: string]: { revenue: number } } = {};
     const monthlyExpensesMap: { [monthStr: string]: number } = {};
     for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthKey = d.toLocaleDateString('en-US', { month: 'short' }); // e.g. "Jan", "Feb"
+        const d = new Date(Date.UTC(manilaYear, manilaMonth - i, 1));
+        const monthKey = d.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short' }); // e.g. "Jan", "Feb"
         monthlyMap[monthKey] = { revenue: 0 };
         monthlyExpensesMap[monthKey] = 0;
     }
@@ -114,13 +122,13 @@ export async function getFinancialsData(branchId: string) {
         const diffTime = Math.abs(now.getTime() - txDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         if (diffDays <= 7) {
-            const dayKey = txDate.toLocaleDateString('en-US', { weekday: 'short' });
+            const dayKey = txDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', weekday: 'short' });
             if (dayKey in dailyMap) {
                 dailyMap[dayKey] += rev;
             }
         }
 
-        const monthKey = txDate.toLocaleDateString('en-US', { month: 'short' });
+        const monthKey = txDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short' });
         if (monthKey in monthlyMap) {
             monthlyMap[monthKey].revenue += rev;
         }
@@ -155,13 +163,13 @@ export async function getFinancialsData(branchId: string) {
         const diffTime = Math.abs(now.getTime() - logDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         if (diffDays <= 7) {
-            const dayKey = logDate.toLocaleDateString('en-US', { weekday: 'short' });
+            const dayKey = logDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', weekday: 'short' });
             if (dayKey in dailyExpensesMap) {
                 dailyExpensesMap[dayKey] += cost;
             }
         }
 
-        const monthKey = logDate.toLocaleDateString('en-US', { month: 'short' });
+        const monthKey = logDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short' });
         if (monthKey in monthlyExpensesMap) {
             monthlyExpensesMap[monthKey] += cost;
         }
