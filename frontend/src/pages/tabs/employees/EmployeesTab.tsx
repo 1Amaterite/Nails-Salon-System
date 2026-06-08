@@ -34,7 +34,7 @@ interface EmployeePayload {
   username?: string;
   password?: string;
   isActive?: boolean;
-  branchId?: string;
+  branchIds: string[];
 }
 
 const ROLE_FILTER_OPTIONS: { value: RoleFilter; label: string }[] = [
@@ -102,7 +102,6 @@ export function EmployeesTab({
                 const newEmp = {
                   id: 'temp-' + Date.now(),
                   isActive: true,
-                  branchId: payload.branchId || selectedBranch,
                   schedules: Array.from({ length: 7 }, (_, i) => ({
                     dayOfWeek: i,
                     startTime: '09:00',
@@ -110,7 +109,7 @@ export function EmployeesTab({
                     isOff: i === 0,
                   })),
                   ...payload,
-                } as Employee;
+                } as unknown as Employee;
                 newEmployees.push(newEmp);
               }
               return { ...b, employees: newEmployees };
@@ -181,11 +180,7 @@ export function EmployeesTab({
 
   const handleFormSubmit = (payload: EmployeePayload) => {
     const isEdit = !!editingEmployee;
-    const finalPayload = { ...payload };
-    if (!isEdit) {
-      finalPayload.branchId = selectedBranch;
-    }
-    submitMutation.mutate({ isEdit, payload: finalPayload });
+    submitMutation.mutate({ isEdit, payload });
   };
 
   const handleDeleteEmployee = async (id: string, name: string) => {
@@ -302,6 +297,34 @@ export function EmployeesTab({
           {emp.role}
         </span>
       ),
+    },
+    {
+      key: 'branches',
+      header: 'Branches',
+      render: (emp) => {
+        const empBranches = branches.filter((b) => b.employees?.some((e) => e.id === emp.id));
+        return (
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+            {empBranches.map((b) => (
+              <span
+                key={b.id}
+                className="micro-badge"
+                style={{
+                  fontSize: '9px',
+                  padding: '2px 8px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  backgroundColor: 'rgba(190, 24, 93, 0.04)',
+                  color: 'var(--text-secondary)',
+                  borderColor: 'var(--border-color)',
+                }}
+              >
+                {b.name}
+              </span>
+            ))}
+          </div>
+        );
+      },
     },
     {
       key: 'specialty',
@@ -501,6 +524,8 @@ export function EmployeesTab({
         onClose={closeModal}
         editingEmployee={editingEmployee}
         employeeRole={employeeRole}
+        branches={branches}
+        selectedBranch={selectedBranch}
         onSubmit={handleFormSubmit}
         errorMsg={errorMsg}
         isPending={submitMutation.isPending}

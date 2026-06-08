@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Employee } from '../../../types';
+import type { Employee, Branch } from '../../../types';
 import { FormModal } from '../../../components/common';
 
 interface EmployeeFormModalProps {
@@ -7,6 +7,8 @@ interface EmployeeFormModalProps {
   onClose: () => void;
   editingEmployee: Employee | null;
   employeeRole: string;
+  branches: Branch[];
+  selectedBranch: string;
   onSubmit: (payload: {
     name: string;
     role: 'OWNER' | 'ADMIN' | 'STAFF';
@@ -15,6 +17,7 @@ interface EmployeeFormModalProps {
     username?: string;
     password?: string;
     isActive?: boolean;
+    branchIds: string[];
   }) => void;
   errorMsg: string;
   isPending: boolean;
@@ -25,6 +28,8 @@ export function EmployeeFormModal({
   onClose,
   editingEmployee,
   employeeRole,
+  branches,
+  selectedBranch,
   onSubmit,
   errorMsg,
   isPending,
@@ -60,6 +65,16 @@ export function EmployeeFormModal({
     };
   });
 
+  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>(() => {
+    if (editingEmployee) {
+      const ids = branches
+        .filter((b) => b.employees?.some((emp) => emp.id === editingEmployee.id))
+        .map((b) => b.id);
+      return ids.length > 0 ? ids : [selectedBranch];
+    }
+    return [selectedBranch];
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
@@ -74,6 +89,7 @@ export function EmployeeFormModal({
           ? formData.password
           : undefined,
       isActive: editingEmployee ? formData.isActive : undefined,
+      branchIds: selectedBranchIds,
     });
   };
 
@@ -95,6 +111,72 @@ export function EmployeeFormModal({
       onSubmit={handleSubmit}
       maxWidth="500px"
     >
+      {employeeRole === 'OWNER' && (
+        <div className="form-group" style={{ marginBottom: '16px' }}>
+          <label className="form-label" style={{ fontWeight: 600 }}>
+            Assigned Branches *
+          </label>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              padding: '12px',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)',
+              backgroundColor: 'var(--bg-secondary)',
+              maxHeight: '150px',
+              overflowY: 'auto',
+            }}
+          >
+            {branches.map((b) => {
+              const isChecked = selectedBranchIds.includes(b.id);
+              return (
+                <label
+                  key={b.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '13.5px',
+                    fontWeight: 500,
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    margin: 0,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedBranchIds([...selectedBranchIds, b.id]);
+                      } else {
+                        if (selectedBranchIds.length > 1) {
+                          setSelectedBranchIds(selectedBranchIds.filter((id) => id !== b.id));
+                        }
+                      }
+                    }}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      accentColor: 'var(--accent)',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <span>{b.name}</span>
+                </label>
+              );
+            })}
+          </div>
+          {selectedBranchIds.length === 1 && (
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              Employee must be assigned to at least one branch.
+            </div>
+          )}
+        </div>
+      )}
       <div className="form-group">
         <label className="form-label">Full Name</label>
         <input

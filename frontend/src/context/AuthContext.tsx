@@ -6,6 +6,7 @@ interface AuthContextType {
   isAdminAuth: boolean;
   isOwnerAuth: boolean;
   employeeRole: string;
+  employeeBranchId: string;
   token: string | null;
   currentPath: string;
   navigateTo: (path: string) => void;
@@ -25,6 +26,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
   const [employeeRole, setEmployeeRoleState] = useState(
     () => sessionStorage.getItem('employeeRole') || ''
+  );
+  const [employeeBranchId, setEmployeeBranchIdState] = useState(
+    () => sessionStorage.getItem('employeeBranchId') || ''
   );
   const [token, setToken] = useState<string | null>(() => {
     return sessionStorage.getItem('ownerToken') || sessionStorage.getItem('adminToken');
@@ -49,14 +53,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const data = await apiClient.post<{
           token: string;
-          employee: { role: string };
+          employee: { role: string; branchId: string };
         }>('/api/login', { username, password: passcode }, { skipAuth: true });
 
         const empRole = data.employee.role;
+        const empBranchId = data.employee.branchId;
         if (empRole === 'OWNER') {
           setIsOwnerAuth(true);
           setIsAdminAuth(true);
           setEmployeeRoleState(empRole);
+          setEmployeeBranchIdState(empBranchId);
           setToken(data.token);
 
           sessionStorage.setItem('isOwnerAuth', 'true');
@@ -64,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionStorage.setItem('ownerToken', data.token);
           sessionStorage.setItem('adminToken', data.token);
           sessionStorage.setItem('employeeRole', empRole);
+          sessionStorage.setItem('employeeBranchId', empBranchId);
 
           queryClient.clear(); // Purge cache on new login
           return { success: true };
@@ -71,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAdminAuth(true);
           setIsOwnerAuth(false);
           setEmployeeRoleState(empRole);
+          setEmployeeBranchIdState(empBranchId);
           setToken(data.token);
 
           sessionStorage.setItem('isAdminAuth', 'true');
@@ -78,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionStorage.setItem('adminToken', data.token);
           sessionStorage.removeItem('ownerToken');
           sessionStorage.setItem('employeeRole', empRole);
+          sessionStorage.setItem('employeeBranchId', empBranchId);
 
           queryClient.clear(); // Purge cache on new login
           return { success: true };
@@ -100,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAdminAuth(false);
     setIsOwnerAuth(false);
     setEmployeeRoleState('');
+    setEmployeeBranchIdState('');
     setToken(null);
 
     sessionStorage.removeItem('isAdminAuth');
@@ -107,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('adminToken');
     sessionStorage.removeItem('ownerToken');
     sessionStorage.removeItem('employeeRole');
+    sessionStorage.removeItem('employeeBranchId');
 
     queryClient.clear(); // Purge cache on logout
   }, [queryClient]);
@@ -128,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdminAuth,
         isOwnerAuth,
         employeeRole,
+        employeeBranchId,
         token,
         currentPath,
         navigateTo,

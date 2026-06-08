@@ -9,7 +9,7 @@ interface CreateEmployeePayload {
     role: EmployeeRole;
     phoneNumber: string;
     specialty?: string;
-    branchId: string;
+    branchIds: string[];
 }
 
 interface UpdateEmployeePayload {
@@ -20,7 +20,7 @@ interface UpdateEmployeePayload {
     phoneNumber?: string;
     specialty?: string;
     isActive?: boolean;
-    branchId?: string;
+    branchIds?: string[];
     schedules?: Array<{
         dayOfWeek: number;
         startTime: string;
@@ -35,7 +35,7 @@ interface UpdateEmployeePayload {
  * and a default 7-day schedule.
  */
 export async function createEmployee(payload: CreateEmployeePayload) {
-    const { name, username, password, role, phoneNumber, specialty, branchId } = payload;
+    const { name, username, password, role, phoneNumber, specialty, branchIds } = payload;
 
     const phoneExists = await prisma.employee.findFirst({
         where: { phoneNumber }
@@ -76,19 +76,21 @@ export async function createEmployee(payload: CreateEmployeePayload) {
         role,
         phoneNumber,
         specialty,
-        branches: { connect: { id: branchId } },
+        branches: { connect: branchIds.map((id) => ({ id })) },
     };
 
     if (role !== 'OWNER') {
         employeeData.schedules = {
             createMany: {
-                data: Array.from({ length: 7 }, (_, i) => ({
-                    branchId,
-                    dayOfWeek: i,
-                    startTime: '09:00',
-                    endTime: '17:00',
-                    isOff: i === 0,
-                })),
+                data: branchIds.flatMap((branchId) =>
+                    Array.from({ length: 7 }, (_, i) => ({
+                        branchId,
+                        dayOfWeek: i,
+                        startTime: '09:00',
+                        endTime: '17:00',
+                        isOff: i === 0,
+                    }))
+                ),
             },
         };
     }
@@ -114,7 +116,7 @@ export async function createEmployee(payload: CreateEmployeePayload) {
  * passwords, clear credentials on demotion to STAFF) and schedule replacement.
  */
 export async function updateEmployee(id: string, payload: UpdateEmployeePayload, editorRole: string, editorBranchId?: string) {
-    const { name, username, password, role, phoneNumber, specialty, isActive, branchId, schedules } = payload;
+    const { name, username, password, role, phoneNumber, specialty, isActive, branchIds, schedules } = payload;
 
     const employee = await prisma.employee.findUnique({
         where: { id },
@@ -165,9 +167,9 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
     if (specialty !== undefined) updateData.specialty = specialty;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (role !== undefined) updateData.role = role;
-    if (branchId !== undefined) {
+    if (branchIds !== undefined) {
         updateData.branches = {
-            connect: { id: branchId }
+            set: branchIds.map((id) => ({ id }))
         };
     }
 
@@ -192,13 +194,47 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
         updateData.passwordHash = null;
     }
 
+    if (branchIds !== undefined && targetRole !== 'OWNER') {
+        const existingSchedules = await prisma.employeeSchedule.findMany({
+            where: { employeeId: id },
+            select: { branchId: true }
+        });
+        const existingSchedBranchIds = new Set(existingSchedules.map((s) => s.branchId));
+
+        const disconnectedBranchIds = Array.from(existingSchedBranchIds).filter((bId) => !branchIds.includes(bId));
+        if (disconnectedBranchIds.length > 0) {
+            await prisma.employeeSchedule.deleteMany({
+                where: {
+                    employeeId: id,
+                    branchId: { in: disconnectedBranchIds }
+                }
+            });
+        }
+
+        const newBranchIds = branchIds.filter((bId) => !existingSchedBranchIds.has(bId));
+        if (newBranchIds.length > 0) {
+            await prisma.employeeSchedule.createMany({
+                data: newBranchIds.flatMap((bId) =>
+                    Array.from({ length: 7 }, (_, i) => ({
+                        employeeId: id,
+                        branchId: bId,
+                        dayOfWeek: i,
+                        startTime: '09:00',
+                        endTime: '17:00',
+                        isOff: i === 0,
+                    }))
+                )
+            });
+        }
+    }
+
     if (schedules !== undefined && Array.isArray(schedules)) {
         const effectiveRole = role || employee.role;
         if (effectiveRole === 'OWNER') {
             throw Object.assign(new Error('Owners cannot have shift schedules assigned.'), { status: 400 });
         }
 
-        const targetSchedBranchId = schedules[0]?.branchId || branchId || editorBranchId || employee.branches[0]?.id;
+        const targetSchedBranchId = schedules[0]?.branchId || branchIds?.[0] || editorBranchId || employee.branches[0]?.id;
         if (!targetSchedBranchId) {
             throw Object.assign(new Error('Branch ID is required for schedule updates.'), { status: 400 });
         }

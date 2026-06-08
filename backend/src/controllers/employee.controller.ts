@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { createEmployee, updateEmployee, deleteEmployee } from '../services/employee.service';
 
 export async function create(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
-    const { name, username, password, role, phoneNumber, specialty, branchId } = req.body;
+    const { name, username, password, role, phoneNumber, specialty, branchIds } = req.body;
     const creatorRole = req.user!.role;
     const creatorBranchId = req.user!.branchId;
 
@@ -23,7 +23,7 @@ export async function create(req: AuthenticatedRequest, res: Response, next: Nex
             res.status(403).json({ error: 'Admins can only create employees with STAFF role.' });
             return;
         }
-        if (branchId && branchId !== creatorBranchId) {
+        if (branchIds && (branchIds.length !== 1 || branchIds[0] !== creatorBranchId)) {
             res.status(403).json({ error: 'Admins can only create employees in their own branch.' });
             return;
         }
@@ -32,14 +32,14 @@ export async function create(req: AuthenticatedRequest, res: Response, next: Nex
         return;
     }
 
-    const targetBranchId = branchId || creatorBranchId;
-    if (!targetBranchId) {
-        res.status(400).json({ error: 'Branch ID is required.' });
+    const targetBranchIds = branchIds || [creatorBranchId];
+    if (!targetBranchIds || targetBranchIds.length === 0) {
+        res.status(400).json({ error: 'At least one Branch ID is required.' });
         return;
     }
 
     try {
-        const employee = await createEmployee({ name, username, password, role, phoneNumber, specialty, branchId: targetBranchId });
+        const employee = await createEmployee({ name, username, password, role, phoneNumber, specialty, branchIds: targetBranchIds });
         res.status(201).json({ message: 'Employee created successfully.', employee });
     } catch (error) {
         next(error);
@@ -49,12 +49,19 @@ export async function create(req: AuthenticatedRequest, res: Response, next: Nex
 export async function update(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     const { id } = req.params;
     const { role, branchId: editorBranchId } = req.user!;
-    const { phoneNumber } = req.body;
+    const { phoneNumber, branchIds } = req.body;
 
     if (phoneNumber !== undefined) {
         const phoneRegex = /^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$/;
         if (!phoneRegex.test(phoneNumber)) {
             res.status(400).json({ error: 'Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx.' });
+            return;
+        }
+    }
+
+    if (role === 'ADMIN' && branchIds !== undefined) {
+        if (branchIds.length !== 1 || branchIds[0] !== editorBranchId) {
+            res.status(403).json({ error: 'Admins can only keep employees in their own branch.' });
             return;
         }
     }

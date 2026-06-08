@@ -45,11 +45,18 @@ const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = useNotification();
-  const { isAdminAuth, isOwnerAuth } = useAuth();
+  const { isAdminAuth, isOwnerAuth, employeeRole, employeeBranchId } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedBranchState, setSelectedBranchState] = useState('');
+  const [selectedBranchState, setSelectedBranchState] = useState(
+    () => localStorage.getItem('selectedBranch') || ''
+  );
   const [isSeeding, setIsSeeding] = useState(false);
   const [lastBookedAppointment, setLastBookedAppointment] = useState<Appointment | null>(null);
+
+  const setSelectedBranch = useCallback((id: string) => {
+    setSelectedBranchState(id);
+    localStorage.setItem('selectedBranch', id);
+  }, []);
 
   const clearLastBookedAppointment = useCallback(() => {
     setLastBookedAppointment(null);
@@ -65,9 +72,13 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   const branches = useMemo(() => branchesData || [], [branchesData]);
 
   // Derive selectedBranch: falls back to the first branch in the list if not explicitly selected.
+  // Lock ADMINs to their own branch.
   const selectedBranch = useMemo(() => {
+    if (employeeRole === 'ADMIN' && employeeBranchId) {
+      return employeeBranchId;
+    }
     return selectedBranchState || (branches.length > 0 ? branches[0].id : '');
-  }, [selectedBranchState, branches]);
+  }, [selectedBranchState, branches, employeeRole, employeeBranchId]);
 
   // 2. Fetch Stats (requires auth)
   const { data: statsData } = useQuery<DashboardStats>({
@@ -237,7 +248,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       value={{
         branches,
         selectedBranch,
-        setSelectedBranch: setSelectedBranchState,
+        setSelectedBranch,
         isSeeding,
         handleSeedData,
         isLoadingBranches,
