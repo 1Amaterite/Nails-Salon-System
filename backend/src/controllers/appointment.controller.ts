@@ -11,11 +11,15 @@ import {
     getAvailableSlots,
     checkoutAppointment as checkoutAppointmentService,
     getAppointmentById,
+    lookupAppointmentPublicly,
+    cancelAppointmentPublicly as cancelAppointmentPubliclyService,
 } from '../services/appointment.service';
 import {
     CheckoutAppointmentSchema,
     CreateAppointmentSchema,
     CreateWaitlistEntrySchema,
+    LookupAppointmentSchema,
+    PublicCancelAppointmentSchema,
 } from '../validation/appointment.validation';
 import { assertBranchAccess } from '../utils/assertBranchAccess';
 
@@ -178,6 +182,37 @@ export async function getAppointment(req: AuthenticatedRequest, res: Response, n
 
     try {
         const appointment = await getAppointmentById(id, role, branchId);
+        res.json(appointment);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function lookupAppointment(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const parsed = LookupAppointmentSchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.issues[0].message });
+        return;
+    }
+
+    try {
+        const appointment = await lookupAppointmentPublicly(parsed.data.bookingRef, parsed.data.phone);
+        res.json(appointment);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function cancelAppointmentPublicly(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const { id } = req.params;
+    const parsed = PublicCancelAppointmentSchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.issues[0].message });
+        return;
+    }
+
+    try {
+        const appointment = await cancelAppointmentPubliclyService(id, parsed.data.phone);
         res.json(appointment);
     } catch (error) {
         next(error);

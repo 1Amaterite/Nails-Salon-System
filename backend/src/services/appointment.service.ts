@@ -776,3 +776,61 @@ export async function getAppointmentById(id: string, callerRole: string, callerB
 
     return appointment;
 }
+
+/**
+ * Publicly retrieves a single appointment by ID after matching phone number verification.
+ */
+export async function lookupAppointmentPublicly(bookingRef: string, phone: string) {
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: bookingRef },
+        include: APPOINTMENT_INCLUDE,
+    });
+
+    if (!appointment) {
+        throw Object.assign(new Error('Appointment not found.'), { status: 404 });
+    }
+
+    const cleanInputPhone = phone.trim().replace(/\s+/g, '');
+    const cleanClientPhone = (appointment.client?.phoneNumber || '').trim().replace(/\s+/g, '');
+
+    if (cleanInputPhone !== cleanClientPhone) {
+        throw Object.assign(new Error('Verification details mismatch: Phone number does not match this booking.'), { status: 401 });
+    }
+
+    return appointment;
+}
+
+/**
+ * Publicly cancels a single appointment by ID after matching phone number verification and validation of status.
+ */
+export async function cancelAppointmentPublicly(id: string, phone: string) {
+    const appointment = await prisma.appointment.findUnique({
+        where: { id },
+        include: APPOINTMENT_INCLUDE,
+    });
+
+    if (!appointment) {
+        throw Object.assign(new Error('Appointment not found.'), { status: 404 });
+    }
+
+    const cleanInputPhone = phone.trim().replace(/\s+/g, '');
+    const cleanClientPhone = (appointment.client?.phoneNumber || '').trim().replace(/\s+/g, '');
+
+    if (cleanInputPhone !== cleanClientPhone) {
+        throw Object.assign(new Error('Verification details mismatch: Phone number does not match this booking.'), { status: 401 });
+    }
+
+    if (['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appointment.status)) {
+        throw Object.assign(
+            new Error(`Cannot cancel appointment with status: ${appointment.status.replace('_', ' ')}`),
+            { status: 400 }
+        );
+    }
+
+    return prisma.appointment.update({
+        where: { id },
+        data: { status: 'CANCELLED' },
+        include: APPOINTMENT_INCLUDE,
+    });
+}
+

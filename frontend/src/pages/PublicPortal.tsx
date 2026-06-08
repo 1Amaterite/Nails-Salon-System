@@ -10,15 +10,19 @@ import {
   Heart,
   ChevronDown,
   Search,
+  Copy,
+  CheckCircle,
+  Trash2,
 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import { ClientAutocomplete, LoadingSpinner } from '../components/common';
 import { apiClient } from '../utils/apiClient';
+import { useBranch } from '../context/BranchContext';
 
 import gelExtensionsImg from '../assets/gel_extensions.webp';
 import gelPolishImg from '../assets/gel_polish.webp';
 import gelNaturalImg from '../assets/gel_natural.webp';
-import type { Branch, Service, Employee } from '../types';
+import type { Branch, Service, Employee, Appointment } from '../types';
 
 /** Time slots shown to customers in the booking and walk-in forms.
  *  Update this list when the salon changes its operating hours. */
@@ -84,8 +88,69 @@ export function PublicPortal({
   isBookingAppointment,
 }: PublicPortalProps) {
   const { showToast } = useNotification();
+  const { lastBookedAppointment, clearLastBookedAppointment } = useBranch();
 
   const [selectedBranchId, setSelectedBranchId] = useState('');
+
+  // Lookup & Self-Cancellation states
+  const [lookupPhone, setLookupPhone] = useState('');
+  const [lookupBookingRef, setLookupBookingRef] = useState('');
+  const [lookupResult, setLookupResult] = useState<Appointment | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [lookupError, setLookupError] = useState('');
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const handleLookupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupPhone || !lookupBookingRef) {
+      showToast('Please fill out all lookup fields.', 'error');
+      return;
+    }
+
+    setIsSearching(true);
+    setLookupError('');
+    try {
+      const data = await apiClient.post<Appointment>(
+        '/api/appointments/lookup',
+        {
+          phone: lookupPhone,
+          bookingRef: lookupBookingRef,
+        },
+        { skipAuth: true }
+      );
+      setLookupResult(data);
+    } catch (err) {
+      const error = err as Error;
+      console.error(error);
+      setLookupError(error.message || 'Appointment not found or phone mismatch.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!lookupResult) return;
+    setIsCanceling(true);
+    try {
+      const data = await apiClient.post<Appointment>(
+        `/api/appointments/${lookupResult.id}/cancel-public`,
+        {
+          phone: lookupPhone,
+        },
+        { skipAuth: true }
+      );
+      showToast('Appointment successfully canceled.', 'success');
+      setLookupResult(data);
+      setShowCancelConfirm(false);
+    } catch (err) {
+      const error = err as Error;
+      console.error(error);
+      showToast(error.message || 'Failed to cancel appointment.', 'error');
+    } finally {
+      setIsCanceling(false);
+    }
+  };
 
   const currentBranchId = selectedBranchId || branches[0]?.id || '';
 
@@ -366,6 +431,19 @@ export function PublicPortal({
               onClick={() => setActiveTab('public-walkin')}
             >
               Walk-In
+            </span>
+            <span
+              className={`public-navbar-link ${activeTab === 'public-manage' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('public-manage');
+                setLookupPhone('');
+                setLookupBookingRef('');
+                setLookupResult(null);
+                setLookupError('');
+                setShowCancelConfirm(false);
+              }}
+            >
+              Manage Booking
             </span>
           </nav>
         </div>
@@ -918,7 +996,162 @@ export function PublicPortal({
           </div>
         )}
 
-        {activeTab === 'public-booking' && (
+        {activeTab === 'public-booking' && lastBookedAppointment && (
+          <div
+            className="glass-panel tab-pane animate-fade-in"
+            style={{
+              maxWidth: '600px',
+              margin: '0 auto',
+              textAlign: 'center',
+              padding: '40px 30px',
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(16, 185, 129, 0.1)',
+                color: '#10b981',
+                marginBottom: '24px',
+              }}
+            >
+              <CheckCircle size={36} />
+            </div>
+
+            <h3
+              style={{
+                fontSize: '24px',
+                fontWeight: 700,
+                fontFamily: 'var(--font-serif)',
+                color: 'var(--text-primary)',
+                margin: '0 0 8px 0',
+              }}
+            >
+              Booking Confirmed!
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '32px' }}>
+              Your appointment request has been successfully recorded.
+            </p>
+
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+                padding: '24px',
+                textAlign: 'left',
+                marginBottom: '32px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Treatment</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {lastBookedAppointment.services?.map((s) => s.service?.name).join(', ') ||
+                    'Service'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Date</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {new Date(lastBookedAppointment.appointmentDate).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    timeZone: 'UTC',
+                  })}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Time</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {lastBookedAppointment.startTime}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Stylist</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {lastBookedAppointment.employee?.name || 'First Available'}
+                </span>
+              </div>
+
+              <div
+                style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)', margin: '8px 0' }}
+              />
+
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    marginBottom: '6px',
+                  }}
+                >
+                  Booking Reference ID (save this to cancel/manage)
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={lastBookedAppointment.id}
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: '13px',
+                      padding: '10px 12px',
+                      background: 'rgba(0, 0, 0, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '6px',
+                      width: '100%',
+                      color: 'var(--text-primary)',
+                      cursor: 'text',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(lastBookedAppointment.id);
+                      showToast('Reference ID copied to clipboard!', 'success');
+                    }}
+                    className="btn-primary"
+                    style={{
+                      padding: '0 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid var(--accent)',
+                      background: 'transparent',
+                      color: 'var(--accent)',
+                      boxShadow: 'none',
+                    }}
+                  >
+                    <Copy size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={clearLastBookedAppointment}
+                style={{ padding: '12px 24px' }}
+              >
+                Book Another Appointment
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'public-booking' && !lastBookedAppointment && (
           <div className="glass-panel tab-pane">
             <div style={{ marginBottom: '24px' }}>
               <h3
@@ -1179,6 +1412,326 @@ export function PublicPortal({
                 )}
               </button>
             </form>
+          </div>
+        )}
+
+        {activeTab === 'public-manage' && (
+          <div className="glass-panel tab-pane">
+            <div style={{ marginBottom: '24px' }}>
+              <h3
+                style={{
+                  color: 'var(--accent)',
+                  marginTop: 0,
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '20px',
+                  fontWeight: 600,
+                }}
+              >
+                Manage Your Booking
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
+                Lookup your appointment details and cancel if you are unable to attend.
+              </p>
+            </div>
+
+            {!lookupResult ? (
+              <form
+                onSubmit={handleLookupSubmit}
+                style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}
+              >
+                <div className="form-group">
+                  <label className="form-label">Phone Number *</label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 0917 565 9890"
+                    pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
+                    title="Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx"
+                    value={lookupPhone}
+                    onChange={(e) => setLookupPhone(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Booking Reference ID (UUID) *</label>
+                  <input
+                    type="text"
+                    placeholder="Enter your 36-character Booking Reference ID"
+                    value={lookupBookingRef}
+                    onChange={(e) => setLookupBookingRef(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {lookupError && (
+                  <div
+                    style={{
+                      color: '#ef4444',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span>⚠️</span> {lookupError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={isSearching}
+                  style={{
+                    marginTop: '12px',
+                    alignSelf: 'flex-start',
+                    padding: '14px 32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  {isSearching ? (
+                    <>
+                      <LoadingSpinner size="sm" color="currentColor" />
+                      Searching...
+                    </>
+                  ) : (
+                    'Find Appointment'
+                  )}
+                </button>
+              </form>
+            ) : (
+              <div style={{ maxWidth: '600px' }}>
+                <div className="data-card" style={{ padding: '24px', marginBottom: '24px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <h4
+                      style={{
+                        margin: 0,
+                        fontSize: '18px',
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      Appointment Details
+                    </h4>
+                    <span
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '9999px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        background:
+                          lookupResult.status === 'CANCELLED'
+                            ? 'rgba(239, 68, 68, 0.1)'
+                            : lookupResult.status === 'COMPLETED'
+                              ? 'rgba(16, 185, 129, 0.1)'
+                              : 'rgba(59, 130, 246, 0.1)',
+                        color:
+                          lookupResult.status === 'CANCELLED'
+                            ? '#ef4444'
+                            : lookupResult.status === 'COMPLETED'
+                              ? '#10b981'
+                              : '#3b82f6',
+                      }}
+                    >
+                      {lookupResult.status}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      fontSize: '14px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Client Name</span>
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {lookupResult.client?.firstName} {lookupResult.client?.lastName || ''}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Phone Number</span>
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {lookupResult.client?.phoneNumber}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Treatment</span>
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {lookupResult.services?.map((s) => s.service?.name).join(', ') || 'N/A'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Price</span>
+                      <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                        ₱
+                        {lookupResult.services
+                          ?.reduce((sum: number, s) => sum + Number(s.service?.price || 0), 0)
+                          .toFixed(2)}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Branch</span>
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {branches.find((b) => b.id === lookupResult.branchId)?.name ||
+                          'Main Branch'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Date</span>
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {new Date(lookupResult.appointmentDate).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          timeZone: 'UTC',
+                        })}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Time</span>
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {lookupResult.startTime} - {lookupResult.endTime}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Stylist</span>
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {lookupResult.employee?.name || 'First Available'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => setLookupResult(null)}
+                    style={{
+                      padding: '12px 24px',
+                      background: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: 'var(--text-primary)',
+                      boxShadow: 'none',
+                    }}
+                  >
+                    Back to Search
+                  </button>
+
+                  {['PENDING', 'CONFIRMED'].includes(lookupResult.status) && (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => setShowCancelConfirm(true)}
+                      style={{
+                        padding: '12px 24px',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid #ef4444',
+                        color: '#ef4444',
+                        boxShadow: 'none',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                      }}
+                    >
+                      Cancel Appointment
+                    </button>
+                  )}
+                </div>
+
+                {showCancelConfirm && (
+                  <div
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.05)',
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      marginTop: '24px',
+                    }}
+                  >
+                    <h5
+                      style={{
+                        margin: '0 0 8px 0',
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        color: '#ef4444',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                    >
+                      <Trash2 size={16} /> Confirm Cancellation
+                    </h5>
+                    <p
+                      style={{
+                        color: 'var(--text-secondary)',
+                        fontSize: '13.5px',
+                        margin: '0 0 20px 0',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Are you sure you want to cancel this appointment? This action cannot be
+                      undone.
+                    </p>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        disabled={isCanceling}
+                        onClick={handleCancelConfirm}
+                        style={{
+                          padding: '10px 20px',
+                          background: '#ef4444',
+                          color: '#fff',
+                          border: 'none',
+                          fontSize: '13px',
+                        }}
+                      >
+                        {isCanceling ? (
+                          <>
+                            <LoadingSpinner size="sm" color="currentColor" />
+                            Canceling...
+                          </>
+                        ) : (
+                          'Yes, Cancel Appointment'
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => setShowCancelConfirm(false)}
+                        style={{
+                          padding: '10px 20px',
+                          background: 'transparent',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          color: 'var(--text-secondary)',
+                          boxShadow: 'none',
+                          fontSize: '13px',
+                        }}
+                      >
+                        Keep Booking
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

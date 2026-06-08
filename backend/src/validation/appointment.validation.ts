@@ -71,3 +71,21 @@ export const CreateAppointmentSchema = z.object({
     .min(1, 'Start time is required.')
     .regex(/^\d{2}:\d{2}$/, 'Start time must be in HH:MM format.'),
 });
+
+export const LookupAppointmentSchema = z.object({
+  bookingRef: z.string().trim().uuid('Invalid Booking Reference ID format.'),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Phone number is required.')
+    .regex(phoneRegex, 'Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx.'),
+});
+
+export const PublicCancelAppointmentSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Phone number is required.')
+    .regex(phoneRegex, 'Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx.'),
+});
+

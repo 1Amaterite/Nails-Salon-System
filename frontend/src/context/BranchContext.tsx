@@ -37,6 +37,8 @@ interface BranchContextType {
   updatingWaitlistId: string | undefined;
   isAddingWalkin: boolean;
   isBookingAppointment: boolean;
+  lastBookedAppointment: Appointment | null;
+  clearLastBookedAppointment: () => void;
 }
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
@@ -47,6 +49,11 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [selectedBranchState, setSelectedBranchState] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
+  const [lastBookedAppointment, setLastBookedAppointment] = useState<Appointment | null>(null);
+
+  const clearLastBookedAppointment = useCallback(() => {
+    setLastBookedAppointment(null);
+  }, []);
 
   // 1. Fetch branches
   const { data: branchesData, isPending: isLoadingBranches } = useQuery<Branch[]>({
@@ -182,10 +189,11 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         startTime: entry.startTime,
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['appointments', selectedBranch] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats', selectedBranch] });
       showToast('Appointment booked successfully!', 'success');
+      setLastBookedAppointment(data);
     },
     onError: (error: Error) => {
       showToast(error.message, 'error');
@@ -242,6 +250,8 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         updatingWaitlistId: updateWaitlistStatusMutation.variables?.id,
         isAddingWalkin: addWalkinMutation.isPending,
         isBookingAppointment: bookAppointmentMutation.isPending,
+        lastBookedAppointment,
+        clearLastBookedAppointment,
       }}
     >
       {children}

@@ -13,6 +13,8 @@ import {
     removeAppointment,
     checkoutAppointment,
     getAppointment,
+    lookupAppointment,
+    cancelAppointmentPublicly,
 } from '../controllers/appointment.controller';
 
 const router = Router();
@@ -29,5 +31,7 @@ router.put('/appointments/:id/status', verifyJWT, patchAppointmentStatus);
 router.delete('/appointments/:id', verifyJWT, removeAppointment);
 router.post('/appointments/:id/checkout', verifyJWT, checkoutAppointment);
 router.get('/appointments/:id', verifyJWT, getAppointment);
+router.post('/appointments/lookup', lookupAppointment);
+router.post('/appointments/:id/cancel-public', cancelAppointmentPublicly);
 
 export default router;
