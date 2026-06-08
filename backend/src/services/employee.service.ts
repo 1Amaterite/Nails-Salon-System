@@ -124,16 +124,16 @@ export async function updateEmployee(id: string, payload: UpdateEmployeePayload,
         throw Object.assign(new Error('Employee not found.'), { status: 404 });
     }
 
-    if (editorRole === 'ADMIN') {
+    if (editorRole !== 'OWNER') {
         const hasBranch = employee.branches.some((b) => b.id === editorBranchId);
         if (!hasBranch) {
-            throw Object.assign(new Error('Admins can only edit employees in their own branch.'), { status: 403 });
+            throw Object.assign(new Error('Non-owners can only edit employees in their own branch.'), { status: 403 });
         }
         if (employee.role !== 'STAFF') {
-            throw Object.assign(new Error('Admins can only edit employees with STAFF role.'), { status: 403 });
+            throw Object.assign(new Error('Non-owners can only edit employees with STAFF role.'), { status: 403 });
         }
         if (role && role !== 'STAFF') {
-            throw Object.assign(new Error('Admins can only keep employees in STAFF role.'), { status: 403 });
+            throw Object.assign(new Error('Non-owners can only keep employees in STAFF role.'), { status: 403 });
         }
     }
 
@@ -254,13 +254,13 @@ export async function deleteEmployee(id: string, requesterId: string, requesterR
         throw Object.assign(new Error('Employee not found.'), { status: 404 });
     }
 
-    if (requesterRole === 'ADMIN') {
+    if (requesterRole !== 'OWNER') {
         if (employee.role !== 'STAFF') {
-            throw Object.assign(new Error('Admins can only delete employees with STAFF role.'), { status: 403 });
+            throw Object.assign(new Error('Non-owners can only delete employees with STAFF role.'), { status: 403 });
         }
         const hasBranch = employee.branches.some((b) => b.id === requesterBranchId);
         if (!hasBranch) {
-            throw Object.assign(new Error('Admins can only delete employees in their own branch.'), { status: 403 });
+            throw Object.assign(new Error('Non-owners can only delete employees in their own branch.'), { status: 403 });
         }
     }
 

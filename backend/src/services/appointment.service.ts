@@ -184,7 +184,7 @@ export async function updateWaitlistStatus(
 
     if (!appointment) throw Object.assign(new Error('Waitlist entry not found.'), { status: 404 });
 
-    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+    if (callerRole !== 'OWNER' && appointment.branchId !== callerBranchId) {
         throw Object.assign(
             new Error('Access denied. You cannot modify queue entries of another branch.'),
             { status: 403 }
@@ -416,7 +416,7 @@ export async function updateAppointmentStatus(
     const appointment = await prisma.appointment.findUnique({ where: { id } });
     if (!appointment) throw Object.assign(new Error('Appointment not found.'), { status: 404 });
 
-    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+    if (callerRole !== 'OWNER' && appointment.branchId !== callerBranchId) {
         throw Object.assign(
             new Error('Access denied. You cannot modify appointments of another branch.'),
             { status: 403 }
@@ -445,7 +445,7 @@ export async function deleteAppointment(id: string, callerRole: string, callerBr
     const appointment = await prisma.appointment.findUnique({ where: { id } });
     if (!appointment) throw Object.assign(new Error('Appointment not found.'), { status: 404 });
 
-    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+    if (callerRole !== 'OWNER' && appointment.branchId !== callerBranchId) {
         throw Object.assign(
             new Error('Access denied. You cannot delete appointments of another branch.'),
             { status: 403 }
@@ -608,7 +608,7 @@ export async function checkoutAppointment(
 
     if (!appointment) throw Object.assign(new Error('Appointment not found.'), { status: 404 });
 
-    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+    if (callerRole !== 'OWNER' && appointment.branchId !== callerBranchId) {
         throw Object.assign(
             new Error('Access denied. You cannot modify appointments of another branch.'),
             { status: 403 }
@@ -767,7 +767,7 @@ export async function getAppointmentById(id: string, callerRole: string, callerB
 
     if (!appointment) throw Object.assign(new Error('Appointment not found.'), { status: 404 });
 
-    if (callerRole === 'ADMIN' && appointment.branchId !== callerBranchId) {
+    if (callerRole !== 'OWNER' && appointment.branchId !== callerBranchId) {
         throw Object.assign(
             new Error('Access denied. You cannot view appointments of another branch.'),
             { status: 403 }

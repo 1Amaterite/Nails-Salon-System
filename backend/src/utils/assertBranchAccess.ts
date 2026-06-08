@@ -1,7 +1,7 @@
 import { Response } from 'express';
 
 /**
- * Guards a controller action by checking that an ADMIN caller is only
+ * Guards a controller action by checking that a non-OWNER caller is only
  * operating on their own branch. Returns `true` if access is allowed,
  * or sends a 403 response and returns `false` so the controller can
  * return early.
@@ -17,7 +17,7 @@ export function assertBranchAccess(
     callerBranchId: string,
     targetBranchId: string
 ): boolean {
-    if (callerRole === 'ADMIN' && targetBranchId !== callerBranchId) {
+    if (callerRole !== 'OWNER' && targetBranchId !== callerBranchId) {
         res.status(403).json({
             error: 'Access denied. You can only manage resources within your own branch.',
         });

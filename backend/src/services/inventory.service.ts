@@ -80,7 +80,7 @@ export async function updateInventoryItem(id: string, payload: UpdateInventoryPa
         throw Object.assign(new Error('Inventory item not found.'), { status: 404 });
     }
 
-    if (editorRole === 'ADMIN' && item.branchId !== editorBranchId) {
+    if (editorRole !== 'OWNER' && item.branchId !== editorBranchId) {
         throw Object.assign(
             new Error("Access denied. You cannot edit another branch's inventory item."),
             { status: 403 }
@@ -143,7 +143,7 @@ export async function deleteInventoryItem(id: string, editorBranchId: string, ed
         throw Object.assign(new Error('Inventory item not found.'), { status: 404 });
     }
 
-    if (editorRole === 'ADMIN' && item.branchId !== editorBranchId) {
+    if (editorRole !== 'OWNER' && item.branchId !== editorBranchId) {
         throw Object.assign(
             new Error("Access denied. You cannot delete another branch's inventory item."),
             { status: 403 }

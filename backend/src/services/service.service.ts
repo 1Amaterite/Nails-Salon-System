@@ -59,12 +59,24 @@ export async function createService(payload: CreateServicePayload) {
  * Updates a service by ID. Checks case-insensitive name uniqueness within
  * the same branch when the name is being changed.
  */
-export async function updateService(id: string, payload: UpdateServicePayload) {
+export async function updateService(
+    id: string,
+    payload: UpdateServicePayload,
+    editorBranchId?: string,
+    editorRole?: string
+) {
     const { name, description, durationMinutes, bufferTime, price, category, isActive, imageUrl } = payload;
 
     const service = await prisma.service.findUnique({ where: { id } });
     if (!service) {
         throw Object.assign(new Error('Service not found.'), { status: 404 });
+    }
+
+    if (editorRole && editorRole !== 'OWNER' && service.branchId !== editorBranchId) {
+        throw Object.assign(
+            new Error("Access denied. You cannot edit another branch's service."),
+            { status: 403 }
+        );
     }
 
     const updateData: Record<string, unknown> = {};
@@ -103,10 +115,18 @@ export async function updateService(id: string, payload: UpdateServicePayload) {
 /**
  * Deletes a service by ID. Throws 404 if not found.
  */
-export async function deleteService(id: string) {
+export async function deleteService(id: string, editorBranchId?: string, editorRole?: string) {
     const service = await prisma.service.findUnique({ where: { id } });
     if (!service) {
         throw Object.assign(new Error('Service not found.'), { status: 404 });
     }
+
+    if (editorRole && editorRole !== 'OWNER' && service.branchId !== editorBranchId) {
+        throw Object.assign(
+            new Error("Access denied. You cannot delete another branch's service."),
+            { status: 403 }
+        );
+    }
+
     await prisma.service.delete({ where: { id } });
 }
