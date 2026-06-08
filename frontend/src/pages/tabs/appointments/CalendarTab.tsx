@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { apiClient } from '../../../utils/apiClient';
+import { getManilaDateStr } from '../../../utils/time';
 import type { Appointment, WaitlistItem, Employee, Branch } from '../../../types';
 import { PageWrapper, LoadingSpinner } from '../../../components/common';
 
@@ -102,40 +103,6 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
 
   const handleToday = () => {
     setCurrentDate(new Date());
-  };
-
-  // Format YYYY-MM-DD in Asia/Manila timezone from DateTime/Date
-  const getUTCLocalDateString = (dateInput: string | Date) => {
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '';
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Manila',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    const parts = formatter.formatToParts(d);
-    const month = parts.find((p) => p.type === 'month')!.value;
-    const day = parts.find((p) => p.type === 'day')!.value;
-    const year = parts.find((p) => p.type === 'year')!.value;
-    return `${year}-${month}-${day}`;
-  };
-
-  // Format YYYY-MM-DD in Asia/Manila timezone from ISO string
-  const getCheckInLocalDateString = (dateInput: string) => {
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '';
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Manila',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    const parts = formatter.formatToParts(d);
-    const month = parts.find((p) => p.type === 'month')!.value;
-    const day = parts.find((p) => p.type === 'day')!.value;
-    const year = parts.find((p) => p.type === 'year')!.value;
-    return `${year}-${month}-${day}`;
   };
 
   // Format date to local key
@@ -446,13 +413,11 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
 
               // Filter appointments for this date
               const dayAppts = appointments.filter(
-                (appt) => getUTCLocalDateString(appt.appointmentDate) === dayKey
+                (appt) => getManilaDateStr(appt.appointmentDate) === dayKey
               );
 
               // Filter walk-ins for this date
-              const dayWalkins = waitlist.filter(
-                (w) => getCheckInLocalDateString(w.checkInDate) === dayKey
-              );
+              const dayWalkins = waitlist.filter((w) => getManilaDateStr(w.checkInDate) === dayKey);
 
               // Filter working staff for this day of week
               const workingStaff = employees.filter((emp) => {
@@ -822,7 +787,7 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
                       selectedDay.getDate()
                     );
                     const dayAppts = appointments.filter(
-                      (appt) => getUTCLocalDateString(appt.appointmentDate) === dayKey
+                      (appt) => getManilaDateStr(appt.appointmentDate) === dayKey
                     );
 
                     if (dayAppts.length === 0) {
@@ -964,7 +929,7 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
                       selectedDay.getDate()
                     );
                     const dayWalkins = waitlist.filter(
-                      (w) => getCheckInLocalDateString(w.checkInDate) === dayKey
+                      (w) => getManilaDateStr(w.checkInDate) === dayKey
                     );
 
                     if (dayWalkins.length === 0) {

@@ -44,3 +44,22 @@ export function generateTimeOptions(): string[] {
   }
   return options;
 }
+
+/**
+ * Formats a Date object or ISO string to standard YYYY-MM-DD in the Asia/Manila timezone.
+ */
+export function getManilaDateStr(dateInput: string | Date): string {
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(d);
+  const month = parts.find((p) => p.type === 'month')!.value;
+  const day = parts.find((p) => p.type === 'day')!.value;
+  const year = parts.find((p) => p.type === 'year')!.value;
+  return `${year}-${month}-${day}`;
+}

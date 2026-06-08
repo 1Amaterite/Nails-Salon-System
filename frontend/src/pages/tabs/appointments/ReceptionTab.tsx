@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../utils/apiClient';
 import { useCheckout } from '../../../hooks/useCheckout';
 import { useBranch } from '../../../context/BranchContext';
+import { getManilaDateStr } from '../../../utils/time';
 import {
   PageWrapper,
   DataTable,
@@ -45,22 +46,6 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'CANCELLED', label: 'Canceled' },
   { value: 'NO_SHOW', label: 'No Show' },
 ];
-
-const getManilaDateStr = (dateInput: string | Date) => {
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '';
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const parts = formatter.formatToParts(d);
-  const month = parts.find((p) => p.type === 'month')!.value;
-  const day = parts.find((p) => p.type === 'day')!.value;
-  const year = parts.find((p) => p.type === 'year')!.value;
-  return `${year}-${month}-${day}`;
-};
 
 export function ReceptionTab({ branches, selectedBranch, navigateTo }: ReceptionTabProps) {
   const { showToast, confirm } = useNotification();
