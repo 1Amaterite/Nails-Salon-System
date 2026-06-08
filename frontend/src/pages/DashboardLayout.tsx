@@ -81,7 +81,6 @@ export function DashboardLayout() {
       key: 'admin-walkin',
       label: 'Add Walk-In Guest',
       Icon: PlusCircle,
-      style: { borderLeft: '3px dashed var(--accent)' },
     },
     { key: 'employees', label: 'Staff Directory', Icon: Users },
     { key: 'schedules', label: 'Shift Schedules', Icon: Clock },
@@ -94,7 +93,6 @@ export function DashboardLayout() {
             key: 'analytics',
             label: 'Owner Financials',
             Icon: Shield,
-            style: { borderLeft: '3px solid var(--accent)' },
           },
         ]
       : []),
@@ -201,13 +199,12 @@ export function DashboardLayout() {
 
         <div className="nav-section-title">Workspace</div>
         <nav className="nav-links">
-          {navItems.map(({ key, label, Icon, style }) => (
+          {navItems.map(({ key, label, Icon }) => (
             <div
               key={key}
               className={`nav-link ${activeTab === key ? 'active' : ''}`}
               onClick={() => handleTabClick(key)}
               onMouseEnter={() => handlePrefetch(key)}
-              style={style}
             >
               <Icon size={18} />
               {label}

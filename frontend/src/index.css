@@ -137,7 +137,6 @@ body {
   font-size: 14.5px;
   transition: var(--transition);
   cursor: pointer;
-  border-left: 3px solid transparent;
 }
 
 .nav-link:hover {
@@ -151,7 +150,6 @@ body {
   background-color: var(--accent);
   box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15);
   font-weight: 600;
-  border-left: 3px solid var(--accent-blue); /* Royal Blue active marker from Nails & Lashes branding */
 }
 
 /* Workspace Container */
@@ -325,17 +323,6 @@ input[type='radio'] {
   transition: var(--transition);
   position: relative;
   overflow: hidden;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background-color: var(--accent);
-  opacity: 0.7;
 }
 
 .stat-card:hover {

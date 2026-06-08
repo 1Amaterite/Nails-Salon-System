@@ -108,7 +108,7 @@ export function AdminWalkinTab({ branches, selectedBranch, onWalkinSubmit }: Adm
   };
 
   return (
-    <div className="glass-panel" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
+    <div className="glass-panel">
       <PageHeader
         title="Receptionist Walk-In Guest Check-In"
         subtitle="Add a walk-in guest to the live queue on their behalf if they are not tech-savvy."

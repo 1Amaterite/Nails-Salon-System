@@ -117,9 +117,6 @@ export function SchedulesTab({ selectedBranch, onScheduleUpdated, setIsDirty }: 
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border-color)'}`,
-                    borderLeft: isSelected
-                      ? '4px solid var(--accent)'
-                      : `1px solid var(--border-color)`,
                   }}
                 >
                   <div
