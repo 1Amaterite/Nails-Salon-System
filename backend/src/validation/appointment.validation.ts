@@ -41,9 +41,7 @@ export const CreateAppointmentSchema = z.object({
   lastName: z
     .string()
     .trim()
-    .optional()
-    .nullable()
-    .or(z.literal('')),
+    .min(1, 'Last name is required.'),
   phone: z
     .string()
     .trim()

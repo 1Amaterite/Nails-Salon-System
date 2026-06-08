@@ -15,7 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
-import { ClientAutocomplete, LoadingSpinner } from '../components/common';
+import { LoadingSpinner } from '../components/common';
 import { apiClient } from '../utils/apiClient';
 import { useBranch } from '../context/BranchContext';
 
@@ -1176,25 +1176,22 @@ export function PublicPortal({
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">First Name *</label>
-                  <ClientAutocomplete
-                    value={bookingFirstName}
-                    onChange={setBookingFirstName}
-                    onSelect={(client) => {
-                      setBookingFirstName(client.firstName);
-                      setBookingLastName(client.lastName || '');
-                      setBookingPhone(client.phoneNumber || '');
-                    }}
+                  <input
+                    type="text"
                     placeholder="First Name"
+                    value={bookingFirstName}
+                    onChange={(e) => setBookingFirstName(e.target.value)}
                     required
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Last Name</label>
+                  <label className="form-label">Last Name *</label>
                   <input
                     type="text"
                     placeholder="Last Name"
                     value={bookingLastName}
                     onChange={(e) => setBookingLastName(e.target.value)}
+                    required
                   />
                 </div>
               </div>
@@ -1337,15 +1334,11 @@ export function PublicPortal({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">First Name *</label>
-                  <ClientAutocomplete
-                    value={publicWalkinName}
-                    onChange={setPublicWalkinName}
-                    onSelect={(client) => {
-                      setPublicWalkinName(client.firstName);
-                      setPublicWalkinLastName(client.lastName || '');
-                      setPublicWalkinPhone(client.phoneNumber || '');
-                    }}
+                  <input
+                    type="text"
                     placeholder="Enter your first name"
+                    value={publicWalkinName}
+                    onChange={(e) => setPublicWalkinName(e.target.value)}
                     required
                   />
                 </div>

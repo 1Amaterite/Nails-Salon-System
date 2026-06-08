@@ -22,7 +22,7 @@ interface WaitlistEntry {
 
 interface BookAppointmentPayload {
     firstName: string;
-    lastName?: string | null;
+    lastName: string;
     phone: string;
     serviceId: string;
     employeeId?: string | null;
@@ -379,10 +379,10 @@ export async function bookAppointment(branchId: string, payload: BookAppointment
         const cleanPhone = phone.trim();
         const client = await tx.client.upsert({
             where: { phoneNumber: cleanPhone },
-            update: { firstName: firstName.trim(), lastName: (lastName ?? '').trim() },
+            update: { firstName: firstName.trim(), lastName: lastName.trim() },
             create: {
                 firstName: firstName.trim(),
-                lastName: (lastName ?? '').trim(),
+                lastName: lastName.trim(),
                 phoneNumber: cleanPhone,
             },
         });
