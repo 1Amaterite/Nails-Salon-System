@@ -2,6 +2,8 @@ import { Edit2, Trash2, Cake, Users } from 'lucide-react';
 import { DataTable, EmptyState } from '../../../components/common';
 import type { ColumnDef } from '../../../components/common';
 import type { Client } from '../../../types';
+import { parseClientNotes } from '../../../utils/notes';
+import { formatManilaDate } from '../../../utils/time';
 
 interface ClientTableProps {
   clients: Client[];
@@ -9,31 +11,6 @@ interface ClientTableProps {
   onViewHistory: (id: string) => void;
   onEdit: (client: Client) => void;
   onDelete: (id: string, name: string) => void;
-}
-
-// Structured note parser utilities
-function parseClientNotes(notesStr: string | null | undefined) {
-  const result = {
-    safety: '',
-    preferences: '',
-    general: '',
-  };
-  if (!notesStr) return result;
-
-  const safetyMatch = notesStr.match(/\[Safety\](.*?)(?=\[|$)/s);
-  const prefMatch = notesStr.match(/\[Preferences\](.*?)(?=\[|$)/s);
-  const generalMatch = notesStr.match(/\[General\](.*?)(?=\[|$)/s);
-
-  result.safety = safetyMatch ? safetyMatch[1].trim() : '';
-  result.preferences = prefMatch ? prefMatch[1].trim() : '';
-
-  if (!safetyMatch && !prefMatch && !generalMatch) {
-    result.general = notesStr.trim();
-  } else {
-    result.general = generalMatch ? generalMatch[1].trim() : '';
-  }
-
-  return result;
 }
 
 export function ClientTable({
@@ -78,11 +55,9 @@ export function ClientTable({
       header: 'Birthday',
       render: (client) => {
         if (!client.birthday) return <span style={{ color: 'var(--text-secondary)' }}>—</span>;
-        const bDate = new Date(client.birthday);
-        const bFormatted = bDate.toLocaleDateString([], {
+        const bFormatted = formatManilaDate(client.birthday, {
           month: 'long',
           day: 'numeric',
-          timeZone: 'Asia/Manila',
         });
         return (
           <span

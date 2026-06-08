@@ -1,5 +1,6 @@
 import { Edit2, Trash2 } from 'lucide-react';
 import type { Service } from '../../../types';
+import { formatCurrency } from '../../../utils/currency';
 
 interface ServiceCardProps {
   service: Service;
@@ -61,7 +62,7 @@ export function ServiceCard({ service, isAuthorized, onEdit, onDelete }: Service
               fontFamily: 'var(--font-serif)',
             }}
           >
-            ₱{Number(service.price).toFixed(2)}
+            {formatCurrency(service.price)}
           </span>
           {isAuthorized && (
             <div style={{ display: 'flex', gap: '6px' }}>

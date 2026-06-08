@@ -3,6 +3,8 @@ import { HeartPulse, Sparkles } from 'lucide-react';
 import { FormModal } from '../../../components/common';
 import type { Client } from '../../../types';
 import { ClientFormSchema } from '../../../validation/clientForm.validation';
+import { parseClientNotes } from '../../../utils/notes';
+import { PHONE_PATTERN, PHONE_TITLE } from '../../../utils/validation';
 
 interface ClientFormModalProps {
   isOpen: boolean;
@@ -20,31 +22,6 @@ interface ClientFormModalProps {
   submitLabel: string;
   isPending: boolean;
   initialData?: Client | null;
-}
-
-// Structured note parser utilities
-function parseClientNotes(notesStr: string | null | undefined) {
-  const result = {
-    safety: '',
-    preferences: '',
-    general: '',
-  };
-  if (!notesStr) return result;
-
-  const safetyMatch = notesStr.match(/\[Safety\](.*?)(?=\[|$)/s);
-  const prefMatch = notesStr.match(/\[Preferences\](.*?)(?=\[|$)/s);
-  const generalMatch = notesStr.match(/\[General\](.*?)(?=\[|$)/s);
-
-  result.safety = safetyMatch ? safetyMatch[1].trim() : '';
-  result.preferences = prefMatch ? prefMatch[1].trim() : '';
-
-  if (!safetyMatch && !prefMatch && !generalMatch) {
-    result.general = notesStr.trim();
-  } else {
-    result.general = generalMatch ? generalMatch[1].trim() : '';
-  }
-
-  return result;
 }
 
 export function ClientFormModal({
@@ -158,8 +135,8 @@ export function ClientFormModal({
             placeholder="e.g. 0912 345 6789 or 09123456789"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
-            pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
-            title="Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx"
+            pattern={PHONE_PATTERN}
+            title={PHONE_TITLE}
             required
           />
         </div>

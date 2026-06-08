@@ -5,6 +5,7 @@ import type { Appointment, Employee } from '../../../types';
 import { useAuth } from '../../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../utils/apiClient';
+import { formatCurrency } from '../../../utils/currency';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -235,7 +236,7 @@ export function CheckoutModal({
                         fontFamily: 'monospace',
                       }}
                     >
-                      ₱{Number(relation.service?.price ?? 0).toFixed(2)}
+                      {formatCurrency(relation.service?.price ?? 0)}
                     </span>
                   </div>
                 ))}
@@ -355,7 +356,7 @@ export function CheckoutModal({
                     borderColor: 'var(--border-color-hover)',
                   }}
                 >
-                  Available: {availablePoints} Pts (₱{availablePoints.toLocaleString()})
+                  Available: {availablePoints} Pts ({formatCurrency(availablePoints, false)})
                 </span>
               </div>
 
@@ -384,7 +385,7 @@ export function CheckoutModal({
                   <span
                     style={{ fontSize: '11.5px', color: 'var(--success-green)', fontWeight: 500 }}
                   >
-                    ✓ Applying ₱{pointsApplied.toFixed(2)} discount (1 Pt = ₱1)
+                    ✓ Applying {formatCurrency(pointsApplied)} discount (1 Pt = ₱1)
                   </span>
                 )}
               </div>
@@ -410,7 +411,7 @@ export function CheckoutModal({
                 }}
               >
                 <span>Subtotal</span>
-                <span>₱{subtotal.toFixed(2)}</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
               {discountAmount > 0 && (
                 <div
@@ -422,7 +423,7 @@ export function CheckoutModal({
                   }}
                 >
                   <span>Discount</span>
-                  <span>- ₱{discountAmount.toFixed(2)}</span>
+                  <span>- {formatCurrency(discountAmount)}</span>
                 </div>
               )}
               {pointsApplied > 0 && (
@@ -435,7 +436,7 @@ export function CheckoutModal({
                   }}
                 >
                   <span>Points Applied</span>
-                  <span>- ₱{pointsApplied.toFixed(2)}</span>
+                  <span>- {formatCurrency(pointsApplied)}</span>
                 </div>
               )}
               <div
@@ -452,7 +453,7 @@ export function CheckoutModal({
               >
                 <span>Total Due</span>
                 <span style={{ fontSize: '18px', fontFamily: 'monospace' }}>
-                  ₱{totalAmount.toFixed(2)}
+                  {formatCurrency(totalAmount)}
                 </span>
               </div>
               <div

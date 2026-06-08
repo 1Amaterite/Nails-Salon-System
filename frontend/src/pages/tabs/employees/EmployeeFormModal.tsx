@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Employee, Branch } from '../../../types';
 import { FormModal } from '../../../components/common';
+import { PHONE_PATTERN, PHONE_TITLE } from '../../../utils/validation';
 
 interface EmployeeFormModalProps {
   isOpen: boolean;
@@ -228,8 +229,8 @@ export function EmployeeFormModal({
           placeholder="e.g. 0917 565 9890 or 09175659890"
           value={formData.phoneNumber}
           onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-          pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
-          title="Phone number must be in the format 09xx xxx xxxx or 09xxxxxxxxx"
+          pattern={PHONE_PATTERN}
+          title={PHONE_TITLE}
           required
         />
       </div>

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../../../utils/apiClient';
 import { getManilaDateStr } from '../../../utils/time';
+import { formatCurrency } from '../../../utils/currency';
 import type { Appointment, WaitlistItem, Employee, Branch } from '../../../types';
 import { PageWrapper, LoadingSpinner } from '../../../components/common';
 
@@ -867,8 +868,8 @@ export function CalendarTab({ selectedBranch }: CalendarTabProps) {
                               marginTop: '2px',
                             }}
                           >
-                            Service: {appt.services?.map((s) => s.service?.name).join(', ')} • ₱
-                            {total.toFixed(2)}
+                            Service: {appt.services?.map((s) => s.service?.name).join(', ')} •{' '}
+                            {formatCurrency(total)}
                           </div>
                           <div
                             style={{

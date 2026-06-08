@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-const phoneRegex = /^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$/;
+import { PHONE_REGEX, PHONE_TITLE } from '../utils/validation';
 
 export const ClientFormSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required.'),
@@ -9,7 +8,7 @@ export const ClientFormSchema = z.object({
     .string()
     .trim()
     .min(1, 'Phone number is required.')
-    .regex(phoneRegex, 'Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx.'),
+    .regex(PHONE_REGEX, PHONE_TITLE),
   birthday: z
     .string()
     .trim()

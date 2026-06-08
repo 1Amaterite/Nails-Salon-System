@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ClipboardList, Award, Coins } from 'lucide-react';
 import { ModalShell, EmptyState, LoadingSpinner } from '../../../components/common';
 import type { Client, Appointment, LoyaltyTransaction } from '../../../types';
+import { formatManilaDate } from '../../../utils/time';
+import { formatCurrency } from '../../../utils/currency';
 
 interface ClientHistoryModalProps {
   isOpen: boolean;
@@ -116,7 +118,7 @@ export function ClientHistoryModal({
                       marginLeft: '6px',
                     }}
                   >
-                    Points (₱{(activeClientDetails?.loyaltyPoints ?? 0).toFixed(2)} value)
+                    Points ({formatCurrency(activeClientDetails?.loyaltyPoints ?? 0)} value)
                   </span>
                 </div>
                 <div
@@ -184,12 +186,11 @@ export function ClientHistoryModal({
                 activeClientDetails?.appointments && activeClientDetails.appointments.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {activeClientDetails.appointments.map((appt: Appointment) => {
-                      const apptDate = new Date(appt.appointmentDate).toLocaleDateString([], {
+                      const apptDate = formatManilaDate(appt.appointmentDate, {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
-                        timeZone: 'Asia/Manila',
                       });
                       const serviceNames =
                         appt.services?.map((rel) => rel.service?.name).join(', ') || 'N/A';
@@ -286,13 +287,12 @@ export function ClientHistoryModal({
                 activeClientDetails.loyaltyTransactions.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {activeClientDetails.loyaltyTransactions.map((tx: LoyaltyTransaction) => {
-                    const txDate = new Date(tx.createdAt).toLocaleDateString([], {
+                    const txDate = formatManilaDate(tx.createdAt, {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
-                      timeZone: 'Asia/Manila',
                     });
                     const isPositive = tx.amount > 0;
                     return (

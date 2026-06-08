@@ -18,6 +18,9 @@ import { useNotification } from '../context/NotificationContext';
 import { LoadingSpinner } from '../components/common';
 import { apiClient } from '../utils/apiClient';
 import { useBranch } from '../context/BranchContext';
+import { formatManilaDate } from '../utils/time';
+import { formatCurrency } from '../utils/currency';
+import { PHONE_PATTERN, PHONE_TITLE } from '../utils/validation';
 
 import gelExtensionsImg from '../assets/gel_extensions.webp';
 import gelPolishImg from '../assets/gel_polish.webp';
@@ -833,7 +836,7 @@ export function PublicPortal({
                               fontFamily: 'var(--font-serif)',
                             }}
                           >
-                            ₱{Number(s.price).toFixed(2)}
+                            {formatCurrency(s.price)}
                           </span>
                         </div>
                         <div
@@ -1060,12 +1063,11 @@ export function PublicPortal({
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Date</span>
                 <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {new Date(lastBookedAppointment.appointmentDate).toLocaleDateString('en-US', {
+                  {formatManilaDate(lastBookedAppointment.appointmentDate, {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
-                    timeZone: 'Asia/Manila',
                   })}
                 </span>
               </div>
@@ -1200,8 +1202,8 @@ export function PublicPortal({
                 <input
                   type="tel"
                   placeholder="e.g. 0917 565 9890 or 09175659890"
-                  pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
-                  title="Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx"
+                  pattern={PHONE_PATTERN}
+                  title={PHONE_TITLE}
                   value={bookingPhone}
                   onChange={(e) => setBookingPhone(e.target.value)}
                   required
@@ -1358,8 +1360,8 @@ export function PublicPortal({
                 <input
                   type="tel"
                   placeholder="e.g. 0917 565 9890 or 09175659890"
-                  pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
-                  title="Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx"
+                  pattern={PHONE_PATTERN}
+                  title={PHONE_TITLE}
                   value={publicWalkinPhone}
                   onChange={(e) => setPublicWalkinPhone(e.target.value)}
                   required
@@ -1437,8 +1439,8 @@ export function PublicPortal({
                   <input
                     type="tel"
                     placeholder="e.g. 0917 565 9890"
-                    pattern="^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$"
-                    title="Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx"
+                    pattern={PHONE_PATTERN}
+                    title={PHONE_TITLE}
                     value={lookupPhone}
                     onChange={(e) => setLookupPhone(e.target.value)}
                     required
@@ -1568,10 +1570,12 @@ export function PublicPortal({
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>Price</span>
                       <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
-                        ₱
-                        {lookupResult.services
-                          ?.reduce((sum: number, s) => sum + Number(s.service?.price || 0), 0)
-                          .toFixed(2)}
+                        {formatCurrency(
+                          lookupResult.services?.reduce(
+                            (sum: number, s) => sum + Number(s.service?.price || 0),
+                            0
+                          ) || 0
+                        )}
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1584,12 +1588,11 @@ export function PublicPortal({
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>Date</span>
                       <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
-                        {new Date(lookupResult.appointmentDate).toLocaleDateString('en-US', {
+                        {formatManilaDate(lookupResult.appointmentDate, {
                           weekday: 'long',
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
-                          timeZone: 'Asia/Manila',
                         })}
                       </span>
                     </div>

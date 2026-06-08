@@ -17,6 +17,8 @@ import { PageHeader, StatCard, LoadingSpinner, DataTable } from '../../../compon
 import type { ColumnDef } from '../../../components/common';
 import type { FinancialData } from '../../../types';
 import { apiClient } from '../../../utils/apiClient';
+import { formatCurrency } from '../../../utils/currency';
+import { formatManilaDate } from '../../../utils/time';
 
 interface FinancialsTabProps {
   selectedBranch: string;
@@ -142,7 +144,7 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
     {
       key: 'salesAmount',
       header: 'Sales Value',
-      render: (stylist) => `₱${stylist.salesAmount.toFixed(2)}`,
+      render: (stylist) => formatCurrency(stylist.salesAmount),
       style: { fontWeight: 600 },
     },
   ];
@@ -191,17 +193,16 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
     {
       key: 'totalAmount',
       header: 'Amount',
-      render: (tx) => `₱${tx.totalAmount.toFixed(2)}`,
+      render: (tx) => formatCurrency(tx.totalAmount),
       style: { fontWeight: 600 },
     },
     {
       key: 'createdAt',
       header: 'Date',
       render: (tx) =>
-        new Date(tx.createdAt).toLocaleDateString('en-US', {
+        formatManilaDate(tx.createdAt, {
           month: 'short',
           day: 'numeric',
-          timeZone: 'Asia/Manila',
         }),
       style: { fontSize: '12px', color: 'var(--text-secondary)' },
     },
@@ -244,12 +245,12 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
       >
         <StatCard
           label="Total Revenue"
-          value={`₱${kpis.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatCurrency(kpis.totalRevenue)}
           icon={<DollarSign size={24} />}
         />
         <StatCard
           label="Net Profit"
-          value={`₱${kpis.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatCurrency(kpis.netProfit)}
           icon={<TrendingUp size={24} />}
         />
       </div>
@@ -310,11 +311,11 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
                   tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(val) => `₱${val}`}
+                  tickFormatter={(val) => formatCurrency(val, false)}
                 />
                 <Tooltip
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(val: any) => [`₱${Number(val).toLocaleString()}`, '']}
+                  formatter={(val: any) => [formatCurrency(val), '']}
                   contentStyle={{
                     backgroundColor: 'rgba(255,255,255,0.95)',
                     border: '1px solid var(--border-color)',
@@ -401,11 +402,11 @@ export function FinancialsTab({ selectedBranch, employeeRole }: FinancialsTabPro
                     tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(val) => `₱${val}`}
+                    tickFormatter={(val) => formatCurrency(val, false)}
                   />
                   <Tooltip
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(val: any) => [`₱${Number(val).toLocaleString()}`, 'Sales']}
+                    formatter={(val: any) => [formatCurrency(val), 'Sales']}
                     contentStyle={{
                       backgroundColor: 'rgba(255,255,255,0.95)',
                       border: '1px solid var(--border-color)',

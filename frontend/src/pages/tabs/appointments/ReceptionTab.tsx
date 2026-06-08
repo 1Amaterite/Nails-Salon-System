@@ -7,7 +7,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../utils/apiClient';
 import { useCheckout } from '../../../hooks/useCheckout';
 import { useBranch } from '../../../context/BranchContext';
-import { getManilaDateStr } from '../../../utils/time';
+import { getManilaDateStr, formatManilaDate } from '../../../utils/time';
+import { formatCurrency } from '../../../utils/currency';
+import { PHONE_REGEX, PHONE_PATTERN, PHONE_TITLE } from '../../../utils/validation';
 import {
   PageWrapper,
   DataTable,
@@ -221,9 +223,8 @@ export function ReceptionTab({ branches, selectedBranch, navigateTo }: Reception
       setPhoneError('Phone number is required.');
       return false;
     }
-    const phoneRegex = /^(09\d{9}|09\d{2}\s\d{3}\s\d{4})$/;
-    if (!phoneRegex.test(trimmed)) {
-      setPhoneError('Phone number must be in format 09xxxxxxxxx or 09xx xxx xxxx.');
+    if (!PHONE_REGEX.test(trimmed)) {
+      setPhoneError(PHONE_TITLE);
       return false;
     }
     setPhoneError(null);
@@ -313,12 +314,11 @@ export function ReceptionTab({ branches, selectedBranch, navigateTo }: Reception
       key: 'dateTime',
       header: 'Booking Schedule',
       render: (appt) => {
-        const dateStr = new Date(appt.appointmentDate).toLocaleDateString([], {
+        const dateStr = formatManilaDate(appt.appointmentDate, {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
           year: 'numeric',
-          timeZone: 'Asia/Manila',
         });
         return (
           <div>
@@ -346,7 +346,7 @@ export function ReceptionTab({ branches, selectedBranch, navigateTo }: Reception
           <div>
             <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{serviceNames}</div>
             <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-              Total: ₱{total.toFixed(2)}
+              Total: {formatCurrency(total)}
             </div>
           </div>
         );
@@ -1274,6 +1274,8 @@ export function ReceptionTab({ branches, selectedBranch, navigateTo }: Reception
               }}
               onBlur={() => validatePhone(walkinPhone)}
               disabled={!!selectedClient}
+              pattern={PHONE_PATTERN}
+              title={PHONE_TITLE}
               required
               style={{
                 flex: 1,
@@ -1337,7 +1339,7 @@ export function ReceptionTab({ branches, selectedBranch, navigateTo }: Reception
             </option>
             {activeServices.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name} - ₱{Number(s.price).toFixed(2)}
+                {s.name} - {formatCurrency(s.price)}
               </option>
             ))}
           </select>

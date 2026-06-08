@@ -63,3 +63,18 @@ export function getManilaDateStr(dateInput: string | Date): string {
   const year = parts.find((p) => p.type === 'year')!.value;
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Formats a Date object or ISO string to a localized date/time string in the Asia/Manila timezone.
+ */
+export function formatManilaDate(
+  dateInput: string | Date,
+  options: Intl.DateTimeFormatOptions = {}
+): string {
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', {
+    ...options,
+    timeZone: 'Asia/Manila',
+  });
+}
