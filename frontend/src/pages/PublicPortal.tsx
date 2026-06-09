@@ -22,9 +22,6 @@ import { formatManilaDate } from '../utils/time';
 import { formatCurrency } from '../utils/currency';
 import { PHONE_PATTERN, PHONE_TITLE } from '../utils/validation';
 
-import gelExtensionsImg from '../assets/gel_extensions.webp';
-import gelPolishImg from '../assets/gel_polish.webp';
-import gelNaturalImg from '../assets/gel_natural.webp';
 import type { Branch, Service, Employee, Appointment } from '../types';
 
 /** Time slots shown to customers in the booking and walk-in forms.
@@ -157,10 +154,29 @@ export function PublicPortal({
 
   const currentBranchId = selectedBranchId || branches[0]?.id || '';
 
+  // Service search & filter states
+  const [servicesSearch, setServicesSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [servicesSortBy, setServicesSortBy] = useState('default');
+  const [randomizedServices, setRandomizedServices] = useState<Service[]>([]);
+
   const activeServices = React.useMemo(() => {
     const branch = branches.find((b) => b.id === currentBranchId) || branches[0];
     return (branch?.services || []).filter((s) => s.isActive);
   }, [branches, currentBranchId]);
+
+  // Randomize services whenever activeServices changes
+  useEffect(() => {
+    if (activeServices.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRandomizedServices([]);
+      return;
+    }
+    const numToShow = Math.min(3, activeServices.length);
+    const shuffled = [...activeServices].sort(() => Math.random() - 0.5);
+
+    setRandomizedServices(shuffled.slice(0, numToShow));
+  }, [activeServices]);
 
   const activeEmployees = React.useMemo(() => {
     const branch = branches.find((b) => b.id === currentBranchId) || branches[0];
@@ -196,11 +212,6 @@ export function PublicPortal({
   const [bookingStartTime, setBookingStartTime] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-
-  // Service search & filter states
-  const [servicesSearch, setServicesSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [servicesSortBy, setServicesSortBy] = useState('default');
 
   // Reset search and filters when active branch changes using render-time state check (avoids useEffect cascading renders)
   const [prevBranchId, setPrevBranchId] = useState(currentBranchId);
@@ -511,150 +522,65 @@ export function PublicPortal({
               <h3 className="services-section-title">Our Services</h3>
 
               <div className="services-front-grid">
-                <div className="service-front-card">
-                  <img src={gelExtensionsImg} alt="Gel extensions" className="service-front-img" />
-                  <div className="service-front-body">
-                    <h4 className="service-front-title">Gel extensions</h4>
-                    <p className="service-front-desc">
-                      Long-lasting, durable premium nail extensions sculpted custom to your fingers,
-                      finished with luxury gel coating and detailing.
-                    </p>
-                    <button
-                      className="btn-primary"
-                      onClick={() => {
-                        const matched = activeServices.find(
-                          (s) =>
-                            s.name.toLowerCase().includes('extensions') ||
-                            s.name.toLowerCase().includes('acrylic')
-                        );
-                        if (matched) {
-                          setBookingServiceId(matched.id);
-                        } else if (activeServices.length > 0) {
-                          setBookingServiceId(activeServices[0].id);
-                        }
-                        setActiveTab('public-booking');
-                      }}
-                      style={{
-                        width: '100%',
-                        fontSize: '13px',
-                        padding: '8px 16px',
-                        border: '1px solid var(--accent)',
-                        background: 'transparent',
-                        color: 'var(--accent)',
-                        boxShadow: 'none',
-                        marginTop: 'auto',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--accent-glow)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      Book Treatment
-                    </button>
+                {randomizedServices.map((service) => (
+                  <div key={service.id} className="service-front-card">
+                    {service.imageUrl ? (
+                      <img
+                        src={service.imageUrl}
+                        alt={service.name}
+                        className="service-front-img"
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '200px',
+                          background:
+                            'linear-gradient(135deg, rgba(190, 24, 93, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--text-secondary)',
+                          fontSize: '14px',
+                        }}
+                      >
+                        <Gem size={32} style={{ opacity: 0.5 }} />
+                      </div>
+                    )}
+                    <div className="service-front-body">
+                      <h4 className="service-front-title">{service.name}</h4>
+                      <p className="service-front-desc">
+                        {service.description ||
+                          `Professional ${service.category || 'nail'} treatment service.`}
+                      </p>
+                      <button
+                        className="btn-primary"
+                        onClick={() => {
+                          setBookingServiceId(service.id);
+                          setActiveTab('public-booking');
+                        }}
+                        style={{
+                          width: '100%',
+                          fontSize: '13px',
+                          padding: '8px 16px',
+                          border: '1px solid var(--accent)',
+                          background: 'transparent',
+                          color: 'var(--accent)',
+                          boxShadow: 'none',
+                          marginTop: 'auto',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--accent-glow)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        Book Treatment
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="service-front-card">
-                  <img
-                    src={gelPolishImg}
-                    alt="Gellack/Shellac/Gel polish"
-                    className="service-front-img"
-                  />
-                  <div className="service-front-body">
-                    <h4 className="service-front-title">Gellack/Shellac/Gel polish</h4>
-                    <p className="service-front-desc">
-                      Chip-resistant, high-shine gel colors cured under UV light for lasting
-                      wearability and gorgeous modern gloss.
-                    </p>
-                    <button
-                      className="btn-primary"
-                      onClick={() => {
-                        const matched = activeServices.find(
-                          (s) =>
-                            s.name.toLowerCase().includes('polish') ||
-                            s.name.toLowerCase().includes('gellack') ||
-                            s.name.toLowerCase().includes('gel manicure')
-                        );
-                        if (matched) {
-                          setBookingServiceId(matched.id);
-                        } else if (activeServices.length > 0) {
-                          setBookingServiceId(activeServices[0].id);
-                        }
-                        setActiveTab('public-booking');
-                      }}
-                      style={{
-                        width: '100%',
-                        fontSize: '13px',
-                        padding: '8px 16px',
-                        border: '1px solid var(--accent)',
-                        background: 'transparent',
-                        color: 'var(--accent)',
-                        boxShadow: 'none',
-                        marginTop: 'auto',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--accent-glow)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      Book Treatment
-                    </button>
-                  </div>
-                </div>
-
-                <div className="service-front-card">
-                  <img
-                    src={gelNaturalImg}
-                    alt="Gel on natural nails"
-                    className="service-front-img"
-                  />
-                  <div className="service-front-body">
-                    <h4 className="service-front-title">Gel on natural nails</h4>
-                    <p className="service-front-desc">
-                      Strengthen and beautify your natural nails with overlays and cuticle therapy
-                      for a clean, elegant growth cycle.
-                    </p>
-                    <button
-                      className="btn-primary"
-                      onClick={() => {
-                        const matched = activeServices.find(
-                          (s) =>
-                            s.name.toLowerCase().includes('manicure') ||
-                            s.name.toLowerCase().includes('natural') ||
-                            s.name.toLowerCase().includes('gel')
-                        );
-                        if (matched) {
-                          setBookingServiceId(matched.id);
-                        } else if (activeServices.length > 0) {
-                          setBookingServiceId(activeServices[0].id);
-                        }
-                        setActiveTab('public-booking');
-                      }}
-                      style={{
-                        width: '100%',
-                        fontSize: '13px',
-                        padding: '8px 16px',
-                        border: '1px solid var(--accent)',
-                        background: 'transparent',
-                        color: 'var(--accent)',
-                        boxShadow: 'none',
-                        marginTop: 'auto',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--accent-glow)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      Book Treatment
-                    </button>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
